@@ -1,0 +1,26 @@
+{
+  "name": "observatory",
+  "version": "1.0.0",
+  "description": "Observatory API",
+  "scripts": {
+    "start": "NODE_ENV=production bun run server/src/app.ts",
+    "dev": "NODE_ENV=development bun run --watch server/src/app.ts",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@bogeychan/elysia-logger": "^0.1.4",
+    "@elysiajs/cors": "^1.1.1",
+    "@elysiajs/server-timing": "^1.1.0",
+    "@elysiajs/swagger": "^1.1.5",
+    "axios": "^1.7.7",
+    "elysia": "latest",
+    "elysia-autoload": "^1.4.0",
+    "elysia-ip": "^1.0.7",
+    "elysia-rate-limit": "^4.1.0",
+    "pino-pretty": "^11.3.0"
+  },
+  "devDependencies": {
+    "bun-types": "latest"
+  },
+  "module": "server/src/app.js"
+}
