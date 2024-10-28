@@ -13,3 +13,4 @@ const app = new Elysia()
 
 export { app };
 export type App = typeof app;
+

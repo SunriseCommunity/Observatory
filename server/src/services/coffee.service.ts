@@ -1,5 +1,4 @@
 import Elysia from "elysia";
-import { axiosInstance } from "../plugins/axios";
 
 import { AxiosInstance } from "axios";
 

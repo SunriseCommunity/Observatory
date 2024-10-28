@@ -1,7 +1,6 @@
 import type { App } from "../app";
 import { sessionUser } from "../plugins/sessionUser";
 import { IndexService } from "../services/index.service";
-
 export default (app: App) => {
   app
     .use(sessionUser)
