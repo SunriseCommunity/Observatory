@@ -8,7 +8,7 @@ export default (app: App) => {
     .decorate(({ applicationAxiosInstance }) => ({
       coffeeService: new CoffeeService(applicationAxiosInstance),
     }))
-    .get("/", ({ coffeeService,  }) => coffeeService.get());
+    .get("/", ({ coffeeService }) => coffeeService.get());
 
   return app;
 };
