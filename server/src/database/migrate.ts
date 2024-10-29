@@ -2,19 +2,14 @@ import { exit } from "process";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import postgres from "postgres";
-import "dotenv/config";
-
-if (!Bun.env.POSTGRES_PASSWORD && !Bun.env.POSTGRES_USER) {
-  console.error("Postgres credentials not provided");
-  exit(1);
-}
+import config from "../config";
 
 const connection = postgres({
-  host: process.env.POSTGRES_HOST ?? "localhost",
-  port: parseInt(process.env.POSTGRES_PORT ?? "5432", 10),
-  user: process.env.POSTGRES_USER,
-  password: process.env.POSTGRES_PASSWORD,
-  database: process.env.POSTGRES_DB ?? "observatory",
+  host: config.POSTGRES_HOST,
+  port: parseInt(config.POSTGRES_PORT, 10),
+  user: config.POSTGRES_USER,
+  password: config.POSTGRES_PASSWORD,
+  database: config.POSTGRES_DB,
   max: 1,
 });
 

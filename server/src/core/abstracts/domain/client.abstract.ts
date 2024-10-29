@@ -14,9 +14,12 @@ export class BaseClient {
 
   constructor(config: ClientOptions) {
     this.config = config;
-    console.log("BaseClient constructor " + this.config.baseUrl);
     this.api = new BaseApi(axios.create(), {
       baseURL: this.config.baseUrl,
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
     });
   }
 

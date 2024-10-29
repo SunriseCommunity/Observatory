@@ -1,17 +1,11 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
-import { exit } from "process";
-import "dotenv/config";
 
 import * as schema from "./schema";
 
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
+import config from "../config";
 export type DB = NodePgDatabase<typeof schema>;
-
-if (!Bun.env.POSTGRES_PASSWORD && !Bun.env.POSTGRES_USER) {
-  console.error("Postgres credentials not provided");
-  exit(1);
-}
 
 class DbConnection {
   private static instance: DbConnection;
@@ -19,11 +13,11 @@ class DbConnection {
 
   private constructor() {
     this.pool = new Pool({
-      host: process.env.POSTGRES_HOST ?? "localhost",
-      port: parseInt(process.env.POSTGRES_PORT ?? "5432", 10),
-      user: process.env.POSTGRES_USER,
-      password: process.env.POSTGRES_PASSWORD,
-      database: process.env.POSTGRES_DB ?? "observatory",
+      host: config.POSTGRES_HOST,
+      port: parseInt(config.POSTGRES_PORT, 10),
+      user: config.POSTGRES_USER,
+      password: config.POSTGRES_PASSWORD,
+      database: config.POSTGRES_DB,
       max: 10,
     });
   }

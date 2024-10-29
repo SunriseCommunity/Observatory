@@ -9,7 +9,7 @@ export default (app: App) => {
       beatmapService: new BeatmapService(mirrorManagerInstance),
     }))
     .get("/:id", ({ beatmapService, params: { id } }) =>
-      beatmapService.getBeatmap(Number(id))
+      beatmapService.getBeatmapSet(Number(id))
     );
 
   return app;

@@ -6,8 +6,7 @@ import serverTiming from "@elysiajs/server-timing";
 import { autoload } from "elysia-autoload";
 import { ip } from "elysia-ip";
 import { rateLimit } from "elysia-rate-limit";
-
-const isProduction = Bun.env.NODE_ENV !== "development";
+import config from "./config";
 
 const swaggerOptions: ElysiaSwaggerConfig<"/docs"> = {
   documentation: {
@@ -25,14 +24,13 @@ const loggerOptions = {
     targets: [
       {
         target: "pino-loki",
-        level: process.env.LOG_LEVEL_HTTP || "info",
         options: {
           batching: false,
           labels: {
             app: process.env.npm_package_name,
             namespace: process.env.NODE_ENV || "development",
           },
-          host: process.env.LOKI_HOST || "http://localhost:3100",
+          host: config.LOKI_HOST,
         },
       },
       {
@@ -50,7 +48,7 @@ async function setup() {
     .use(cors())
     .use(ip())
     .use(rateLimit({ max: 100, duration: 20 * 1000 }))
-    .use(serverTiming({ enabled: !isProduction }))
+    .use(serverTiming({ enabled: !config.IsProduction }))
     .use(
       logger({
         ...loggerOptions,

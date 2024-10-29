@@ -1,12 +1,12 @@
-import { BaseClient } from "../../core/abstracts/domain/client.abstract";
+import { BaseClient } from "../../abstracts/domain/client.abstract";
 import {
   GetBeatmapOptions,
   GetBeatmapSetOptions,
   ResultWithPrice,
-} from "../../core/abstracts/domain/client.types";
-import { Beatmap, Beatmapset } from "../../types/beatmap";
+} from "../../abstracts/domain/client.types";
+import { Beatmap, Beatmapset } from "../../../types/beatmap";
 import { DirectBeatmap, DirectBeatmapSet } from "./direct-client.types";
-import logger from "../../utils/logger";
+import logger from "../../../utils/logger";
 
 export class DirectClient extends BaseClient {
   constructor() {
@@ -88,9 +88,6 @@ export class DirectClient extends BaseClient {
   }
 
   private async _getBeatmapById(beatmapId: number): Promise<Beatmap | null> {
-    // console.log(beatmapId);
-    // console.log(this.api);
-
     const result = await this.api.get<DirectBeatmap>(`v2/b/${beatmapId}`);
 
     if (result.status !== 200) {
@@ -141,6 +138,7 @@ export class DirectClient extends BaseClient {
       status: beatmap.status as any,
       ranked: beatmap.ranked,
       url: beatmap.url,
+      checksum: beatmap.checksum,
     };
   }
 

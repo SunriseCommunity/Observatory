@@ -1,12 +1,13 @@
 import { Config, defineConfig } from "drizzle-kit";
 import "dotenv/config";
+import config from "../config";
 
 export const dbCredentials = {
-  host: process.env.POSTGRES_HOST || "0.0.0.0",
-  port: parseInt(process.env.POSTGRES_PORT || "5432"),
-  user: process.env.POSTGRES_USER || "postgres",
-  password: process.env.POSTGRES_PASSWORD || "postgres",
-  database: process.env.POSTGRES_DB || "observatory",
+  host: config.POSTGRES_HOST,
+  port: parseInt(config.POSTGRES_PORT),
+  user: config.POSTGRES_USER,
+  password: config.POSTGRES_PASSWORD,
+  database: config.POSTGRES_DB,
 };
 
 export default defineConfig({
@@ -15,7 +16,6 @@ export default defineConfig({
   dialect: "postgresql",
   dbCredentials: {
     url: `postgres://${dbCredentials.user}:${dbCredentials.password}@${dbCredentials.host}:${dbCredentials.port}/${dbCredentials.database}`,
-    ssl: process.env.POSTGRES_SSL === "true",
   },
   migrations: {
     table: "drizzle_migrations",

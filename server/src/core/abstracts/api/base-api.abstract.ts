@@ -26,10 +26,13 @@ export class BaseApi {
           res
         );
         return res;
+      })
+      .catch((err) => {
+        return err;
       });
   }
 
-  public async post<Q, B extends Record<string, never>>(
+  public async post<Q, B extends Record<string, any>>(
     endpoint: string,
     options?: BaseApiOptions<B>
   ) {
@@ -46,10 +49,13 @@ export class BaseApi {
           res
         );
         return res;
+      })
+      .catch((err) => {
+        return err;
       });
   }
 
-  public async put<Q, B extends Record<string, never>>(
+  public async put<Q, B extends Record<string, any>>(
     endpoint: string,
     options?: BaseApiOptions<B>
   ) {
@@ -66,10 +72,13 @@ export class BaseApi {
           res
         );
         return res;
+      })
+      .catch((err) => {
+        return err;
       });
   }
 
-  public async patch<Q, B extends Record<string, never>>(
+  public async patch<Q, B extends Record<string, any>>(
     endpoint: string,
     options?: BaseApiOptions<B>
   ) {
@@ -86,25 +95,33 @@ export class BaseApi {
           res
         );
         return res;
+      })
+      .catch((err) => {
+        return err;
       });
   }
 
-  public async delete<Q, B extends Record<string, never>>(
+  public async delete<Q, B extends Record<string, any>>(
     endpoint: string,
     options?: BaseApiOptions<B>
   ) {
     const formedUrl = this.createUrl(endpoint);
     const formedConfig = this.formConfig(options?.config);
 
-    return await this.axios.delete<Q>(formedUrl, formedConfig).then((res) => {
-      logExternalRequest(
-        this.config.baseURL ?? "localhost",
-        formedUrl,
-        "DELETE",
-        res
-      );
-      return res;
-    });
+    return await this.axios
+      .delete<Q>(formedUrl, formedConfig)
+      .then((res) => {
+        logExternalRequest(
+          this.config.baseURL ?? "localhost",
+          formedUrl,
+          "DELETE",
+          res
+        );
+        return res;
+      })
+      .catch((err) => {
+        return err;
+      });
   }
 
   private createUrl(endpoint: string): string {

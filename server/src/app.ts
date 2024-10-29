@@ -2,8 +2,9 @@ import { Elysia } from "elysia";
 
 import log from "./utils/logger";
 import setup from "./setup";
+import config from "./config";
 
-const port = Bun.env.SERVER_PORT ?? 3000;
+const port = config.PORT; 
 
 const app = new Elysia()
   .use(setup())
@@ -13,4 +14,3 @@ const app = new Elysia()
 
 export { app };
 export type App = typeof app;
-

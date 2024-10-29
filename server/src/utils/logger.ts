@@ -1,6 +1,7 @@
 import { createPinoLogger, pino } from "@bogeychan/elysia-logger";
 import { loggerOptions } from "../setup";
 import { AxiosResponse } from "axios";
+import config from "../config";
 
 const logger = createPinoLogger({
   ...loggerOptions,
@@ -18,6 +19,7 @@ export const logExternalRequest = (
       url,
       method,
       status: response.status,
+      data: config.IsDebug ? response.data : undefined,
     },
   });
 };
