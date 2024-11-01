@@ -1,32 +1,49 @@
-import { Beatmap, Beatmapset } from "../types/beatmap";
-import { MirrorManager } from "../core/managers/mirror.manager";
+import { Beatmap, Beatmapset } from '../types/beatmap';
+import { MirrorManager } from '../core/managers/mirror.manager';
+import {
+    DownloadBeatmapSetOptions,
+    GetBeatmapOptions,
+    GetBeatmapSetOptions,
+} from '../core/abstracts/client/base-client.types';
 
 export class BeatmapService {
-  private readonly _mirrorManager: MirrorManager;
+    private readonly _mirrorManager: MirrorManager;
 
-  constructor(minorManager: MirrorManager) {
-    this._mirrorManager = minorManager;
-  }
-
-  async getBeatmap(id: number): Promise<Beatmap | null> {
-    const beatmap = await this._mirrorManager.getBeatmap({ beatmapId: id });
-
-    if (!beatmap) {
-      return null;
+    constructor(mirrorManager: MirrorManager) {
+        this._mirrorManager = mirrorManager;
     }
 
-    return beatmap;
-  }
+    // TODO: Add local storage for beatmaps here
 
-  async getBeatmapSet(id: number): Promise<Beatmapset | null> {
-    const beatmapSet = await this._mirrorManager.getBeatmapSet({
-      beatmapSetId: id,
-    });
+    async getBeatmap(ctx: GetBeatmapOptions): Promise<Beatmap | null> {
+        const beatmap = await this._mirrorManager.getBeatmap(ctx);
 
-    if (!beatmapSet) {
-      return null;
+        if (!beatmap) {
+            return null;
+        }
+
+        return beatmap;
     }
 
-    return beatmapSet;
-  }
+    async getBeatmapSet(ctx: GetBeatmapSetOptions): Promise<Beatmapset | null> {
+        const beatmapSet = await this._mirrorManager.getBeatmapSet(ctx);
+
+        if (!beatmapSet) {
+            return null;
+        }
+
+        return beatmapSet;
+    }
+
+    async downloadBeatmapSet(
+        ctx: DownloadBeatmapSetOptions,
+    ): Promise<ArrayBuffer | null> {
+        const beatmapSet = await this._mirrorManager.downloadBeatmapSet(ctx);
+
+        if (!beatmapSet) {
+            return null;
+        }
+
+        return beatmapSet;
+    }
 }

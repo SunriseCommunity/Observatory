@@ -1,69 +1,122 @@
 import {
-  GetBeatmapOptions,
-  GetBeatmapSetOptions,
-} from "../abstracts/domain/client.types";
-import { Beatmap, Beatmapset } from "../../types/beatmap";
-import { DirectClient, BanchoClient } from "../domains/index";
-import { MirrorClient } from "../../types/manager";
+    ClientAbilities,
+    DownloadBeatmapSetOptions,
+    GetBeatmapOptions,
+    GetBeatmapSetOptions,
+} from '../abstracts/client/base-client.types';
+import { Beatmap, Beatmapset } from '../../types/beatmap';
+import { DirectClient, BanchoClient } from '../domains/index';
+import { MirrorClient } from '../../types/manager';
+import logger from '../../utils/logger';
+import { MirrorManagerService } from './mirror-manager.service';
+import config from '../../config';
+
+const DEFAULT_CLIENT_PROPS = {
+    weight: 50,
+    requests: {
+        processed: 0,
+        failed: 0,
+        total: 0,
+    },
+};
 
 export class MirrorManager {
-  private readonly directClient: DirectClient;
-  private readonly banchoClient: BanchoClient;
+    private readonly managerService: MirrorManagerService;
 
-  private readonly clients: MirrorClient[] = [];
+    private readonly clients: MirrorClient[] = [];
 
-  constructor() {
-    this.directClient = new DirectClient();
-    this.banchoClient = new BanchoClient();
+    constructor() {
+        const directClient = new DirectClient();
+        const banchoClient = new BanchoClient();
 
-    // TODO: Should parse old data from DB.
-    // TODO: Update data in db every X time?
+        this.clients = [
+            {
+                client: directClient,
+                ...DEFAULT_CLIENT_PROPS,
+            },
+        ];
 
-    this.clients = [
-      {
-        client: this.directClient,
-        weight: 50,
-        requests: {
-          processed: 0,
-          failed: 0,
-          total: 0,
-        },
-      },
-      {
-        client: this.banchoClient,
-        weight: 50,
-        requests: {
-          processed: 0,
-          failed: 0,
-          total: 0,
-        },
-      },
-    ];
-  }
+        if (config.UseBancho) {
+            this.clients.push({
+                client: banchoClient,
+                ...DEFAULT_CLIENT_PROPS,
+            });
+        }
 
-  async getBeatmapSet(ctx: GetBeatmapSetOptions): Promise<Beatmapset | null> {
-    const client = this._getClient();
-    const result = await client.getBeatmapSet(ctx);
+        this.managerService = new MirrorManagerService(this.clients);
 
-    return result.result;
-  }
+        this.managerService.fetchMirrorsData().then(() => {
+            this.log('Initialized');
+        });
+    }
 
-  async getBeatmap(ctx: GetBeatmapOptions): Promise<Beatmap | null> {
-    const client = this._getClient();
-    const result = await client.getBeatmap(ctx);
+    async getBeatmapSet(ctx: GetBeatmapSetOptions): Promise<Beatmapset | null> {
+        if (!ctx.beatmapSetId && !ctx.beatmapHash && !ctx.beatmapId) {
+            throw new Error(
+                'Either beatmapSetId, beatmapHash or beatmapId is required',
+            );
+        }
 
-    return result.result;
-  }
+        const criteria = ctx.beatmapSetId
+            ? ClientAbilities.GetBeatmapSet
+            : ctx.beatmapHash
+              ? ClientAbilities.GetBeatmapSetByBeatmapHash
+              : ClientAbilities.GetBeatmapSetByBeatmapId;
 
-  private _getClient() {
-    // TODO: Check if client has needed endpoints
+        const client = this._getClient(criteria);
+        const result = await client.getBeatmapSet(ctx);
 
-    // TODO: Add logic to determine which client to use
+        return result.result;
+    }
 
-    // TODO: Add rate limiting ? Maybe even just have rate limit logic in the client itself
-    // Also add a way to check if the client is rate limited and ignore him for a while
-    // Aaaand also go to the next client if the current one fails
+    async getBeatmap(ctx: GetBeatmapOptions): Promise<Beatmap | null> {
+        if (!ctx.beatmapId && !ctx.beatmapHash) {
+            throw new Error('Either beatmapId or beatmapHash is required');
+        }
 
-    return Math.random() > 0.5 ? this.directClient : this.banchoClient;
-  }
+        const criteria = ctx.beatmapId
+            ? ClientAbilities.GetBeatmap
+            : ctx.beatmapHash
+              ? ClientAbilities.GetBeatmapByHash
+              : ClientAbilities.GetBeatmapBySetId;
+
+        const client = this._getClient(criteria);
+        const result = await client.getBeatmap(ctx);
+
+        return result.result;
+    }
+
+    async downloadBeatmapSet(
+        ctx: DownloadBeatmapSetOptions,
+    ): Promise<ArrayBuffer | null> {
+        const criteria = ctx.noVideo
+            ? ClientAbilities.DownloadBeatmapSetNoVideo
+            : ClientAbilities.DownloadBeatmapSet;
+
+        const client = this._getClient(criteria);
+        const result = await client.downloadBeatmapSet(ctx);
+
+        return result.result;
+    }
+
+    private _getClient(criteria: ClientAbilities) {
+        const clients = this.clients.filter((client) =>
+            client.client.clientConfig.abilities.includes(criteria),
+        );
+
+        if (!clients.length) {
+            throw new Error(`No clients found with ability ${criteria}`);
+        }
+
+        // TODO: Add logic to determine which client to use
+        // Aaaand also go to the next client if the current one fails
+
+        const randomNum = Math.random() * clients.length;
+
+        return clients[Math.floor(randomNum)].client;
+    }
+
+    private log(message: string, level: 'info' | 'warn' | 'error' = 'info') {
+        logger[level](`MirrorManager: ${message}`);
+    }
 }

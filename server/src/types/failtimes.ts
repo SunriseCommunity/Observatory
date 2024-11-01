@@ -4,8 +4,8 @@
  * Https://osu.ppy.sh/docs/index.html#beatmapcompact-failtimes.
  */
 export interface Failtimes {
-  /** Array of length 100. */
-  exit?: number[];
-  /** Array of length 100. */
-  fail?: number[];
+    /** Array of length 100. */
+    exit?: number[];
+    /** Array of length 100. */
+    fail?: number[];
 }

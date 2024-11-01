@@ -1,6 +1,6 @@
-import { AxiosRequestConfig } from "axios";
+import { AxiosRequestConfig } from 'axios';
 
 export interface BaseApiOptions<B extends Record<string, any>> {
-  body?: B;
-  config?: AxiosRequestConfig;
+    body?: B;
+    config?: AxiosRequestConfig;
 }

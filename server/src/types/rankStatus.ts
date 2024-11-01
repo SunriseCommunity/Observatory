@@ -10,37 +10,37 @@ export enum RankStatus {
      * They allow players to compete on leaderboards and gain performance points
      * from setting scores.
      */
-    APPROVED = "approved",
+    APPROVED = 'approved',
     /**
      * These beatmaps do not have leaderboards, but they can still be downloaded
      * and played, and they continue to contribute to play statistics.
      */
-    GRAVEYARD = "graveyard",
+    GRAVEYARD = 'graveyard',
     /**
      * They have leaderboards, but no performance points will be awarded and all
      * scores will be deleted if it moves out of Loved.
      */
-    LOVED = "loved",
+    LOVED = 'loved',
     /**
      * Work in Progress and Pending beatmaps do not have leaderboards, but
      * contribute to play statistics.
      */
-    PENDING = "pending",
+    PENDING = 'pending',
     /**
      * Qualified beatmaps have leaderboards, but no performance points will be
      * awarded and all scores will be deleted when it moves out of Qualified.
      */
-    QUALIFIED = "qualified",
+    QUALIFIED = 'qualified',
     /**
      * They allow players to compete on leaderboards and gain performance points
      * from setting scores.
      */
-    RANKED = "ranked",
+    RANKED = 'ranked',
     /**
      * Work in Progress and Pending beatmaps do not have leaderboards, but
      * contribute to play statistics.
      */
-    WIP = "wip",
+    WIP = 'wip',
 }
 
 /**
