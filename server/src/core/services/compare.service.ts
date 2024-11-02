@@ -1,7 +1,10 @@
 import { BenchmarkResult } from '../../types/benchmark';
-import { MirrorClient } from '../../types/manager';
+
 import logger from '../../utils/logger';
-import { ClientAbilities } from '../abstracts/client/base-client.types';
+import {
+    ClientAbilities,
+    MirrorClient,
+} from '../abstracts/client/base-client.types';
 
 export class CompareService {
     private readonly beatmapSetId: number = 1357624;
@@ -33,7 +36,7 @@ export class CompareService {
 
         if (
             !client.clientConfig.abilities.includes(
-                ClientAbilities.DownloadBeatmapSet,
+                ClientAbilities.DownloadBeatmapSetById,
             )
         ) {
             return { latency };

@@ -36,20 +36,23 @@ export enum ClientAbilities {
     DownloadBeatmapSetById = 1 << 6, // 64
     DownloadBeatmapSetByIdNoVideo = 1 << 7, // 128 // TODO: Investigate if this is needed
 
-    // Combinations for rate limiting routes
-    GetBeatmap = GetBeatmapById | GetBeatmapByHash | GetBeatmapBySetId,
-    GetBeatmapSet = GetBeatmapSetById |
-        GetBeatmapSetByBeatmapHash |
-        GetBeatmapSetByBeatmapId,
-    DownloadBeatmapSet = DownloadBeatmapSetById | DownloadBeatmapSetByIdNoVideo,
+    // FIXME: Enum is strange in TS, find a better way to represent this
+    // // Combinations for rate limiting routes
+    // GetBeatmap = GetBeatmapById | GetBeatmapByHash | GetBeatmapBySetId,
+    // GetBeatmapSet = GetBeatmapSetById |
+    //     GetBeatmapSetByBeatmapHash |
+    //     GetBeatmapSetByBeatmapId,
+    // DownloadBeatmapSet = DownloadBeatmapSetById | DownloadBeatmapSetByIdNoVideo,
+
+    // API = GetBeatmap | GetBeatmapSet,
+    // Download = DownloadBeatmapSet,
 }
 
 export type MirrorClient<T extends BaseClient = BaseClient> = {
     client: T;
-    weight: number;
-    requests: {
-        processed: number;
-        failed: number;
-        total: number;
+    weights: {
+        API: number;
+        download: number;
+        failrate: number;
     };
 };

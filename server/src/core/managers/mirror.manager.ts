@@ -13,11 +13,10 @@ import { MirrorManagerService } from './mirror-manager.service';
 import config from '../../config';
 
 const DEFAULT_CLIENT_PROPS = {
-    weight: 50,
-    requests: {
-        processed: 0,
-        failed: 0,
-        total: 0,
+    weights: {
+        download: 0,
+        API: 0,
+        failrate: 0,
     },
 };
 
@@ -64,10 +63,10 @@ export class MirrorManager {
               ? ClientAbilities.GetBeatmapSetByBeatmapHash
               : ClientAbilities.GetBeatmapSetByBeatmapId;
 
-        const client = this._getClient(criteria);
-        const result = await client.getBeatmapSet(ctx);
+        const client = this.getClient(criteria);
+        const result = await client?.client.getBeatmapSet(ctx);
 
-        return result.result;
+        return result?.result || null;
     }
 
     async getBeatmap(ctx: GetBeatmapOptions): Promise<Beatmap | null> {
@@ -81,40 +80,86 @@ export class MirrorManager {
               ? ClientAbilities.GetBeatmapByHash
               : ClientAbilities.GetBeatmapBySetId;
 
-        const client = this._getClient(criteria);
-        const result = await client.getBeatmap(ctx);
+        const client = this.getClient(criteria);
+        const result = await client?.client.getBeatmap(ctx);
 
-        return result.result;
+        return result?.result || null;
     }
 
-    async downloadBeatmapSet(
+    // TODO: Should be more clear, is null because of no mirror or no result
+
+    async downloadBeatmapSetCool(
         ctx: DownloadBeatmapSetOptions,
     ): Promise<ArrayBuffer | null> {
         const criteria = ctx.noVideo
             ? ClientAbilities.DownloadBeatmapSetByIdNoVideo
             : ClientAbilities.DownloadBeatmapSetById;
 
-        const client = this._getClient(criteria);
-        const result = await client.downloadBeatmapSet(ctx);
+        const usedClients: MirrorClient[] = [];
+        for (const _ of this.clients) {
+            const client = this.getClient(criteria, usedClients);
+            if (!client) return null;
 
-        return result.result;
-    }
-
-    private _getClient(criteria: ClientAbilities) {
-        const clients = this.clients.filter((client) =>
-            client.client.clientConfig.abilities.includes(criteria),
-        );
-
-        if (!clients.length) {
-            throw new Error(`No clients found with ability ${criteria}`);
+            const result = await client.client.downloadBeatmapSet(ctx);
+            if (result.result) return result.result;
+            usedClients.push(client);
         }
 
-        // TODO: Add logic to determine which client to use
-        // Aaaand also go to the next client if the current one fails
+        return null;
+    }
 
-        const randomNum = Math.random() * clients.length;
+    private getClient(
+        criteria: ClientAbilities,
+        ignore?: MirrorClient[],
+    ): MirrorClient | null {
+        const clients = this.clients
+            .filter((client) =>
+                client.client.clientConfig.abilities.includes(criteria),
+            )
+            .filter((client) => !ignore || !ignore.includes(client));
 
-        return clients[Math.floor(randomNum)].client;
+        const client = this.getClientByWeight(criteria, clients);
+
+        return client;
+    }
+
+    private getClientByWeight(
+        criteria: ClientAbilities,
+        clients: MirrorClient[],
+    ): MirrorClient | null {
+        let bestClient: MirrorClient | null = null;
+        let bestWeight = 0;
+
+        for (const client of clients) {
+            const weight = this._getClientWeight(client, criteria);
+
+            if (weight > bestWeight) {
+                bestWeight = weight;
+                bestClient = client;
+            }
+        }
+
+        if (bestWeight === 0 || !bestClient) {
+            return null;
+        }
+
+        return bestClient;
+    }
+
+    private _getClientWeight(client: MirrorClient, ability: ClientAbilities) {
+        const { limit, remaining } = client.client.getCapacity(ability);
+        const rateLimitWeight = remaining / limit;
+
+        // TODO: Better enum handling
+        const isDownload =
+            ability === ClientAbilities.DownloadBeatmapSetById ||
+            ability === ClientAbilities.DownloadBeatmapSetByIdNoVideo;
+
+        const latencyWeight = isDownload
+            ? client.weights.download
+            : client.weights.API;
+
+        return rateLimitWeight * latencyWeight * (1 - client.weights.failrate);
     }
 
     private log(message: string, level: 'info' | 'warn' | 'error' = 'info') {

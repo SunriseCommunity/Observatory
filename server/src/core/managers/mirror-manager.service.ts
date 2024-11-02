@@ -2,15 +2,13 @@ import {
     createBenchmark,
     getBenchmarkByMirrorId,
 } from '../../database/models/benchmarks';
-import {
-    createMirror,
-    getMirrorByUrl,
-    getMirrors,
-    updateMirror,
-} from '../../database/models/mirrors';
+import { createMirror, getMirrors } from '../../database/models/mirrors';
+import { getRequestsByBaseUrl } from '../../database/models/requests';
 import { Benchmark, Mirror } from '../../database/schema';
-import { MirrorClient } from '../../types/manager';
+import { getUTCDate } from '../../utils/date';
+
 import logger from '../../utils/logger';
+import { MirrorClient } from '../abstracts/client/base-client.types';
 import { CompareService } from '../services/compare.service';
 
 export class MirrorManagerService {
@@ -23,7 +21,7 @@ export class MirrorManagerService {
 
         setInterval(
             () => {
-                this.saveMirrorsData();
+                this.fetchMirrorsData();
             },
             1000 * 60 * 15,
         ); // 15 minutes
@@ -31,32 +29,13 @@ export class MirrorManagerService {
         this.log('Initialized');
     }
 
-    public async saveMirrorsData(): Promise<void> {
-        for (const client of this.clients) {
-            const dbClient = await getMirrorByUrl(
-                client.client.clientConfig.baseUrl,
-            );
-
-            if (!dbClient) {
-                this.log(
-                    `Mirror ${client.client.clientConfig.baseUrl} not found in database, is the database corrupted?`,
-                    'error',
-                );
-                return;
-            }
-
-            await updateMirror(dbClient.mirrorId, {
-                requestsProcessed: client.requests.processed,
-                requestsFailed: client.requests.failed,
-                requestsTotal: client.requests.total,
-            });
-        }
-
-        this.log('Saved mirrors data');
-    }
-
     public async fetchMirrorsData(): Promise<void> {
         const dbClients = await getMirrors();
+
+        this.log(
+            'Started updating mirrors data. Perfomance may be affected',
+            'warn',
+        );
 
         for (const client of this.clients) {
             let dbClient = dbClients.find(
@@ -65,19 +44,16 @@ export class MirrorManagerService {
 
             if (!dbClient) {
                 this.log(
-                    `Mirror ${client.client.clientConfig.baseUrl} not found in database, creating new mirror`,
+                    `Mirror ${client.client.clientConfig.baseUrl} not found in database, creating new entry`,
                     'warn',
                 );
 
                 dbClient = await createMirror({
                     url: client.client.clientConfig.baseUrl,
-                    weight: client.weight,
                 });
             }
 
             let benchmark = await getBenchmarkByMirrorId(dbClient.mirrorId);
-
-            this.log(`Fetching data for ${dbClient.url}`);
 
             if (!benchmark) {
                 this.log(
@@ -85,21 +61,46 @@ export class MirrorManagerService {
                     'warn',
                 );
 
-                benchmark = await this._fetchMirrorData(client, dbClient);
+                benchmark = await this.fetchMirrorBenchmark(client, dbClient);
             }
 
-            client.requests.processed = dbClient.requestsProcessed;
-            client.requests.failed = dbClient.requestsFailed;
-            client.requests.total = dbClient.requestsTotal;
+            const requests = await getRequestsByBaseUrl(
+                dbClient.url,
+                getUTCDate().getTime() - 6 * 60 * 60 * 1000, // 6 hours
+            );
+
+            const failedRequests = requests.filter(
+                (r) => r.status >= 400 && r.status !== 404,
+            );
+
+            const failrate = failedRequests.length / requests.length || 0;
+
+            client.weights = {
+                API: this.exponentialDecrease(benchmark.APILatency),
+                download: this.exponentialDecrease(
+                    benchmark.downloadSpeed || 0,
+                    false,
+                ),
+                failrate,
+            };
         }
 
-        this.log('Fetched mirrors data');
+        this.log('Finished updating mirrors data, current weights:');
+        this.clients.forEach((client) => {
+            this.log(
+                `${client.client.clientConfig.baseUrl} - API: ${client.weights.API}, download: ${client.weights.download}, failrate: ${client.weights.failrate}`,
+            );
+        });
     }
 
-    private async _fetchMirrorData(
+    private exponentialDecrease(x: number, lower = true): number {
+        return 1000 * Math.exp(((lower ? -1 : 1) / 1000) * x);
+    }
+
+    private async fetchMirrorBenchmark(
         client: MirrorClient,
         dbClient: Mirror,
-    ): Promise<Benchmark | null> {
+    ): Promise<Benchmark> {
         const result = await this.compareService.benchmarkMirror(client);
 
         await createBenchmark({
@@ -108,7 +109,7 @@ export class MirrorManagerService {
             APILatency: result.latency,
         });
 
-        return getBenchmarkByMirrorId(dbClient.mirrorId);
+        return getBenchmarkByMirrorId(dbClient.mirrorId) as Promise<Benchmark>;
     }
 
     private log(message: string, level: 'info' | 'warn' | 'error' = 'info') {

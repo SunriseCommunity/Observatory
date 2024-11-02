@@ -14,10 +14,6 @@ const timestamps = {
 export const mirrors = pgTable('mirrors', {
     mirrorId: serial('mirror_id').primaryKey(),
     url: text('url').notNull(),
-    weight: real('weight').notNull().default(1),
-    requestsProcessed: integer('requests_processed').notNull().default(0),
-    requestsFailed: integer('requests_failed').notNull().default(0),
-    requestsTotal: integer('requests_total').notNull().default(0),
     ...timestamps,
 });
 
@@ -31,8 +27,22 @@ export const benchmarks = pgTable('benchmarks', {
     ...timestamps,
 });
 
+export const requests = pgTable('requests', {
+    requestId: serial('request_id').primaryKey(),
+    baseUrl: text('base_url').notNull(),
+    url: text('endpoint').notNull(),
+    method: text('method').notNull(),
+    status: integer('status').notNull(),
+    latency: integer('latency'),
+    data: text('data'),
+    ...timestamps,
+});
+
 export type Mirror = typeof mirrors.$inferSelect;
 export type NewMirror = typeof mirrors.$inferInsert;
 
 export type Benchmark = typeof benchmarks.$inferSelect;
 export type NewBenchmark = typeof benchmarks.$inferInsert;
+
+export type Request = typeof requests.$inferSelect;
+export type NewRequest = typeof requests.$inferInsert;

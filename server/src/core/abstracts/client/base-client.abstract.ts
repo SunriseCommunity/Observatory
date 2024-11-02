@@ -49,7 +49,10 @@ export class BaseClient {
         throw new Error('Method not implemented.');
     }
 
-    getCurrentCapacity(ability: ClientAbilities): number {
+    getCapacity(ability: ClientAbilities): {
+        limit: number;
+        remaining: number;
+    } {
         const limit =
             this.api.limiterConfig.rateLimits.find((rateLimit) =>
                 rateLimit.abilities?.includes(ability),

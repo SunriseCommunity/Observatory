@@ -3,8 +3,11 @@ import { db } from '../client';
 import { Mirror, mirrors, NewMirror } from '../schema';
 
 export async function getMirrorByUrl(url: string): Promise<Mirror | null> {
-    const mirror = await db.select().from(mirrors).where(eq(mirrors.url, url));
-    return mirror[0] ?? null;
+    const entities = await db
+        .select()
+        .from(mirrors)
+        .where(eq(mirrors.url, url));
+    return entities[0] ?? null;
 }
 
 export async function getMirrors(): Promise<Mirror[]> {
@@ -19,6 +22,6 @@ export async function updateMirror(
 }
 
 export async function createMirror(data: NewMirror): Promise<Mirror> {
-    const mirror = await db.insert(mirrors).values(data).returning();
-    return mirror[0];
+    const entities = await db.insert(mirrors).values(data).returning();
+    return entities[0];
 }

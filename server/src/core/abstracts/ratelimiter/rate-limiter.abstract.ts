@@ -88,7 +88,10 @@ export class ApiRateLimiter {
     }
 
     public getCapacity(limit: RateLimit) {
-        return this.getRemainingRequests(limit);
+        return {
+            limit: limit.limit,
+            remaining: this.getRemainingRequests(limit),
+        };
     }
 
     public get limiterConfig() {

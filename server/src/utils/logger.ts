@@ -1,25 +1,20 @@
 import { createPinoLogger } from '@bogeychan/elysia-logger';
 import { loggerOptions } from '../setup';
-import { AxiosResponse } from 'axios';
 import config from '../config';
+import { AxiosResponseLog } from '../core/abstracts/api/base-api.types';
 
 const logger = createPinoLogger({
     ...loggerOptions,
 });
 
-export const logExternalRequest = (
-    baseUrl: string,
-    url: string,
-    method: string,
-    response: AxiosResponse,
-) => {
-    logger.trace({
-        data: {
-            baseUrl,
-            url,
-            method,
-            status: response.status,
-            data: config.IsDebug ? response.data : undefined,
+export const logExternalRequest = (data: AxiosResponseLog) => {
+    const level =
+        data.status < 400 ? 'info' : data.status < 500 ? 'warn' : 'error';
+
+    logger[level]({
+        axios: {
+            ...data,
+            data: config.IsDebug || level != 'info' ? data : undefined,
         },
     });
 };

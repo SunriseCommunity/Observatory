@@ -1,12 +1,25 @@
-import logger, { logExternalRequest } from '../../../utils/logger';
-import { BaseApiOptions } from './base-api.types';
+import { createRequest } from '../../../database/models/requests';
+import { logExternalRequest } from '../../../utils/logger';
+import { AxiosResponseLog, BaseApiOptions } from './base-api.types';
 import { Axios, AxiosRequestConfig } from 'axios';
 
 export class BaseApi {
     constructor(
         private axios: Axios,
         private config: AxiosRequestConfig,
-    ) {}
+    ) {
+        axios.interceptors.request.use((config) => {
+            config.headers['request-startTime'] = new Date().getTime();
+            return config;
+        });
+
+        axios.interceptors.response.use((response) => {
+            const currentTime = new Date().getTime();
+            const startTime = response.config.headers['request-startTime'];
+            response.headers['request-duration'] = currentTime - startTime;
+            return response;
+        });
+    }
 
     public async get<
         Q,
@@ -22,13 +35,11 @@ export class BaseApi {
         return await this.axios
             .get<Q>(formedUrlWithAttachedParams, formedConfig)
             .then((res) => {
-                this.logResponse(res);
+                this.handleResponse(res);
                 return res;
             })
             .catch((e) => {
-                logger.error(
-                    `Failed to fetch ${formedUrlWithAttachedParams} with GET | ${e}`,
-                );
+                this.handleResponse(e.response);
                 return null;
             });
     }
@@ -43,11 +54,11 @@ export class BaseApi {
         return await this.axios
             .post<Q>(formedUrl, options?.body, formedConfig)
             .then((res) => {
-                this.logResponse(res);
+                this.handleResponse(res);
                 return res;
             })
             .catch((e) => {
-                logger.error(`Failed to fetch ${formedUrl} with POST | ${e}`);
+                this.handleResponse(e.response);
                 return null;
             });
     }
@@ -62,11 +73,11 @@ export class BaseApi {
         return await this.axios
             .put<Q>(formedUrl, options?.body, formedConfig)
             .then((res) => {
-                this.logResponse(res);
+                this.handleResponse(res);
                 return res;
             })
             .catch((e) => {
-                logger.error(`Failed to fetch ${formedUrl} with PUT | ${e}`);
+                this.handleResponse(e.response);
                 return null;
             });
     }
@@ -81,11 +92,11 @@ export class BaseApi {
         return await this.axios
             .patch<Q>(formedUrl, options?.body, formedConfig)
             .then((res) => {
-                this.logResponse(res);
+                this.handleResponse(res);
                 return res;
             })
             .catch((e) => {
-                logger.error(`Failed to fetch ${formedUrl} with PATCH | ${e}`);
+                this.handleResponse(e.response);
                 return null;
             });
     }
@@ -100,28 +111,37 @@ export class BaseApi {
         return await this.axios
             .delete<Q>(formedUrl, formedConfig)
             .then((res) => {
-                this.logResponse(res);
+                this.handleResponse(res);
                 return res;
             })
             .catch((e) => {
-                logger.error(
-                    `Failed to fetch ${formedUrl} with DELETE. | ${e}`,
-                );
+                this.handleResponse(e.response);
                 return null;
             });
     }
-    
+
     public get axiosConfig() {
         return this.config;
     }
 
-    private logResponse(res: any) {
-        logExternalRequest(
-            this.config.baseURL ?? 'localhost',
-            res.config.url,
-            res.config.method,
-            res,
-        );
+    private handleResponse(res: any) {
+        const data: AxiosResponseLog = {
+            status: res.status,
+            url: res.config.url,
+            baseUrl: this.config.baseURL ?? 'localhost',
+            method: res.config.method,
+            latency: res.headers['request-duration'],
+            data: res.data,
+        };
+
+        // Save request to database
+        createRequest({
+            ...data,
+            data: data.status !== 200 ? data.data : undefined,
+        });
+
+        // Log request to console
+        logExternalRequest(data);
     }
 
     private createUrl(endpoint: string): string {
