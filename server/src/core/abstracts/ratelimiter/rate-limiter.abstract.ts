@@ -8,17 +8,23 @@ export class ApiRateLimiter {
     protected api: BaseApi;
     protected config: RateLimitOptions;
 
-    private readonly requests = new Map<string, Date[]>();
+    private readonly requests = new Map<string[], Date[]>();
 
     constructor(api: BaseApi, config: RateLimitOptions) {
         this.api = api;
         this.config = config;
 
-        if (!this.config.rateLimits.find((limit) => limit.route === '/')) {
+        if (
+            !this.config.rateLimits.find((limit) => limit.routes.includes('/'))
+        ) {
             throw new Error(
                 'ApiRateLimiter: Please declare rate limit for default route (/)',
             );
         }
+
+        this.config.rateLimits.forEach((limit) => {
+            this.requests.set(limit.routes, []);
+        });
     }
 
     public async get<
@@ -81,6 +87,14 @@ export class ApiRateLimiter {
               });
     }
 
+    public getCapacity(limit: RateLimit) {
+        return this.getRemainingRequests(limit);
+    }
+
+    public get limiterConfig() {
+        return this.config;
+    }
+
     private isOnCooldown(route: string) {
         const limit = this.getRateLimit(route);
 
@@ -112,7 +126,7 @@ export class ApiRateLimiter {
     ) {
         const limit = this.getRateLimit(route);
 
-        this.addRequest(limit.route);
+        this.addRequest(limit);
 
         const headerRemaining =
             response?.headers[
@@ -122,13 +136,18 @@ export class ApiRateLimiter {
         const remaining = this.getRemainingRequests(limit);
 
         if (headerRemaining < remaining) {
+            this.log(
+                "Header's remaining requests is lower than actual. Adding missing requests",
+                'warn',
+            );
+
             for (let i = 0; i < remaining - headerRemaining; i++) {
-                this.addRequest(limit.route);
+                this.addRequest(limit);
             }
         }
 
         this.log(
-            `Checking rate limit for ${response?.config.baseURL}/${route}, remaining: ${remaining}`,
+            `${this.api.axiosConfig.baseURL}/${route} | Routes: [${limit.routes.join(', ')}] | Remaining requests: ${remaining}/${limit.limit}`,
         );
 
         if (remaining <= 0) {
@@ -147,8 +166,9 @@ export class ApiRateLimiter {
     private getRateLimit(route: string) {
         const limit =
             this.config.rateLimits.find((limit) =>
-                new RegExp(`^${limit.route}`).test(route),
-            ) || this.config.rateLimits.find((limit) => limit.route === '/');
+                limit.routes.some((r) => route.startsWith(r)),
+            ) ||
+            this.config.rateLimits.find((limit) => limit.routes.includes('/'));
 
         if (!limit) {
             throw new Error(
@@ -160,7 +180,7 @@ export class ApiRateLimiter {
     }
 
     private getRemainingRequests(limit: RateLimit) {
-        const requests = this.requests.get(limit.route) ?? [];
+        const requests = this.getRequestsArray(limit.routes);
 
         const filteredRequests = requests.filter(
             (date) =>
@@ -170,12 +190,20 @@ export class ApiRateLimiter {
         return limit.limit - filteredRequests.length;
     }
 
-    private addRequest(route: string) {
-        if (!this.requests.has(route)) {
-            this.requests.set(route, []);
-        }
+    private addRequest(limit: RateLimit) {
+        const requests = this.getRequestsArray(limit.routes);
 
-        this.requests.get(route)?.push(new Date());
+        requests.push(new Date());
+    }
+
+    private getRequestsArray(routes: string[]) {
+        const map = this.requests.get(routes);
+
+        if (!map) {
+            return this.requests.set(routes, []).get(routes) ?? [];
+        } else {
+            return map;
+        }
     }
 
     private log(message: string, level: 'info' | 'warn' | 'error' = 'info') {

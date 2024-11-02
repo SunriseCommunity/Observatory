@@ -1,5 +1,6 @@
 import axios from 'axios';
 import {
+    ClientAbilities,
     ClientOptions,
     DownloadBeatmapSetOptions,
     GetBeatmapOptions,
@@ -46,6 +47,24 @@ export class BaseClient {
         ctx: DownloadBeatmapSetOptions,
     ): Promise<ResultWithPrice<ArrayBuffer | null>> {
         throw new Error('Method not implemented.');
+    }
+
+    getCurrentCapacity(ability: ClientAbilities): number {
+        const limit =
+            this.api.limiterConfig.rateLimits.find((rateLimit) =>
+                rateLimit.abilities?.includes(ability),
+            ) ||
+            this.api.limiterConfig.rateLimits.find((rateLimit) =>
+                rateLimit.routes.includes('/'),
+            );
+
+        if (!limit) {
+            throw new Error(
+                `No rate limit found for ${this.config.baseUrl} / ${ability}`,
+            );
+        }
+
+        return this.api.getCapacity(limit);
     }
 
     get clientConfig(): ClientOptions {

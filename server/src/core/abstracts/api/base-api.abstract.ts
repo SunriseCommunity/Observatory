@@ -25,9 +25,9 @@ export class BaseApi {
                 this.logResponse(res);
                 return res;
             })
-            .catch((_) => {
+            .catch((e) => {
                 logger.error(
-                    `Failed to fetch ${formedUrlWithAttachedParams} with GET`,
+                    `Failed to fetch ${formedUrlWithAttachedParams} with GET | ${e}`,
                 );
                 return null;
             });
@@ -46,8 +46,8 @@ export class BaseApi {
                 this.logResponse(res);
                 return res;
             })
-            .catch((_) => {
-                logger.error(`Failed to fetch ${formedUrl} with POST`);
+            .catch((e) => {
+                logger.error(`Failed to fetch ${formedUrl} with POST | ${e}`);
                 return null;
             });
     }
@@ -65,8 +65,8 @@ export class BaseApi {
                 this.logResponse(res);
                 return res;
             })
-            .catch((_) => {
-                logger.error(`Failed to fetch ${formedUrl} with PUT`);
+            .catch((e) => {
+                logger.error(`Failed to fetch ${formedUrl} with PUT | ${e}`);
                 return null;
             });
     }
@@ -84,8 +84,8 @@ export class BaseApi {
                 this.logResponse(res);
                 return res;
             })
-            .catch((_) => {
-                logger.error(`Failed to fetch ${formedUrl} with PATCH`);
+            .catch((e) => {
+                logger.error(`Failed to fetch ${formedUrl} with PATCH | ${e}`);
                 return null;
             });
     }
@@ -103,10 +103,16 @@ export class BaseApi {
                 this.logResponse(res);
                 return res;
             })
-            .catch((_) => {
-                logger.error(`Failed to fetch ${formedUrl} with DELETE`);
+            .catch((e) => {
+                logger.error(
+                    `Failed to fetch ${formedUrl} with DELETE. | ${e}`,
+                );
                 return null;
             });
+    }
+    
+    public get axiosConfig() {
+        return this.config;
     }
 
     private logResponse(res: any) {

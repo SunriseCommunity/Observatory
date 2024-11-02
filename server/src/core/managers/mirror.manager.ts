@@ -3,10 +3,11 @@ import {
     DownloadBeatmapSetOptions,
     GetBeatmapOptions,
     GetBeatmapSetOptions,
+    MirrorClient,
 } from '../abstracts/client/base-client.types';
 import { Beatmap, Beatmapset } from '../../types/beatmap';
 import { DirectClient, BanchoClient } from '../domains/index';
-import { MirrorClient } from '../../types/manager';
+
 import logger from '../../utils/logger';
 import { MirrorManagerService } from './mirror-manager.service';
 import config from '../../config';
@@ -58,7 +59,7 @@ export class MirrorManager {
         }
 
         const criteria = ctx.beatmapSetId
-            ? ClientAbilities.GetBeatmapSet
+            ? ClientAbilities.GetBeatmapSetById
             : ctx.beatmapHash
               ? ClientAbilities.GetBeatmapSetByBeatmapHash
               : ClientAbilities.GetBeatmapSetByBeatmapId;
@@ -75,7 +76,7 @@ export class MirrorManager {
         }
 
         const criteria = ctx.beatmapId
-            ? ClientAbilities.GetBeatmap
+            ? ClientAbilities.GetBeatmapById
             : ctx.beatmapHash
               ? ClientAbilities.GetBeatmapByHash
               : ClientAbilities.GetBeatmapBySetId;
@@ -90,8 +91,8 @@ export class MirrorManager {
         ctx: DownloadBeatmapSetOptions,
     ): Promise<ArrayBuffer | null> {
         const criteria = ctx.noVideo
-            ? ClientAbilities.DownloadBeatmapSetNoVideo
-            : ClientAbilities.DownloadBeatmapSet;
+            ? ClientAbilities.DownloadBeatmapSetByIdNoVideo
+            : ClientAbilities.DownloadBeatmapSetById;
 
         const client = this._getClient(criteria);
         const result = await client.downloadBeatmapSet(ctx);

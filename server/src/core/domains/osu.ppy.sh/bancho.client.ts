@@ -17,16 +17,16 @@ export class BanchoClient extends BaseClient {
             {
                 baseUrl: 'https://osu.ppy.sh',
                 abilities: [
-                    ClientAbilities.GetBeatmap,
+                    ClientAbilities.GetBeatmapById,
                     ClientAbilities.GetBeatmapBySetId,
-                    ClientAbilities.GetBeatmapSet,
+                    ClientAbilities.GetBeatmapSetById,
                     ClientAbilities.GetBeatmapSetByBeatmapId,
                 ],
             },
             {
                 rateLimits: [
                     {
-                        route: '/',
+                        routes: ['/'],
                         limit: 1200,
                         reset: 60,
                     },

@@ -16,14 +16,14 @@ export class DirectClient extends BaseClient {
             {
                 baseUrl: 'https://osu.direct/api',
                 abilities: [
-                    ClientAbilities.GetBeatmap,
+                    ClientAbilities.GetBeatmapById,
                     ClientAbilities.GetBeatmapBySetId,
                     ClientAbilities.GetBeatmapByHash,
-                    ClientAbilities.GetBeatmapSet,
+                    ClientAbilities.GetBeatmapSetById,
                     ClientAbilities.GetBeatmapSetByBeatmapId,
                     ClientAbilities.GetBeatmapSetByBeatmapHash,
-                    ClientAbilities.DownloadBeatmapSet,
-                    ClientAbilities.DownloadBeatmapSetNoVideo,
+                    ClientAbilities.DownloadBeatmapSetById,
+                    ClientAbilities.DownloadBeatmapSetByIdNoVideo,
                 ],
             },
             {
@@ -34,7 +34,7 @@ export class DirectClient extends BaseClient {
                 },
                 rateLimits: [
                     {
-                        route: '/',
+                        routes: ['/'],
                         limit: 50,
                         reset: 60,
                     },
