@@ -7,6 +7,7 @@ import { autoload } from 'elysia-autoload';
 import { ip } from 'elysia-ip';
 import { rateLimit } from 'elysia-rate-limit';
 import config from './config';
+import { requestID } from 'elysia-requestid';
 
 const swaggerOptions: ElysiaSwaggerConfig<'/docs'> = {
     documentation: {
@@ -48,6 +49,7 @@ async function setup() {
     return new Elysia({ name: 'setup' })
         .use(cors())
         .use(ip())
+        .use(requestID())
         .use(rateLimit({ max: 100, duration: 20 * 1000 }))
         .use(serverTiming({ enabled: !config.IsProduction }))
         .use(
@@ -67,6 +69,7 @@ async function setup() {
                     return {
                         params: ctx.params,
                         query: ctx.query,
+                        requestId: ctx.set.headers['X-Request-ID'],
                         res: {
                             statusCode:
                                 StatusMap[
