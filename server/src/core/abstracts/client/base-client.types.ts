@@ -1,3 +1,4 @@
+import { HttpStatusCode } from 'axios';
 import { BaseClient } from './base-client.abstract';
 
 export type ClientOptions = {
@@ -21,9 +22,9 @@ export type GetBeatmapOptions = {
     beatmapHash?: string;
 };
 
-export type ResultWithPrice<T> = {
-    result: T;
-    price: number;
+export type ResultWithStatus<T> = {
+    result: T | null;
+    status: HttpStatusCode;
 };
 
 export enum ClientAbilities {

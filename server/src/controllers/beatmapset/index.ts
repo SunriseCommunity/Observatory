@@ -1,15 +1,13 @@
 import { App } from '../../app';
-import { mirrorManager } from '../../plugins/mirrorManager';
-import { BeatmapService } from '../../services/beatmap.service';
+import { BeatmapsManagerPlugin } from '../../plugins/beatmapManager';
+
 
 export default (app: App) => {
-    app.use(mirrorManager)
-        .decorate(({ mirrorManagerInstance }) => ({
-            beatmapService: new BeatmapService(mirrorManagerInstance),
-        }))
-        .get('/:id', ({ beatmapService, params: { id } }) =>
-            beatmapService.getBeatmapSet({ beatmapSetId: Number(id) }),
-        );
+    app.use(BeatmapsManagerPlugin).get(
+        '/:id',
+        ({ BeatmapsManagerInstance, params: { id } }) =>
+            BeatmapsManagerInstance.getBeatmapSet({ beatmapSetId: Number(id) }),
+    );
 
     return app;
 };

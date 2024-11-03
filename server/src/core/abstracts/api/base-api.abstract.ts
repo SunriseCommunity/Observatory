@@ -40,7 +40,7 @@ export class BaseApi {
             })
             .catch((e) => {
                 this.handleResponse(e.response);
-                return null;
+                return e.response;
             });
     }
 
@@ -59,7 +59,7 @@ export class BaseApi {
             })
             .catch((e) => {
                 this.handleResponse(e.response);
-                return null;
+                return e.response;
             });
     }
 
@@ -78,7 +78,7 @@ export class BaseApi {
             })
             .catch((e) => {
                 this.handleResponse(e.response);
-                return null;
+                return e.response;
             });
     }
 
@@ -97,7 +97,7 @@ export class BaseApi {
             })
             .catch((e) => {
                 this.handleResponse(e.response);
-                return null;
+                return e.response;
             });
     }
 
@@ -116,7 +116,7 @@ export class BaseApi {
             })
             .catch((e) => {
                 this.handleResponse(e.response);
-                return null;
+                return e.response;
             });
     }
 

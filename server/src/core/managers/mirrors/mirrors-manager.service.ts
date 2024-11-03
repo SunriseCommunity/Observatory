@@ -1,17 +1,16 @@
 import {
-    createBenchmark,
     getBenchmarkByMirrorId,
-} from '../../database/models/benchmarks';
-import { createMirror, getMirrors } from '../../database/models/mirrors';
-import { getRequestsByBaseUrl } from '../../database/models/requests';
-import { Benchmark, Mirror } from '../../database/schema';
-import { getUTCDate } from '../../utils/date';
+    createBenchmark,
+} from '../../../database/models/benchmarks';
+import { getMirrors, createMirror } from '../../../database/models/mirrors';
+import { getRequestsByBaseUrl } from '../../../database/models/requests';
+import { Mirror, Benchmark } from '../../../database/schema';
+import { getUTCDate } from '../../../utils/date';
+import logger from '../../../utils/logger';
+import { MirrorClient } from '../../abstracts/client/base-client.types';
+import { CompareService } from '../../services/compare.service';
 
-import logger from '../../utils/logger';
-import { MirrorClient } from '../abstracts/client/base-client.types';
-import { CompareService } from '../services/compare.service';
-
-export class MirrorManagerService {
+export class MirrorsManagerService {
     private readonly clients: MirrorClient[];
     private readonly compareService: CompareService;
 
@@ -113,6 +112,6 @@ export class MirrorManagerService {
     }
 
     private log(message: string, level: 'info' | 'warn' | 'error' = 'info') {
-        logger[level](`MirrorManagerService: ${message}`);
+        logger[level](`MirrorsManagerService: ${message}`);
     }
 }

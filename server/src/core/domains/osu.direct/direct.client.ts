@@ -4,7 +4,7 @@ import {
     DownloadBeatmapSetOptions,
     GetBeatmapOptions,
     GetBeatmapSetOptions,
-    ResultWithPrice,
+    ResultWithStatus,
 } from '../../abstracts/client/base-client.types';
 import { Beatmap, Beatmapset } from '../../../types/beatmap';
 import { DirectBeatmap, DirectBeatmapSet } from './direct-client.types';
@@ -47,34 +47,9 @@ export class DirectClient extends BaseClient {
 
     async getBeatmapSet(
         ctx: GetBeatmapSetOptions,
-    ): Promise<ResultWithPrice<Beatmapset | null>> {
+    ): Promise<ResultWithStatus<Beatmapset | null>> {
         if (ctx.beatmapSetId) {
-            return {
-                result: await this._getBeatmapSet(ctx.beatmapSetId),
-                price: 1,
-            };
-        } else if (ctx.beatmapId) {
-            const beatmap = await this._getBeatmapById(ctx.beatmapId);
-
-            if (!beatmap) {
-                return { result: null, price: 1 };
-            }
-
-            return {
-                result: await this._getBeatmapSet(beatmap.beatmapset_id),
-                price: 2,
-            };
-        } else if (ctx.beatmapHash) {
-            const beatmap = await this._getBeatmapByHash(ctx.beatmapHash);
-
-            if (!beatmap) {
-                return { result: null, price: 1 };
-            }
-
-            return {
-                result: await this._getBeatmapSet(beatmap.beatmapset_id),
-                price: 2,
-            };
+            return await this.getBeatmapSetById(ctx.beatmapSetId);
         }
 
         throw new Error('Invalid arguments');
@@ -82,17 +57,11 @@ export class DirectClient extends BaseClient {
 
     async getBeatmap(
         ctx: GetBeatmapOptions,
-    ): Promise<ResultWithPrice<Beatmap | null>> {
+    ): Promise<ResultWithStatus<Beatmap | null>> {
         if (ctx.beatmapId) {
-            return {
-                result: await this._getBeatmapById(ctx.beatmapId),
-                price: 1,
-            };
+            return await this.getBeatmapById(ctx.beatmapId);
         } else if (ctx.beatmapHash) {
-            return {
-                result: await this._getBeatmapByHash(ctx.beatmapHash),
-                price: 1,
-            };
+            return await this.getBeatmapByHash(ctx.beatmapHash);
         }
 
         throw new Error('Invalid arguments');
@@ -100,7 +69,7 @@ export class DirectClient extends BaseClient {
 
     async downloadBeatmapSet(
         ctx: DownloadBeatmapSetOptions,
-    ): Promise<ResultWithPrice<ArrayBuffer | null>> {
+    ): Promise<ResultWithStatus<ArrayBuffer | null>> {
         const result = await this.api.get<ArrayBuffer>(
             `d/${ctx.beatmapSetId}`,
             {
@@ -114,51 +83,62 @@ export class DirectClient extends BaseClient {
         );
 
         if (!result || result.status !== 200) {
-            return { result: null, price: 1 };
+            return { result: null, status: result?.status ?? 500 };
         }
 
-        return { result: result.data, price: 1 };
+        return { result: result.data, status: result.status };
     }
 
-    private async _getBeatmapSet(
+    private async getBeatmapSetById(
         beatmapSetId: number,
-    ): Promise<Beatmapset | null> {
+    ): Promise<ResultWithStatus<Beatmapset | null>> {
         const result = await this.api.get<DirectBeatmapSet>(
             `v2/s/${beatmapSetId}`,
         );
 
         if (!result || result.status !== 200) {
-            return null;
+            return { result: null, status: result?.status ?? 500 };
         }
 
-        return this._convertBeatmapSet(result.data);
+        return {
+            result: this.convertBeatmapSet(result.data),
+            status: result.status,
+        };
     }
 
-    private async _getBeatmapById(beatmapId: number): Promise<Beatmap | null> {
+    private async getBeatmapById(
+        beatmapId: number,
+    ): Promise<ResultWithStatus<Beatmap | null>> {
         const result = await this.api.get<DirectBeatmap>(`v2/b/${beatmapId}`);
 
         if (!result || result.status !== 200) {
-            return null;
+            return { result: null, status: result?.status ?? 500 };
         }
 
-        return this._convertBeatmap(result.data);
+        return {
+            result: this.convertBeatmap(result.data),
+            status: result.status,
+        };
     }
 
-    private async _getBeatmapByHash(
+    private async getBeatmapByHash(
         beatmapHash: string,
-    ): Promise<Beatmap | null> {
+    ): Promise<ResultWithStatus<Beatmap | null>> {
         const result = await this.api.get<DirectBeatmap>(
             `v2/md5/${beatmapHash}`,
         );
 
         if (!result || result.status !== 200) {
-            return null;
+            return { result: null, status: result?.status ?? 500 };
         }
 
-        return this._convertBeatmap(result.data);
+        return {
+            result: this.convertBeatmap(result.data),
+            status: result.status,
+        };
     }
 
-    private _convertBeatmap(beatmap: DirectBeatmap): Beatmap {
+    private convertBeatmap(beatmap: DirectBeatmap): Beatmap {
         return {
             beatmapset_id: beatmap.beatmapset_id,
             id: beatmap.id,
@@ -191,9 +171,7 @@ export class DirectClient extends BaseClient {
         };
     }
 
-    private async _convertBeatmapSet(
-        beatmapSet: DirectBeatmapSet,
-    ): Promise<Beatmapset> {
+    private convertBeatmapSet(beatmapSet: DirectBeatmapSet): Beatmapset {
         return {
             id: beatmapSet.id,
             title: beatmapSet.title,
@@ -227,7 +205,7 @@ export class DirectClient extends BaseClient {
             ranked: beatmapSet.ranked,
             ranked_date: beatmapSet.ranked_date,
             beatmaps: beatmapSet.beatmaps.map((beatmap) =>
-                this._convertBeatmap(beatmap),
+                this.convertBeatmap(beatmap),
             ),
         };
     }

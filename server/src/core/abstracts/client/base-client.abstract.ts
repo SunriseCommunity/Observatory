@@ -5,7 +5,7 @@ import {
     DownloadBeatmapSetOptions,
     GetBeatmapOptions,
     GetBeatmapSetOptions,
-    ResultWithPrice,
+    ResultWithStatus,
 } from './base-client.types';
 import { BaseApi } from '../api/base-api.abstract';
 import { Beatmap, Beatmapset } from '../../../types/beatmap';
@@ -33,19 +33,19 @@ export class BaseClient {
 
     async getBeatmapSet(
         ctx: GetBeatmapSetOptions,
-    ): Promise<ResultWithPrice<Beatmapset | null>> {
+    ): Promise<ResultWithStatus<Beatmapset | null>> {
         throw new Error('Method not implemented.');
     }
 
     async getBeatmap(
         ctx: GetBeatmapOptions,
-    ): Promise<ResultWithPrice<Beatmap | null>> {
+    ): Promise<ResultWithStatus<Beatmap | null>> {
         throw new Error('Method not implemented.');
     }
 
     async downloadBeatmapSet(
         ctx: DownloadBeatmapSetOptions,
-    ): Promise<ResultWithPrice<ArrayBuffer | null>> {
+    ): Promise<ResultWithStatus<ArrayBuffer | null>> {
         throw new Error('Method not implemented.');
     }
 

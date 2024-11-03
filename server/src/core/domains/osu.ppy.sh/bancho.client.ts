@@ -5,7 +5,7 @@ import {
     ClientAbilities,
     GetBeatmapOptions,
     GetBeatmapSetOptions,
-    ResultWithPrice,
+    ResultWithStatus,
 } from '../../abstracts/client/base-client.types';
 import { BanchoService } from './bancho-client.service';
 
@@ -39,28 +39,9 @@ export class BanchoClient extends BaseClient {
 
     async getBeatmapSet(
         ctx: GetBeatmapSetOptions,
-    ): Promise<ResultWithPrice<Beatmapset | null>> {
+    ): Promise<ResultWithStatus<Beatmapset | null>> {
         if (ctx.beatmapSetId) {
-            return {
-                result: await this._getBeatmapSet(ctx.beatmapSetId),
-                price: 1,
-            };
-        } else if (ctx.beatmapId) {
-            const beatmap = await this._getBeatmapById(ctx.beatmapId);
-
-            if (!beatmap) {
-                return { result: null, price: 1 };
-            }
-
-            return {
-                result: await this._getBeatmapSet(beatmap.beatmapset_id),
-                price: 2,
-            };
-        } else if (ctx.beatmapHash) {
-            return {
-                result: null, // Not supported
-                price: 0,
-            };
+            return await this.getBeatmapSetById(ctx.beatmapSetId);
         }
 
         throw new Error('Invalid arguments');
@@ -68,25 +49,17 @@ export class BanchoClient extends BaseClient {
 
     async getBeatmap(
         ctx: GetBeatmapOptions,
-    ): Promise<ResultWithPrice<Beatmap | null>> {
+    ): Promise<ResultWithStatus<Beatmap | null>> {
         if (ctx.beatmapId) {
-            return {
-                result: await this._getBeatmapById(ctx.beatmapId),
-                price: 1,
-            };
-        } else if (ctx.beatmapHash) {
-            return {
-                result: null, // Not supported
-                price: 0,
-            };
+            return await this.getBeatmapById(ctx.beatmapId);
         }
 
         throw new Error('Invalid arguments');
     }
 
-    private async _getBeatmapSet(
+    private async getBeatmapSetById(
         beatmapSetId: number,
-    ): Promise<Beatmapset | null> {
+    ): Promise<ResultWithStatus<Beatmapset | null>> {
         const result = await this.api.get<Beatmapset>(
             `api/v2/beatmapsets/${beatmapSetId}`,
             {
@@ -99,13 +72,18 @@ export class BanchoClient extends BaseClient {
         );
 
         if (!result || result.status !== 200) {
-            return null;
+            return { result: null, status: result?.status ?? 500 };
         }
 
-        return this._convertBeatmapSet(result.data);
+        return {
+            result: this.convertBeatmapSet(result.data),
+            status: result.status,
+        };
     }
 
-    private async _getBeatmapById(beatmapId: number): Promise<Beatmap | null> {
+    private async getBeatmapById(
+        beatmapId: number,
+    ): Promise<ResultWithStatus<Beatmap | null>> {
         const result = await this.api.get<Beatmap>(
             `api/v2/beatmaps/${beatmapId}`,
             {
@@ -118,23 +96,26 @@ export class BanchoClient extends BaseClient {
         );
 
         if (!result || result.status !== 200) {
-            return null;
+            return { result: null, status: result?.status ?? 500 };
         }
 
-        return this._convertBeatmap(result.data);
+        return {
+            result: this.convertBeatmap(result.data),
+            status: result.status,
+        };
     }
 
     private get osuApiKey() {
         return this.banchoService.getBanchoClientToken();
     }
 
-    private _convertBeatmap(beatmap: Beatmap): Beatmap {
+    private convertBeatmap(beatmap: Beatmap): Beatmap {
         return beatmap;
     }
 
-    private async _convertBeatmapSet(
+    private convertBeatmapSet(
         beatmapSet: Beatmapset,
-    ): Promise<Beatmapset> {
+    ): Beatmapset {
         return beatmapSet;
     }
 }
