@@ -9,12 +9,10 @@ export enum GameMod {
     CM = 'CM',
     CP = 'CP',
     DT = 'DT',
-    // Difficulty reduction
     EZ = 'EZ',
     FI = 'FI',
     FL = 'FL',
     HD = 'HD',
-    // Difficulty increase
     HR = 'HR',
     HT = 'HT',
     MR = 'MR',
@@ -22,7 +20,6 @@ export enum GameMod {
     NF = 'NF',
     PF = 'PF',
     RD = 'RD',
-    // Special
     RL = 'RL',
     SD = 'SD',
     SO = 'SO',

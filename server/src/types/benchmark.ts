@@ -1,4 +1,4 @@
 export type BenchmarkResult = {
-    latency: number;
+    latency?: number;
     downloadSpeed?: number;
 };
