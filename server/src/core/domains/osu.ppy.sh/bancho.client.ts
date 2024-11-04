@@ -1,4 +1,4 @@
-import { Beatmap, Beatmapset } from '../../../types/beatmap';
+import { Beatmap, Beatmapset } from '../../../types/general/beatmap';
 import logger from '../../../utils/logger';
 import { BaseClient } from '../../abstracts/client/base-client.abstract';
 import {
@@ -8,6 +8,7 @@ import {
     ResultWithStatus,
 } from '../../abstracts/client/base-client.types';
 import { BanchoService } from './bancho-client.service';
+import { BanchoBeatmap, BanchoBeatmapset } from './bancho-client.types';
 
 export class BanchoClient extends BaseClient {
     private readonly banchoService = new BanchoService(this.baseApi);
@@ -60,7 +61,7 @@ export class BanchoClient extends BaseClient {
     private async getBeatmapSetById(
         beatmapSetId: number,
     ): Promise<ResultWithStatus<Beatmapset | null>> {
-        const result = await this.api.get<Beatmapset>(
+        const result = await this.api.get<BanchoBeatmapset>(
             `api/v2/beatmapsets/${beatmapSetId}`,
             {
                 config: {
@@ -76,7 +77,7 @@ export class BanchoClient extends BaseClient {
         }
 
         return {
-            result: this.convertBeatmapSet(result.data),
+            result: this.convertService.convertBeatmapset(result.data),
             status: result.status,
         };
     }
@@ -84,7 +85,7 @@ export class BanchoClient extends BaseClient {
     private async getBeatmapById(
         beatmapId: number,
     ): Promise<ResultWithStatus<Beatmap | null>> {
-        const result = await this.api.get<Beatmap>(
+        const result = await this.api.get<BanchoBeatmap>(
             `api/v2/beatmaps/${beatmapId}`,
             {
                 config: {
@@ -100,22 +101,12 @@ export class BanchoClient extends BaseClient {
         }
 
         return {
-            result: this.convertBeatmap(result.data),
+            result: this.convertService.convertBeatmap(result.data),
             status: result.status,
         };
     }
 
     private get osuApiKey() {
         return this.banchoService.getBanchoClientToken();
-    }
-
-    private convertBeatmap(beatmap: Beatmap): Beatmap {
-        return beatmap;
-    }
-
-    private convertBeatmapSet(
-        beatmapSet: Beatmapset,
-    ): Beatmapset {
-        return beatmapSet;
     }
 }

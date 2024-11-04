@@ -1,5 +1,5 @@
 import { HttpStatusCode } from 'axios';
-import { Beatmap, Beatmapset } from '../../../types/beatmap';
+
 import {
     GetBeatmapOptions,
     GetBeatmapSetOptions,
@@ -7,6 +7,7 @@ import {
 } from '../../abstracts/client/base-client.types';
 import { MirrorsManager } from '../mirrors/mirrors.manager';
 import { ServerResponse } from './beatmaps-manager.types';
+import { Beatmap, Beatmapset } from '../../../types/general/beatmap';
 
 const SERVICE_UNAVAILABLE_RESPONSE = {
     data: null,
@@ -63,6 +64,6 @@ export class BeatmapsManager {
             return SERVICE_UNAVAILABLE_RESPONSE;
         }
 
-        return result.result
+        return result.result;
     }
 }

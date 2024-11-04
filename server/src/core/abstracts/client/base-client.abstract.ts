@@ -8,14 +8,17 @@ import {
     ResultWithStatus,
 } from './base-client.types';
 import { BaseApi } from '../api/base-api.abstract';
-import { Beatmap, Beatmapset } from '../../../types/beatmap';
 import { RateLimitOptions } from '../ratelimiter/rate-limiter.types';
 import { ApiRateLimiter } from '../ratelimiter/rate-limiter.abstract';
+import { Beatmap, Beatmapset } from '../../../types/general/beatmap';
+import { ConvertService } from '../../services/convert.service';
 
 export class BaseClient {
     protected config: ClientOptions;
     protected api: ApiRateLimiter;
     protected baseApi: BaseApi;
+
+    protected convertService: ConvertService
 
     constructor(config: ClientOptions, rateLimitConfig: RateLimitOptions) {
         this.config = config;
@@ -27,6 +30,8 @@ export class BaseClient {
                 'Content-Type': 'application/json',
             },
         });
+
+        this.convertService = new ConvertService(this.config.baseUrl);
 
         this.api = new ApiRateLimiter(this.baseApi, rateLimitConfig);
     }
@@ -48,6 +53,8 @@ export class BaseClient {
     ): Promise<ResultWithStatus<ArrayBuffer | null>> {
         throw new Error('Method not implemented.');
     }
+
+    // todo: add .osu file download method
 
     getCapacity(ability: ClientAbilities): {
         limit: number;

@@ -21,25 +21,33 @@ export class CompareService {
         let start = performance.now();
         const client = mirror.client;
 
-        const beatmapSet = await client.getBeatmapSet({
-            beatmapSetId: this.beatmapSetId,
-        });
+        let APILatency = undefined;
 
-        if (!beatmapSet) {
-            this.log(
-                `Failed to fetch beatmap set ${this.beatmapSetId} from ${client.clientConfig.baseUrl}`,
-                'error',
-            );
+        if (
+            mirror.client.clientConfig.abilities.includes(
+                ClientAbilities.GetBeatmapById,
+            )
+        ) {
+            const beatmapSet = await client.getBeatmapSet({
+                beatmapSetId: this.beatmapSetId,
+            });
+
+            if (!beatmapSet.result) {
+                this.log(
+                    `Failed to fetch beatmap set ${this.beatmapSetId} from ${client.clientConfig.baseUrl}`,
+                    'error',
+                );
+            }
+
+            APILatency = Math.round(performance.now() - start);
         }
-
-        const latency = Math.round(performance.now() - start);
 
         if (
             !client.clientConfig.abilities.includes(
-                ClientAbilities.DownloadBeatmapSetById,
+                ClientAbilities.DownloadBeatmapSetByIdNoVideo,
             )
         ) {
-            return { latency };
+            return { latency: APILatency };
         }
 
         start = performance.now();
@@ -53,7 +61,7 @@ export class CompareService {
                 `Failed to download beatmap set ${this.beatmapSetId} from ${client.clientConfig.baseUrl}`,
                 'error',
             );
-            return { latency };
+            return { latency: APILatency };
         }
 
         const downloadResultSize = downloadResult.result?.byteLength || 0;
@@ -63,7 +71,7 @@ export class CompareService {
         ); // KB/s
 
         return {
-            latency,
+            latency: APILatency,
             downloadSpeed,
         };
     }
