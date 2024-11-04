@@ -75,10 +75,9 @@ export class MirrorsManagerService {
             const failrate = failedRequests.length / requests.length || 0;
 
             client.weights = {
-                API: this.exponentialDecrease(benchmark.APILatency),
-                download: this.exponentialDecrease(
+                API: this.exponentialDecrease(benchmark.APILatency || Infinity),
+                download: this.exponentialIncrease(
                     benchmark.downloadSpeed || 0,
-                    false,
                 ),
                 failrate,
             };
@@ -92,8 +91,12 @@ export class MirrorsManagerService {
         });
     }
 
-    private exponentialDecrease(x: number, lower = true): number {
-        return 1000 * Math.exp(((lower ? -1 : 1) / 1000) * x);
+    private exponentialDecrease(x: number): number {
+        return 10000 * Math.exp((-1 / 10000) * x);
+    }
+
+    private exponentialIncrease(x: number): number {
+        return 10000 * (1 - Math.exp((-1 / 10000) * x));
     }
 
     private async fetchMirrorBenchmark(
