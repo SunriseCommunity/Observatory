@@ -6,6 +6,7 @@
         "start": "NODE_ENV=production bun run server/src/app.ts",
         "dev": "NODE_ENV=development bun run --watch server/src/app.ts",
         "lint": "bunx prettier -w ./server/src --config .prettierrc.json",
+        "test": "bun test",
         "setup": "bun run docker:dev && bun run db:update",
         "db:update": "bun run db:generate && bun run db:push && bun run db:migration",
         "db:generate": "bun --bun drizzle-kit generate --config server/src/database/config.ts",
