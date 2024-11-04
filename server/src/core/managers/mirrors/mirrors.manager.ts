@@ -1,4 +1,3 @@
-import { Beatmapset, Beatmap } from '../../../types/beatmap';
 import {
     MirrorClient,
     GetBeatmapSetOptions,
@@ -11,6 +10,8 @@ import { DirectClient, BanchoClient } from '../../domains';
 import { MirrorsManagerService } from './mirrors-manager.service';
 import config from '../../../config';
 import logger from '../../../utils/logger';
+import { Beatmap, Beatmapset } from '../../../types/general/beatmap';
+import { MinoClient } from '../../domains/catboy.best/mino.client';
 
 const DEFAULT_CLIENT_PROPS = {
     weights: {
@@ -27,11 +28,17 @@ export class MirrorsManager {
 
     constructor() {
         const directClient = new DirectClient();
+        const minoClient = new MinoClient();
+
         const banchoClient = new BanchoClient();
 
         this.clients = [
             {
                 client: directClient,
+                ...DEFAULT_CLIENT_PROPS,
+            },
+            {
+                client: minoClient,
                 ...DEFAULT_CLIENT_PROPS,
             },
         ];
