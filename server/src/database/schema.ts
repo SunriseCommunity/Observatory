@@ -23,7 +23,7 @@ export const benchmarks = pgTable('benchmarks', {
         .notNull()
         .references(() => mirrors.mirrorId),
     downloadSpeed: integer('download_speed'),
-    APILatency: integer('api_latency').notNull().default(0),
+    APILatency: integer('api_latency'),
     ...timestamps,
 });
 
