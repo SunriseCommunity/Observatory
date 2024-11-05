@@ -14,6 +14,7 @@ export default (app: App) => {
             query: t.Object({
                 noVideo: t.Optional(t.Boolean()),
             }),
+            tags: ['Files'],
         },
     );
 
