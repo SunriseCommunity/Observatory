@@ -1,0 +1,5 @@
+export enum RedisKeys {
+    BEATMAP_BY_ID = 'BEATMAP:ID:',
+    BEATMAP_ID_BY_HASH = 'BEATMAP_ID:HASH:',
+    BEATMAPSET_BY_ID = 'BEATMAPSET:ID',
+}

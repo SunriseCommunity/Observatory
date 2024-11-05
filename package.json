@@ -27,6 +27,7 @@
         "elysia-ip": "^1.0.7",
         "elysia-rate-limit": "^4.1.0",
         "elysia-requestid": "1.0.9",
+        "ioredis": "^5.4.1",
         "pg": "^8.13.1",
         "pino-loki": "^2.3.1",
         "pino-pretty": "^11.3.0",

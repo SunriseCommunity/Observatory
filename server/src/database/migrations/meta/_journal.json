@@ -29,6 +29,13 @@
       "when": 1730632245508,
       "tag": "0003_deep_dreaming_celestial",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1730795851785,
+      "tag": "0004_nice_tigra",
+      "breakpoints": true
     }
   ]
 }

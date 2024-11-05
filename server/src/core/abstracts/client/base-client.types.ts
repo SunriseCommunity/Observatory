@@ -8,8 +8,6 @@ export type ClientOptions = {
 
 export type GetBeatmapSetOptions = {
     beatmapSetId?: number;
-    beatmapId?: number;
-    beatmapHash?: string;
 };
 
 export type DownloadBeatmapSetOptions = {

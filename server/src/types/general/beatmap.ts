@@ -23,7 +23,7 @@ export interface Beatmapset {
     play_count: number;
     preview_url: string;
     spotlight: boolean;
-    status: string;
+    status: RankStatus;
     track_id?: number | null;
     user_id: number;
     video: boolean;

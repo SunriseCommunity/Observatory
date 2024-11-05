@@ -11,6 +11,7 @@ const {
     POSTGRES_HOST,
     POSTGRES_PORT,
     POSTGRES_DB,
+    REDIS_PORT,
     BANCHO_CLIENT_SECRET,
     BANCHO_CLIENT_ID,
     DEBUG_MODE,
@@ -39,6 +40,7 @@ const config: {
     POSTGRES_HOST: string;
     POSTGRES_PORT: string;
     POSTGRES_DB: string;
+    REDIS_PORT: string;
     BANCHO_CLIENT_SECRET?: string;
     BANCHO_CLIENT_ID?: string;
     LOKI_HOST: string;
@@ -52,6 +54,7 @@ const config: {
     POSTGRES_HOST: POSTGRES_HOST ?? 'localhost',
     POSTGRES_PORT: POSTGRES_PORT ?? '5432',
     POSTGRES_DB: POSTGRES_DB ?? 'observatory',
+    REDIS_PORT: REDIS_PORT ?? '6379',
     BANCHO_CLIENT_SECRET,
     BANCHO_CLIENT_ID,
     LOKI_HOST: LOKI_HOST ?? 'http://localhost:3100',
