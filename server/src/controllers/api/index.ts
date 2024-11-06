@@ -15,15 +15,13 @@ export default (app: App) => {
                     beatmapId: Number(id),
                 });
 
-                if (!beatmap.data) return beatmap;
+                if (!beatmap.data || !full) return beatmap;
 
-                console.log(full);
+                const beatmapset = await BeatmapsManagerInstance.getBeatmapSet({
+                    beatmapSetId: beatmap.data?.beatmapset_id,
+                });
 
-                return full
-                    ? BeatmapsManagerInstance.getBeatmapSet({
-                          beatmapSetId: beatmap.data?.beatmapset_id,
-                      })
-                    : beatmap;
+                return beatmapset.data ? beatmapset.data : beatmapset;
             },
             {
                 params: t.Object({
@@ -46,13 +44,13 @@ export default (app: App) => {
                     beatmapHash: hash,
                 });
 
-                if (!beatmap.data) return beatmap;
+                if (!beatmap.data || !full) return beatmap;
 
-                return full
-                    ? BeatmapsManagerInstance.getBeatmapSet({
-                          beatmapSetId: beatmap.data?.beatmapset_id,
-                      })
-                    : beatmap;
+                const beatmapset = await BeatmapsManagerInstance.getBeatmapSet({
+                    beatmapSetId: beatmap.data?.beatmapset_id,
+                });
+
+                return beatmapset.data ? beatmapset.data : beatmapset;
             },
             {
                 params: t.Object({
@@ -66,10 +64,15 @@ export default (app: App) => {
         )
         .get(
             'v2/s/:id',
-            ({ BeatmapsManagerInstance, params: { id } }) =>
-                BeatmapsManagerInstance.getBeatmapSet({
+            async ({ BeatmapsManagerInstance, params: { id } }) => {
+                const data = await BeatmapsManagerInstance.getBeatmapSet({
                     beatmapSetId: Number(id),
-                }),
+                });
+
+                if (!data.data) return data;
+
+                return data.data;
+            },
             {
                 params: t.Object({
                     id: t.Numeric(),
