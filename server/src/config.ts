@@ -54,16 +54,16 @@ const config: {
     IsDebug: boolean;
     UseBancho: boolean;
 } = {
-    PORT: PORT ?? '3000',
+    PORT: PORT || '3000',
     POSTGRES_USER,
     POSTGRES_PASSWORD,
-    POSTGRES_HOST: POSTGRES_HOST ?? 'localhost',
-    POSTGRES_PORT: POSTGRES_PORT ?? '5432',
-    POSTGRES_DB: POSTGRES_DB ?? 'observatory',
+    POSTGRES_HOST: POSTGRES_HOST || 'localhost',
+    POSTGRES_PORT: POSTGRES_PORT || '5432',
+    POSTGRES_DB: POSTGRES_DB || 'observatory',
     REDIS_PORT: Number(REDIS_PORT) || 6379,
     BANCHO_CLIENT_SECRET,
     BANCHO_CLIENT_ID,
-    LOKI_HOST: LOKI_HOST ?? 'http://localhost:3100',
+    LOKI_HOST: LOKI_HOST || 'http://localhost:3100',
     IGNORE_RATELIMIT_KEY: IGNORE_RATELIMIT_KEY,
     RATELIMIT_CALLS_PER_WINDOW: Number(RATELIMIT_CALLS_PER_WINDOW) || 100,
     RATELIMIT_TIME_WINDOW: Number(RATELIMIT_TIME_WINDOW) || 20 * 1000,
