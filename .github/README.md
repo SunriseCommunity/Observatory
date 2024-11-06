@@ -10,7 +10,7 @@ Observatory is a powerful beatmap manager which uses osu! API and popular beatma
 
 ## Features
 
--   [ ] **Plug and Use**: Just compile the docker image and run it. No need to worry about dependencies.
+-   [x] **Plug and Use**: Just compile the docker image and run it. No need to worry about dependencies.
 -   [x] **Don't fret about rate limits**: Rate limits are handled by the application, so peppy or beatmap mirror's owners won't get angry at you.
 -   [x] **Fastest wins the race**: The application is designed to prioritize the fastest API's first to provide the best experience.
 -   [x] **Long and reliable memory**: The application saves the data in database to avoid unnecessary API calls, also including TTL (time-to-live) for the data to be reliable

@@ -15,6 +15,7 @@ const ONE_DAY = 1000 * 60 * 60 * 24;
 export class StorageCacheService {
     private readonly redis: Redis = new Redis({
         port: config.REDIS_PORT,
+        host: config.REDIS_HOST,
     });
 
     async getBeatmap(
@@ -122,7 +123,7 @@ export class StorageCacheService {
             `${RedisKeys.BEATMAPSET_FILE_BY_ID}${ctx.beatmapSetId}`,
             JSON.stringify(beatmapsetFile),
             'PX',
-            ONE_DAY / 24 * config.OSZ_FILES_LIFE_SPAN,
+            (ONE_DAY / 24) * config.OSZ_FILES_LIFE_SPAN,
         );
     }
 

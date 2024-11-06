@@ -1,22 +1,44 @@
-name: observatory-dev
+name: observatory
 services:
+    observatory:
+        image: 'oven/bun:latest'
+        working_dir: /usr/src/app
+        volumes:
+            - .:/usr/src/app
+        environment:
+            - NODE_ENV=production
+            - POSTGRES_HOST=postgres
+            - POSTGRES_PORT=5432
+            - REDIS_HOST=redis
+            - LOKI_HOST=http://loki:3100
+        ports:
+            - ${PORT}:${PORT}
+        command: ['sh', '-c', 'bun run db:migration && bun run start']
+        depends_on:
+            - loki
+            - postgres
+            - redis
+            - grafana
+        networks:
+            - container_network
+
     postgres:
         image: postgres:latest
         restart: always
-        ports:
-            - ${POSTGRES_PORT}:5432
         environment:
             POSTGRES_USER: ${POSTGRES_USER}
             POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
             POSTGRES_DB: ${POSTGRES_DB}
         volumes:
             - postgres_data:/var/lib/postgresql/data
+        networks:
+            - container_network
 
     grafana:
         image: grafana/grafana
         restart: always
         ports:
-            - '3060:3000'
+            - '3033:3000'
         environment:
             - GF_SECURITY_ADMIN_PASSWORD=admin
         volumes:
@@ -28,16 +50,12 @@ services:
 
     loki:
         image: grafana/loki:2.7.3
-        ports:
-            - '3100:3100'
         networks:
             - container_network
 
     redis:
         image: redis:latest
         restart: always
-        ports:
-            - 6379:6379
         volumes:
             - redis:/data
         networks:
