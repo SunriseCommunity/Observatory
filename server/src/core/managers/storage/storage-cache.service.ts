@@ -1,4 +1,5 @@
 import {
+    DownloadBeatmapSetOptions,
     GetBeatmapOptions,
     GetBeatmapSetOptions,
 } from '../../abstracts/client/base-client.types';
@@ -7,6 +8,7 @@ import Redis from 'ioredis';
 import { RedisKeys } from '../../../types/redis';
 import { RankStatus } from '../../../types/general/rankStatus';
 import config from '../../../config';
+import { BeatmapsetFile } from '../../../database/schema';
 
 const ONE_DAY = 1000 * 60 * 60 * 24;
 
@@ -96,6 +98,41 @@ export class StorageCacheService {
 
         const cache = await this.redis.get(
             `${RedisKeys.BEATMAPSET_BY_ID}${beatmapsetId}`,
+        );
+
+        return cache ? JSON.parse(cache) : undefined;
+    }
+
+    async insertEmptyBeatmapsetFile(ctx: DownloadBeatmapSetOptions) {
+        const key = `${RedisKeys.BEATMAPSET_FILE_BY_ID}${ctx.beatmapSetId}`;
+        await this.redis.set(
+            key,
+            'null',
+            'PX',
+            this.getRedisTTLBasedOnStatus(),
+        );
+        return;
+    }
+
+    async insertBeatmapsetFile(
+        ctx: DownloadBeatmapSetOptions,
+        beatmapsetFile: BeatmapsetFile,
+    ) {
+        await this.redis.set(
+            `${RedisKeys.BEATMAPSET_FILE_BY_ID}${ctx.beatmapSetId}`,
+            JSON.stringify(beatmapsetFile),
+            'PX',
+            ONE_DAY,
+        );
+    }
+
+    async getBeatmapSetFile(
+        ctx: DownloadBeatmapSetOptions,
+    ): Promise<BeatmapsetFile | null | undefined> {
+        let beatmapsetId = ctx.beatmapSetId;
+
+        const cache = await this.redis.get(
+            `${RedisKeys.BEATMAPSET_FILE_BY_ID}${beatmapsetId}`,
         );
 
         return cache ? JSON.parse(cache) : undefined;

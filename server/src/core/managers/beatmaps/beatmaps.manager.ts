@@ -60,7 +60,7 @@ export class BeatmapsManager {
                 status: beatmapset
                     ? HttpStatusCode.Ok
                     : HttpStatusCode.NotFound,
-                message: !beatmapset ? 'Beatmap Set not found' : undefined,
+                message: !beatmapset ? 'Beatmapset not found' : undefined,
             };
         }
 
@@ -75,18 +75,39 @@ export class BeatmapsManager {
         return {
             data: result.result,
             status: result.status,
-            message:
-                result.status === 404 ? 'Beatmap Set not found' : undefined,
+            message: result.status === 404 ? 'Beatmapset not found' : undefined,
         };
     }
 
     async downloadBeatmapSet(
         ctx: DownloadBeatmapSetOptions,
     ): Promise<ServerResponse<null> | ArrayBuffer> {
+        const beatmapsetFile = await this.StorageManager.getBeatmapsetFile(ctx);
+
+        if (beatmapsetFile) {
+            return beatmapsetFile;
+        } else if (beatmapsetFile === null) {
+            return {
+                data: null,
+                status: HttpStatusCode.NotFound,
+                message: 'Beatmapset not found',
+            };
+        }
+
         const result = await this.MirrorsManager.downloadBeatmapSet(ctx);
 
-        if (result.status >= 500 || !result.result) {
+        if (result.status >= 500) {
             return SERVICE_UNAVAILABLE_RESPONSE;
+        }
+
+        this.StorageManager.insertBeatmapsetFile(result.result, ctx);
+
+        if (result.status >= 400 || !result.result) {
+            return {
+                data: null,
+                status: HttpStatusCode.NotFound,
+                message: 'Beatmapset not found',
+            };
         }
 
         return result.result;

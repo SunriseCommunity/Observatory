@@ -1,0 +1,1 @@
+ALTER TABLE "beatmapsets_files" DROP COLUMN IF EXISTS "checksum";

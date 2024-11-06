@@ -43,3 +43,7 @@ package-lock.json
 
 # environment
 .env
+
+# osu files
+*.osz
+*.temp

@@ -113,9 +113,8 @@ export const beatmapsets = pgTable('beatmapsets', {
 
 export const beatmapsetsFiles = pgTable('beatmapsets_files', {
     id: integer('id').primaryKey(),
-    includesVideo: boolean('includes_video').notNull(),
+    noVideo: boolean('no_video').notNull(),
     path: text('path').notNull(),
-    checksum: text('checksum').notNull(),
     ...timestamps,
     ...validTimestamps,
 });
