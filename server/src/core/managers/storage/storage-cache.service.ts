@@ -25,7 +25,8 @@ export class StorageCacheService {
                 `${RedisKeys.BEATMAP_ID_BY_HASH}${ctx.beatmapHash}`,
             );
 
-            if (!cachedId || cachedId === 'null') return null;
+            if (!cachedId) return undefined;
+            if (cachedId === 'null') return null;
 
             beatmapId = Number(cachedId);
         }
