@@ -6,7 +6,7 @@
 
 ## Description
 
-Observatory is a powerful beatmap manager which uses osu! API and popular beatmap mirrors to prioritize speed and efficiency. It provides data "on demand" and saves it locally to avoid unnecessary API calls, thus saving time and resources.
+Observatory is a powerful "on demand" beatmap manager which uses osu! API and popular beatmap mirrors to prioritize speed and efficiency. It fetches beatmaps from the API's, and stores them in a local database for faster access.
 
 ## Features
 
@@ -32,15 +32,12 @@ docker compose -f docker-compose.yml up -d # Creates the container with app and 
 
 ### Manual 🛠
 
-```bash
-docker compose -f docker-compose.dev.yml up -d # Creates the container with needed dependencies (postgres, grafana, etc.)
-```
-
 1. Clone the repository
 2. Install the required dependencies: `bun install`
 3. Fill the `.env` file with the required data
-4. Run the application: `bun run dev` or `bun run start`
-5. The application will be available at `http://localhost:3000`
+4. Start needed services: `bun run setup`
+5. Run the application: `bun run dev`
+6. The application will be available at `http://localhost:3000`
 
 ## Contributing 💖
 
