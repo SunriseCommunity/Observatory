@@ -122,7 +122,7 @@ export class StorageCacheService {
             `${RedisKeys.BEATMAPSET_FILE_BY_ID}${ctx.beatmapSetId}`,
             JSON.stringify(beatmapsetFile),
             'PX',
-            ONE_DAY,
+            ONE_DAY / 24 * config.OSZ_FILES_LIFE_SPAN,
         );
     }
 

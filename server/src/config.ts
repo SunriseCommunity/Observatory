@@ -19,6 +19,7 @@ const {
     IGNORE_RATELIMIT_KEY,
     RATELIMIT_CALLS_PER_WINDOW,
     RATELIMIT_TIME_WINDOW,
+    OSZ_FILES_LIFE_SPAN
 } = process.env;
 
 if (!POSTGRES_USER || !POSTGRES_PASSWORD) {
@@ -50,13 +51,14 @@ const config: {
     IGNORE_RATELIMIT_KEY?: string;
     RATELIMIT_CALLS_PER_WINDOW: number;
     RATELIMIT_TIME_WINDOW: number;
+    OSZ_FILES_LIFE_SPAN: number;
     IsProduction: boolean;
     IsDebug: boolean;
     UseBancho: boolean;
 } = {
     PORT: PORT || '3000',
-    POSTGRES_USER,
-    POSTGRES_PASSWORD,
+    POSTGRES_USER: POSTGRES_USER || 'admin',
+    POSTGRES_PASSWORD: POSTGRES_PASSWORD || 'admin',
     POSTGRES_HOST: POSTGRES_HOST || 'localhost',
     POSTGRES_PORT: POSTGRES_PORT || '5432',
     POSTGRES_DB: POSTGRES_DB || 'observatory',
@@ -67,6 +69,7 @@ const config: {
     IGNORE_RATELIMIT_KEY: IGNORE_RATELIMIT_KEY,
     RATELIMIT_CALLS_PER_WINDOW: Number(RATELIMIT_CALLS_PER_WINDOW) || 100,
     RATELIMIT_TIME_WINDOW: Number(RATELIMIT_TIME_WINDOW) || 20 * 1000,
+    OSZ_FILES_LIFE_SPAN: Number(OSZ_FILES_LIFE_SPAN) || 24,
     IsProduction: Bun.env.NODE_ENV === 'production',
     IsDebug: DEBUG_MODE === 'true',
     UseBancho: BANCHO_CLIENT_SECRET && BANCHO_CLIENT_ID ? true : false,

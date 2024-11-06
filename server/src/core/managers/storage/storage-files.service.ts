@@ -10,6 +10,7 @@ import { StorageCacheService } from './storage-cache.service';
 import { unlink } from 'node:fs/promises';
 import AdmZip from 'adm-zip';
 import logger from '../../../utils/logger';
+import config from '../../../config';
 
 export class StorageFilesService {
     private readonly dataPath = 'data';
@@ -55,7 +56,8 @@ export class StorageFilesService {
             noVideo: ctx.noVideo || false,
             path,
             validUntil: new Date(
-                getUTCDate().getTime() + 1000 * 60 * 60 * 24,
+                getUTCDate().getTime() +
+                    1000 * 60 * 60 * config.OSZ_FILES_LIFE_SPAN,
             ).toISOString(),
         });
 
