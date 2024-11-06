@@ -12,7 +12,7 @@ const ONE_DAY = 1000 * 60 * 60 * 24;
 
 export class StorageCacheService {
     private readonly redis: Redis = new Redis({
-        port: Number(config.REDIS_PORT),
+        port: config.REDIS_PORT,
     });
 
     async getBeatmap(

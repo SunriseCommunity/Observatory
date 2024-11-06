@@ -52,8 +52,8 @@ async function setup() {
         .use(requestID())
         .use(
             rateLimit({
-                max: 100,
-                duration: 20 * 1000,
+                max: config.RATELIMIT_CALLS_PER_WINDOW,
+                duration: config.RATELIMIT_TIME_WINDOW,
                 skip(req) {
                     const token = req.headers.get('Authorization');
                     const validToken = config.IGNORE_RATELIMIT_KEY;

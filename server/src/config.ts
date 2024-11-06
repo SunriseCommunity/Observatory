@@ -17,6 +17,8 @@ const {
     DEBUG_MODE,
     LOKI_HOST,
     IGNORE_RATELIMIT_KEY,
+    RATELIMIT_CALLS_PER_WINDOW,
+    RATELIMIT_TIME_WINDOW,
 } = process.env;
 
 if (!POSTGRES_USER || !POSTGRES_PASSWORD) {
@@ -41,11 +43,13 @@ const config: {
     POSTGRES_HOST: string;
     POSTGRES_PORT: string;
     POSTGRES_DB: string;
-    REDIS_PORT: string;
+    REDIS_PORT: number;
     BANCHO_CLIENT_SECRET?: string;
     BANCHO_CLIENT_ID?: string;
     LOKI_HOST: string;
     IGNORE_RATELIMIT_KEY?: string;
+    RATELIMIT_CALLS_PER_WINDOW: number;
+    RATELIMIT_TIME_WINDOW: number;
     IsProduction: boolean;
     IsDebug: boolean;
     UseBancho: boolean;
@@ -56,11 +60,13 @@ const config: {
     POSTGRES_HOST: POSTGRES_HOST ?? 'localhost',
     POSTGRES_PORT: POSTGRES_PORT ?? '5432',
     POSTGRES_DB: POSTGRES_DB ?? 'observatory',
-    REDIS_PORT: REDIS_PORT ?? '6379',
+    REDIS_PORT: Number(REDIS_PORT) || 6379,
     BANCHO_CLIENT_SECRET,
     BANCHO_CLIENT_ID,
     LOKI_HOST: LOKI_HOST ?? 'http://localhost:3100',
     IGNORE_RATELIMIT_KEY: IGNORE_RATELIMIT_KEY,
+    RATELIMIT_CALLS_PER_WINDOW: Number(RATELIMIT_CALLS_PER_WINDOW) || 100,
+    RATELIMIT_TIME_WINDOW: Number(RATELIMIT_TIME_WINDOW) || 20 * 1000,
     IsProduction: Bun.env.NODE_ENV === 'production',
     IsDebug: DEBUG_MODE === 'true',
     UseBancho: BANCHO_CLIENT_SECRET && BANCHO_CLIENT_ID ? true : false,
