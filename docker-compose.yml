@@ -13,7 +13,7 @@ services:
             - LOKI_HOST=http://loki:3100
         ports:
             - ${PORT}:${PORT}
-        command: ['sh', '-c', 'bun run db:migration && bun run start']
+        command: ['sh', '-c', 'bun i && bun run db:migration && bun run start']
         depends_on:
             - loki
             - postgres
