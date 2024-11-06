@@ -33,17 +33,17 @@ export class MinoClient extends BaseClient {
                         reset: 60,
                     },
                     {
-                        routes: ['/d'],
+                        routes: ['d/'],
                         limit: 120,
                         reset: 60,
                     },
                     {
-                        routes: ['/osu'],
+                        routes: ['osu/'],
                         limit: 120,
                         reset: 60,
                     },
                     {
-                        routes: ['/api/v2/s', 'api/v2/b', 'api/v2/md5'],
+                        routes: ['api/v2/s/', 'api/v2/b/', 'api/v2/md5/'],
                         limit: 500,
                         reset: 60,
                     },
