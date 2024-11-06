@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS "beatmap" (
+CREATE TABLE IF NOT EXISTS "beatmaps" (
 	"beatmapset_id" integer NOT NULL,
 	"difficulty_rating" real NOT NULL,
 	"id" integer NOT NULL,
@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS "beatmap" (
 	"failtimes" text,
 	"max_combo" integer,
 	"valid_until" text NOT NULL,
-	CONSTRAINT "beatmap_id_mode_pk" PRIMARY KEY("id","mode")
+	CONSTRAINT "beatmaps_id_mode_pk" PRIMARY KEY("id","mode")
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "beatmapsets" (
@@ -76,5 +76,16 @@ CREATE TABLE IF NOT EXISTS "beatmapsets" (
 	"ratings" integer[] DEFAULT '{}'::int[],
 	"related_users" text,
 	"user" text,
+	"valid_until" text NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "beatmapsets_files" (
+	"id" integer PRIMARY KEY NOT NULL,
+	"includes_video" boolean NOT NULL,
+	"path" text NOT NULL,
+	"checksum" text NOT NULL,
+	"updated_at" text DEFAULT now()::timestamp without time zone NOT NULL,
+	"created_at" text DEFAULT now()::timestamp without time zone NOT NULL,
+	"deleted_at" text,
 	"valid_until" text NOT NULL
 );

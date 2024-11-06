@@ -1,11 +1,11 @@
 {
-  "id": "a4a61134-a004-4df8-acfa-54756b240cc8",
+  "id": "26f07e55-f0a7-48de-814e-20ed0d5eb4a5",
   "prevId": "35e5eea6-367b-4af9-a0db-df136ca2117c",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
-    "public.beatmap": {
-      "name": "beatmap",
+    "public.beatmaps": {
+      "name": "beatmaps",
       "schema": "",
       "columns": {
         "beatmapset_id": {
@@ -192,8 +192,8 @@
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {
-        "beatmap_id_mode_pk": {
-          "name": "beatmap_id_mode_pk",
+        "beatmaps_id_mode_pk": {
+          "name": "beatmaps_id_mode_pk",
           "columns": [
             "id",
             "mode"
@@ -463,6 +463,67 @@
         },
         "user": {
           "name": "user",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "valid_until": {
+          "name": "valid_until",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "public.beatmapsets_files": {
+      "name": "beatmapsets_files",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "includes_video": {
+          "name": "includes_video",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "path": {
+          "name": "path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "checksum": {
+          "name": "checksum",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()::timestamp without time zone"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()::timestamp without time zone"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
           "type": "text",
           "primaryKey": false,
           "notNull": false

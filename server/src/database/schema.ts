@@ -111,8 +111,17 @@ export const beatmapsets = pgTable('beatmapsets', {
     ...validTimestamps,
 });
 
+export const beatmapsetsFiles = pgTable('beatmapsets_files', {
+    id: integer('id').primaryKey(),
+    includesVideo: boolean('includes_video').notNull(),
+    path: text('path').notNull(),
+    checksum: text('checksum').notNull(),
+    ...timestamps,
+    ...validTimestamps,
+});
+
 export const beatmaps = pgTable(
-    'beatmap',
+    'beatmaps',
     {
         beatmapset_id: integer('beatmapset_id').notNull(),
         difficulty_rating: real('difficulty_rating').notNull(),
@@ -156,6 +165,9 @@ export type NewBeatmapset = typeof beatmapsets.$inferInsert;
 
 export type Beatmap = typeof beatmaps.$inferSelect;
 export type NewBeatmap = typeof beatmaps.$inferInsert;
+
+export type BeatmapsetFile = typeof beatmapsetsFiles.$inferSelect;
+export type NewBeatmapsetFile = typeof beatmapsetsFiles.$inferInsert;
 
 export type Mirror = typeof mirrors.$inferSelect;
 export type NewMirror = typeof mirrors.$inferInsert;
