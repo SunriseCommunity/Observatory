@@ -16,6 +16,7 @@ const {
     BANCHO_CLIENT_ID,
     DEBUG_MODE,
     LOKI_HOST,
+    IGNORE_RATELIMIT_KEY,
 } = process.env;
 
 if (!POSTGRES_USER || !POSTGRES_PASSWORD) {
@@ -44,6 +45,7 @@ const config: {
     BANCHO_CLIENT_SECRET?: string;
     BANCHO_CLIENT_ID?: string;
     LOKI_HOST: string;
+    IGNORE_RATELIMIT_KEY?: string;
     IsProduction: boolean;
     IsDebug: boolean;
     UseBancho: boolean;
@@ -58,6 +60,7 @@ const config: {
     BANCHO_CLIENT_SECRET,
     BANCHO_CLIENT_ID,
     LOKI_HOST: LOKI_HOST ?? 'http://localhost:3100',
+    IGNORE_RATELIMIT_KEY: IGNORE_RATELIMIT_KEY,
     IsProduction: Bun.env.NODE_ENV === 'production',
     IsDebug: DEBUG_MODE === 'true',
     UseBancho: BANCHO_CLIENT_SECRET && BANCHO_CLIENT_ID ? true : false,

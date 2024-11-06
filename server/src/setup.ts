@@ -50,7 +50,22 @@ async function setup() {
         .use(cors())
         .use(ip())
         .use(requestID())
-        .use(rateLimit({ max: 100, duration: 20 * 1000 }))
+        .use(
+            rateLimit({
+                max: 100,
+                duration: 20 * 1000,
+                skip(req) {
+                    const token = req.headers.get('Authorization');
+                    const validToken = config.IGNORE_RATELIMIT_KEY;
+
+                    if (validToken && token === validToken) {
+                        return true;
+                    }
+
+                    return false;
+                },
+            }),
+        )
         .use(serverTiming({ enabled: !config.IsProduction }))
         .use(
             logger({
