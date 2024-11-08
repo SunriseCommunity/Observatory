@@ -163,4 +163,25 @@ describe('Mirror tests', () => {
             );
         }, 30000);
     });
+
+    describe('Gatari tests', () => {
+        it('Gatari: should download beatmap set without video', async () => {
+            const randomTest = getRandomTest('downloadBeatmapSet');
+            const { beatmapSetId } = randomTest;
+
+            const beatmap = await directClient.downloadBeatmapSet({
+                beatmapSetId,
+                noVideo: true,
+            });
+
+            const expected = await Bun.file(
+                `${import.meta.dir}/data/${beatmapSetId}n.osz`,
+            ).arrayBuffer();
+
+            expect(beatmap.result?.byteLength).toBeWithin(
+                expected.byteLength - 1000,
+                expected.byteLength + 1000,
+            );
+        }, 30000);
+    });
 });
