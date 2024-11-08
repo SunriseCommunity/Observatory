@@ -7,6 +7,7 @@ import { MinoClient } from '../core/domains/catboy.best/mino.client';
 import config from '../config';
 import { NerinyanClient } from '../core/domains/nerinyan.moe/nerinyan.client';
 import { GatariClient } from '../core/domains/gatari.pw/gatari.client';
+import { OkayuClient } from '../core/domains/osuokayu.moe/okayu.client';
 
 describe('Mirror tests', () => {
     const banchoClient = new BanchoClient();
@@ -14,6 +15,7 @@ describe('Mirror tests', () => {
     const directClient = new DirectClient();
     const nerinyanClient = new NerinyanClient();
     const gatariClient = new GatariClient();
+    const okayuClient = new OkayuClient();
 
     const getRandomTest = (key: string) => {
         return json.tests[key][
@@ -214,6 +216,27 @@ describe('Mirror tests', () => {
             const { beatmapSetId } = randomTest;
 
             const beatmap = await nerinyanClient.downloadBeatmapSet({
+                beatmapSetId,
+                noVideo: false,
+            });
+
+            const expected = await Bun.file(
+                `${import.meta.dir}/data/${beatmapSetId}.osz`,
+            ).arrayBuffer();
+
+            expect(beatmap.result?.byteLength).toBeWithin(
+                expected.byteLength - 1000,
+                expected.byteLength + 1000,
+            );
+        }, 30000);
+    });
+
+    describe('Okayu tests', () => {
+        it('Okayu: should download beatmap set with video', async () => {
+            const randomTest = getRandomTest('downloadBeatmapSet');
+            const { beatmapSetId } = randomTest;
+
+            const beatmap = await okayuClient.downloadBeatmapSet({
                 beatmapSetId,
                 noVideo: false,
             });
