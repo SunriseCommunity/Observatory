@@ -1,15 +1,19 @@
-import { beforeEach, describe, expect, it } from 'bun:test';
+import { describe, expect, it } from 'bun:test';
 import { BanchoClient, DirectClient } from '../core/domains';
 
 // @ts-ignore
 import json from './data/mirror.tests.json';
 import { MinoClient } from '../core/domains/catboy.best/mino.client';
 import config from '../config';
+import { NerinyanClient } from '../core/domains/nerinyan.moe/nerinyan.client';
+import { GatariClient } from '../core/domains/gatari.pw/gatari.client';
 
 describe('Mirror tests', () => {
     const banchoClient = new BanchoClient();
     const minoClient = new MinoClient();
     const directClient = new DirectClient();
+    const nerinyanClient = new NerinyanClient();
+    const gatariClient = new GatariClient();
 
     const getRandomTest = (key: string) => {
         return json.tests[key][
@@ -169,13 +173,53 @@ describe('Mirror tests', () => {
             const randomTest = getRandomTest('downloadBeatmapSet');
             const { beatmapSetId } = randomTest;
 
-            const beatmap = await directClient.downloadBeatmapSet({
+            const beatmap = await gatariClient.downloadBeatmapSet({
                 beatmapSetId,
                 noVideo: true,
             });
 
             const expected = await Bun.file(
                 `${import.meta.dir}/data/${beatmapSetId}n.osz`,
+            ).arrayBuffer();
+
+            expect(beatmap.result?.byteLength).toBeWithin(
+                expected.byteLength - 1000,
+                expected.byteLength + 1000,
+            );
+        }, 30000);
+    });
+
+    describe('Nerinyan tests', () => {
+        it('Nerinyan: should download beatmap set without video', async () => {
+            const randomTest = getRandomTest('downloadBeatmapSet');
+            const { beatmapSetId } = randomTest;
+
+            const beatmap = await nerinyanClient.downloadBeatmapSet({
+                beatmapSetId,
+                noVideo: true,
+            });
+
+            const expected = await Bun.file(
+                `${import.meta.dir}/data/${beatmapSetId}n.osz`,
+            ).arrayBuffer();
+
+            expect(beatmap.result?.byteLength).toBeWithin(
+                expected.byteLength - 1000,
+                expected.byteLength + 1000,
+            );
+        }, 30000);
+
+        it('Nerinyan: should download beatmap set with video', async () => {
+            const randomTest = getRandomTest('downloadBeatmapSet');
+            const { beatmapSetId } = randomTest;
+
+            const beatmap = await nerinyanClient.downloadBeatmapSet({
+                beatmapSetId,
+                noVideo: false,
+            });
+
+            const expected = await Bun.file(
+                `${import.meta.dir}/data/${beatmapSetId}.osz`,
             ).arrayBuffer();
 
             expect(beatmap.result?.byteLength).toBeWithin(
