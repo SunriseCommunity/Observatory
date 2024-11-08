@@ -6,19 +6,22 @@ import {
 } from '../../abstracts/client/base-client.types';
 import logger from '../../../utils/logger';
 
-export class GatariClient extends BaseClient {
+export class NerinyanClient extends BaseClient {
     constructor() {
         super(
             {
-                baseUrl: 'https://osu.gatari.pw',
-                abilities: [ClientAbilities.DownloadBeatmapSetByIdNoVideo],
+                baseUrl: 'https://api.nerinyan.moe',
+                abilities: [
+                    ClientAbilities.DownloadBeatmapSetByIdNoVideo,
+                    ClientAbilities.DownloadBeatmapSetById,
+                ],
             },
             {
                 rateLimits: [],
             },
         );
 
-        logger.info('GatariClient initialized');
+        logger.info('NerinyanClient initialized');
     }
 
     async downloadBeatmapSet(
@@ -29,6 +32,9 @@ export class GatariClient extends BaseClient {
             {
                 config: {
                     responseType: 'arraybuffer',
+                    params: {
+                        noVideo: ctx.noVideo ? true : false,
+                    },
                 },
             },
         );

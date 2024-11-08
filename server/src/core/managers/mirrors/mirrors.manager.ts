@@ -13,6 +13,7 @@ import logger from '../../../utils/logger';
 import { Beatmap, Beatmapset } from '../../../types/general/beatmap';
 import { MinoClient } from '../../domains/catboy.best/mino.client';
 import { GatariClient } from '../../domains/gatari.pw/gatari.client';
+import { NerinyanClient } from '../../domains/nerinyan.moe/nerinyan.client';
 
 const DEFAULT_CLIENT_PROPS = {
     weights: {
@@ -31,6 +32,7 @@ export class MirrorsManager {
         const directClient = new DirectClient();
         const gatariClient = new GatariClient();
         const minoClient = new MinoClient();
+        const nerinyanClient = new NerinyanClient();
 
         const banchoClient = new BanchoClient();
 
@@ -45,6 +47,10 @@ export class MirrorsManager {
             },
             {
                 client: gatariClient,
+                ...DEFAULT_CLIENT_PROPS,
+            },
+            {
+                client: nerinyanClient,
                 ...DEFAULT_CLIENT_PROPS,
             },
         ];

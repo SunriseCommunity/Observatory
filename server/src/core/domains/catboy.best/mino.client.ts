@@ -28,11 +28,6 @@ export class MinoClient extends BaseClient {
                 },
                 rateLimits: [
                     {
-                        routes: ['/'],
-                        limit: 60,
-                        reset: 60,
-                    },
-                    {
                         routes: ['d/'],
                         limit: 120,
                         reset: 60,
@@ -58,7 +53,6 @@ export class MinoClient extends BaseClient {
         ctx: DownloadBeatmapSetOptions,
     ): Promise<ResultWithStatus<ArrayBuffer | null>> {
         const result = await this.api.get<ArrayBuffer>(
-            // TODO: For 2070848 saves always without video, need to investigate
             `d/${ctx.beatmapSetId}${ctx.noVideo ? 'n' : ''}`,
             {
                 config: {

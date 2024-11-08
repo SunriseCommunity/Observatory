@@ -4,6 +4,12 @@ import { BaseApi } from '../api/base-api.abstract';
 import { BaseApiOptions } from '../api/base-api.types';
 import { RateLimit, RateLimitOptions } from './rate-limiter.types';
 
+const DEFAULT_RATE_LIMIT = {
+    routes: ['/'],
+    limit: 60,
+    reset: 60,
+};
+
 export class ApiRateLimiter {
     protected api: BaseApi;
     protected config: RateLimitOptions;
@@ -17,8 +23,11 @@ export class ApiRateLimiter {
         if (
             !this.config.rateLimits.find((limit) => limit.routes.includes('/'))
         ) {
-            throw new Error(
-                'ApiRateLimiter: Please declare rate limit for default route (/)',
+            this.config.rateLimits.push(DEFAULT_RATE_LIMIT);
+
+            this.log(
+                `Rate limit for default route of ${this.api.axiosConfig.baseURL} wasn't set. Setting to default value.`,
+                'info',
             );
         }
 
