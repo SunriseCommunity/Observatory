@@ -1,8 +1,8 @@
 import type { App } from '../app';
 
 export default (app: App) => {
-    app.get('/', () => 'Hello, friend! 🔭', {
-        tags: ['General'],
+    app.get('/', ({ redirect }) => {
+        return redirect('/docs');
     });
 
     return app;

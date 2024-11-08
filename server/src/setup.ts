@@ -18,6 +18,7 @@ const swaggerOptions: ElysiaSwaggerConfig<'/docs'> = {
                 Bun.env.npm_package_description ?? 'API for Observatory',
         },
     },
+    exclude: ['/'],
     path: '/docs',
 };
 
