@@ -15,19 +15,37 @@ export class CompareService {
         return downloadBenchmark;
     }
 
+    abilitiesToBenchmark(mirror: MirrorClient) {
+        const apiAbilities = [ClientAbilities.GetBeatmapSetById]; // Basic minimum average client should have
+        const downloadAbilities = [
+            ClientAbilities.DownloadBeatmapSetByIdNoVideo,
+            ClientAbilities.DownloadBeatmapSetById,
+        ];
+
+        return {
+            download: mirror.client.clientConfig.abilities.some((ability) =>
+                downloadAbilities.includes(ability),
+            ),
+            api: mirror.client.clientConfig.abilities.some((ability) =>
+                apiAbilities.includes(ability),
+            ),
+        };
+    }
+
     private async latencyBenchmark(
         mirror: MirrorClient,
     ): Promise<BenchmarkResult> {
         let start = performance.now();
         const client = mirror.client;
 
-        let APILatency = undefined;
+        let results = {
+            latency: undefined,
+            downloadSpeed: undefined,
+        } as BenchmarkResult;
 
-        if (
-            mirror.client.clientConfig.abilities.includes(
-                ClientAbilities.GetBeatmapById,
-            )
-        ) {
+        const toBenchmark = this.abilitiesToBenchmark(mirror);
+
+        if (toBenchmark.api) {
             const beatmapSet = await client.getBeatmapSet({
                 beatmapSetId: this.beatmapSetId,
             });
@@ -39,41 +57,41 @@ export class CompareService {
                 );
             }
 
-            APILatency = Math.round(performance.now() - start);
+            results.latency = Math.round(performance.now() - start);
         }
 
-        if (
-            !client.clientConfig.abilities.includes(
+        if (toBenchmark.download) {
+            start = performance.now();
+
+            const downloadWithoutVideo = client.clientConfig.abilities.includes(
                 ClientAbilities.DownloadBeatmapSetByIdNoVideo,
-            )
-        ) {
-            return { latency: APILatency };
-        }
-
-        start = performance.now();
-
-        const downloadResult = await client.downloadBeatmapSet({
-            beatmapSetId: this.beatmapSetId,
-        });
-
-        if (!downloadResult) {
-            this.log(
-                `Failed to download beatmap set ${this.beatmapSetId} from ${client.clientConfig.baseUrl}`,
-                'error',
             );
-            return { latency: APILatency };
+
+            const downloadResult = await client.downloadBeatmapSet({
+                beatmapSetId: this.beatmapSetId,
+                noVideo: downloadWithoutVideo ? true : false,
+            });
+
+            if (!downloadResult) {
+                this.log(
+                    `Failed to download beatmap set ${this.beatmapSetId} from ${client.clientConfig.baseUrl}`,
+                    'error',
+                );
+
+                return results;
+            }
+
+            const downloadResultSize = downloadResult.result?.byteLength || 0;
+            const downloadSpeed = Math.round(
+                downloadResultSize /
+                    1024 /
+                    ((performance.now() - start) / 1000),
+            ); // KB/s
+
+            results.downloadSpeed = downloadSpeed;
         }
 
-        const downloadResultSize = downloadResult.result?.byteLength || 0;
-
-        const downloadSpeed = Math.round(
-            downloadResultSize / 1024 / ((performance.now() - start) / 1000),
-        ); // KB/s
-
-        return {
-            latency: APILatency,
-            downloadSpeed,
-        };
+        return results;
     }
 
     private log(message: string, level: 'info' | 'warn' | 'error' = 'info') {

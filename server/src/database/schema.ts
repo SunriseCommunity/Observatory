@@ -7,7 +7,6 @@ import {
     real,
     boolean,
     primaryKey,
-    PrimaryKey,
 } from 'drizzle-orm/pg-core';
 
 const timestamps = {
@@ -30,21 +29,13 @@ export const mirrors = pgTable('mirrors', {
     ...timestamps,
 });
 
-export const benchmarks = pgTable('benchmarks', {
-    benchmarkId: serial('benchmark_id').primaryKey(),
-    mirrorId: integer('mirror_id')
-        .notNull()
-        .references(() => mirrors.mirrorId),
-    downloadSpeed: integer('download_speed'),
-    APILatency: integer('api_latency'),
-    ...timestamps,
-});
-
 export const requests = pgTable('requests', {
     requestId: serial('request_id').primaryKey(),
     baseUrl: text('base_url').notNull(),
     url: text('endpoint').notNull(),
     method: text('method').notNull(),
+    contentType: text('content_type'),
+    downloadSpeed: integer('download_speed'),
     status: integer('status').notNull(),
     latency: integer('latency'),
     data: text('data'),
@@ -170,9 +161,6 @@ export type NewBeatmapsetFile = typeof beatmapsetsFiles.$inferInsert;
 
 export type Mirror = typeof mirrors.$inferSelect;
 export type NewMirror = typeof mirrors.$inferInsert;
-
-export type Benchmark = typeof benchmarks.$inferSelect;
-export type NewBenchmark = typeof benchmarks.$inferInsert;
 
 export type Request = typeof requests.$inferSelect;
 export type NewRequest = typeof requests.$inferInsert;

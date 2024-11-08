@@ -1,10 +1,7 @@
-import {
-    getBenchmarkByMirrorId,
-    createBenchmark,
-} from '../../../database/models/benchmarks';
 import { getMirrors, createMirror } from '../../../database/models/mirrors';
 import { getRequestsByBaseUrl } from '../../../database/models/requests';
-import { Mirror, Benchmark } from '../../../database/schema';
+import { Mirror } from '../../../database/schema';
+import { BenchmarkResult } from '../../../types/benchmark';
 import { getUTCDate } from '../../../utils/date';
 import logger from '../../../utils/logger';
 import { MirrorClient } from '../../abstracts/client/base-client.types';
@@ -22,8 +19,8 @@ export class MirrorsManagerService {
             () => {
                 this.fetchMirrorsData();
             },
-            1000 * 60 * 15,
-        ); // 15 minutes
+            1000 * 60 * 10,
+        ); // 10 minutes
 
         this.log('Initialized');
     }
@@ -52,34 +49,14 @@ export class MirrorsManagerService {
                 });
             }
 
-            let benchmark = await getBenchmarkByMirrorId(dbClient.mirrorId);
-
-            if (!benchmark) {
-                this.log(
-                    'Benchmark data not found or outdated, fetching new data',
-                    'warn',
-                );
-
-                benchmark = await this.fetchMirrorBenchmark(client, dbClient);
-            }
-
-            const requests = await getRequestsByBaseUrl(
-                dbClient.url,
-                getUTCDate().getTime() - 6 * 60 * 60 * 1000, // 6 hours
-            );
-
-            const failedRequests = requests.filter(
-                (r) => r.status >= 400 && r.status !== 404,
-            );
-
-            const failrate = failedRequests.length / requests.length || 0;
+            const benchmark = await this.getMirrorBenchmark(client, dbClient);
 
             client.weights = {
-                API: this.exponentialDecrease(benchmark.APILatency || Infinity),
+                API: this.exponentialDecrease(benchmark.latency || Infinity),
                 download: this.exponentialIncrease(
                     benchmark.downloadSpeed || 0,
                 ),
-                failrate,
+                failrate: benchmark.failrate,
             };
         }
 
@@ -89,6 +66,63 @@ export class MirrorsManagerService {
                 `${client.client.clientConfig.baseUrl} - API: ${client.weights.API}, download: ${client.weights.download}, failrate: ${client.weights.failrate}`,
             );
         });
+    }
+
+    private async getMirrorBenchmark(
+        client: MirrorClient,
+        dbClient: Mirror,
+    ): Promise<BenchmarkResult & { failrate: number }> {
+        const requests = await getRequestsByBaseUrl(
+            dbClient.url,
+            getUTCDate().getTime() - 3 * 60 * 60 * 1000, // 3 hours
+        );
+
+        const [failedRequests, successfulRequests] = this.splitByCondition(
+            requests,
+            (r) => r.status >= 400 && r.status !== 404,
+        );
+
+        const [jsonRequests, downloadRequests] = this.splitByCondition(
+            successfulRequests,
+            (r) => r.contentType === 'application/json',
+        );
+
+        const failrate = failedRequests.length / requests.length || 0;
+
+        const toBenchmark = this.compareService.abilitiesToBenchmark(client);
+
+        if (
+            (toBenchmark.api && jsonRequests.length === 0) ||
+            (toBenchmark.download && downloadRequests.length === 0)
+        ) {
+            this.log(
+                `Not enough data to calculate benchmark, fetching new data from "${dbClient.url}"`,
+                'warn',
+            );
+
+            const benchmark = await this.fetchMirrorBenchmark(client);
+
+            return {
+                ...benchmark,
+                failrate,
+            };
+        }
+
+        const latency =
+            jsonRequests.reduce((acc, r) => acc + (r.latency ?? 0), 0) /
+            jsonRequests.length;
+
+        const downloadSpeed =
+            downloadRequests.reduce(
+                (acc, r) => acc + (r.downloadSpeed ?? 0),
+                0,
+            ) / downloadRequests.length;
+
+        return {
+            latency,
+            downloadSpeed,
+            failrate,
+        };
     }
 
     private exponentialDecrease(x: number): number {
@@ -101,17 +135,27 @@ export class MirrorsManagerService {
 
     private async fetchMirrorBenchmark(
         client: MirrorClient,
-        dbClient: Mirror,
-    ): Promise<Benchmark> {
+    ): Promise<BenchmarkResult> {
         const result = await this.compareService.benchmarkMirror(client);
 
-        await createBenchmark({
-            mirrorId: dbClient.mirrorId,
-            downloadSpeed: result.downloadSpeed,
-            APILatency: result.latency,
-        });
+        return result;
+    }
 
-        return getBenchmarkByMirrorId(dbClient.mirrorId) as Promise<Benchmark>;
+    private splitByCondition<T>(
+        array: T[],
+        condition: (item: T) => boolean,
+    ): [T[], T[]] {
+        return array.reduce(
+            ([trueArr, falseArr], item) => {
+                if (condition(item)) {
+                    trueArr.push(item);
+                } else {
+                    falseArr.push(item);
+                }
+                return [trueArr, falseArr];
+            },
+            [[], []] as [T[], T[]],
+        );
     }
 
     private log(message: string, level: 'info' | 'warn' | 'error' = 'info') {

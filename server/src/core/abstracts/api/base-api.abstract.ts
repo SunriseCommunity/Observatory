@@ -130,9 +130,16 @@ export class BaseApi {
             url: res.config.url,
             baseUrl: this.config.baseURL ?? 'localhost',
             method: res.config.method,
-            latency: res.headers['request-duration'],
+            latency: res.headers['request-duration'] ?? 'unknown',
+            contentType: res.headers['content-type']?.split(';')[0],
             data: res.data,
         };
+
+        if (res.config.responseType === 'arraybuffer') {
+            data.downloadSpeed = Math.round(
+                (res.data.byteLength || 0) / 1024 / (data.latency / 1000),
+            ); // KB/s
+        }
 
         // Save request to database
         createRequest({
