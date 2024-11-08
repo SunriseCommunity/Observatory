@@ -27,7 +27,7 @@ export class ApiRateLimiter {
 
             this.log(
                 `Rate limit for default route of ${this.api.axiosConfig.baseURL} wasn't set. Setting to default value.`,
-                'info',
+                'warn',
             );
         }
 
