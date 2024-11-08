@@ -24,11 +24,6 @@ export class ApiRateLimiter {
             !this.config.rateLimits.find((limit) => limit.routes.includes('/'))
         ) {
             this.config.rateLimits.push(DEFAULT_RATE_LIMIT);
-
-            this.log(
-                `Rate limit for default route of ${this.api.axiosConfig.baseURL} wasn't set. Setting to default value.`,
-                'warn',
-            );
         }
 
         this.config.rateLimits.forEach((limit) => {
