@@ -20,7 +20,11 @@ export type GetBeatmapSetOptions = {
     beatmapSetId?: number;
 };
 
-export type GetBeatmapsOptions = { 
+export type GetBeatmapsOptions = {
+    ids: number[];
+};
+
+export type GetBeatmapsetsOptions = {
     ids: number[];
 };
 
@@ -49,7 +53,8 @@ export enum ClientAbilities {
     DownloadBeatmapSetById = 1 << 6, // 64
     DownloadBeatmapSetByIdNoVideo = 1 << 7, // 128 // TODO: Investigate if this is needed
     SearchBeatmapsets = 1 << 8, // 256
-    GetBeatmaps= 1 << 9, // 512
+    GetBeatmaps = 1 << 9, // 512
+    GetBeatmapsets = 1 << 10, // 1024
 }
 
 export type MirrorClient<T extends BaseClient = BaseClient> = {

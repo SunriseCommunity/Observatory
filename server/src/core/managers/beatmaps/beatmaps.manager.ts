@@ -6,6 +6,7 @@ import {
     DownloadBeatmapSetOptions,
     SearchBeatmapsets,
     GetBeatmapsOptions,
+    GetBeatmapsetsOptions,
 } from '../../abstracts/client/base-client.types';
 import { MirrorsManager } from '../mirrors/mirrors.manager';
 import { ServerResponse } from './beatmaps-manager.types';
@@ -127,6 +128,31 @@ export class BeatmapsManager {
             data: result.result,
             status: result.status,
             message: result.status === 404 ? 'Beatmaps not found' : undefined,
+        };
+    }
+
+    async getBeatmapsets(
+        ctx: GetBeatmapsetsOptions,
+    ): Promise<ServerResponse<Beatmapset[]>> {
+        const result = await this.MirrorsManager.getBeatmapsets(ctx);
+
+        if (result.status >= 500) {
+            return SERVICE_UNAVAILABLE_RESPONSE;
+        }
+
+        if (result.result && result.result.length > 0) {
+            for (const beatmapset of result.result) {
+                this.StorageManager.insertBeatmapset(beatmapset, {
+                    beatmapSetId: beatmapset.id,
+                });
+            }
+        }
+
+        return {
+            data: result.result,
+            status: result.status,
+            message:
+                result.status === 404 ? 'Beatmapsets not found' : undefined,
         };
     }
 
