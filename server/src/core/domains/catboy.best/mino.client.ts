@@ -31,7 +31,7 @@ export class MinoClient extends BaseClient {
             },
             {
                 headers: {
-                    remaining: 'X-Ratelimit-Remaining',
+                    remaining: 'x-ratelimit-remaining',
                 },
                 rateLimits: [
                     {
@@ -123,6 +123,7 @@ export class MinoClient extends BaseClient {
         };
     }
 
+    // ! Each ID counts as a request
     async getBeatmaps(
         ctx: GetBeatmapsOptions,
     ): Promise<ResultWithStatus<Beatmap[] | null>> {
@@ -144,6 +145,7 @@ export class MinoClient extends BaseClient {
         };
     }
 
+    // ! Each ID counts as a request
     async getBeatmapsets(
         ctx: GetBeatmapsetsOptions,
     ): Promise<ResultWithStatus<Beatmapset[] | null>> {

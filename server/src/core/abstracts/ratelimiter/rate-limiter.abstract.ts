@@ -140,7 +140,7 @@ export class ApiRateLimiter {
                 this.config.headers?.remaining ?? 'x-ratelimit-remaining'
             ] ?? this.getRemainingRequests(limit);
 
-        const remaining = this.getRemainingRequests(limit);
+        let remaining = this.getRemainingRequests(limit);
 
         if (headerRemaining < remaining) {
             this.log(
@@ -151,6 +151,8 @@ export class ApiRateLimiter {
             for (let i = 0; i < remaining - headerRemaining; i++) {
                 this.addRequest(limit);
             }
+
+            remaining = this.getRemainingRequests(limit);
         }
 
         this.log(
