@@ -6,6 +6,7 @@ import {
     GetBeatmapOptions,
     DownloadBeatmapSetOptions,
     SearchBeatmapsets,
+    GetBeatmapsOptions,
 } from '../../abstracts/client/base-client.types';
 import { DirectClient, BanchoClient } from '../../domains';
 import { MirrorsManagerService } from './mirrors-manager.service';
@@ -117,6 +118,20 @@ export class MirrorsManager {
         );
     }
 
+    async getBeatmaps(
+        ctx: GetBeatmapsOptions,
+    ): Promise<ResultWithStatus<Beatmap[]>> {
+        const { ids } = ctx;
+
+        if (!ids || ids.length === 0) {
+            throw new Error('ids is required to fetch beatmaps');
+        }
+
+        const criteria = ClientAbilities.GetBeatmaps;
+
+        return await this.useMirror<Beatmap[]>(ctx, criteria, 'getBeatmaps');
+    }
+
     async downloadBeatmapSet(
         ctx: DownloadBeatmapSetOptions,
     ): Promise<ResultWithStatus<ArrayBuffer>> {
@@ -143,7 +158,8 @@ export class MirrorsManager {
             | DownloadBeatmapSetOptions
             | GetBeatmapOptions
             | GetBeatmapSetOptions
-            | SearchBeatmapsets,
+            | SearchBeatmapsets
+            | GetBeatmapsOptions,
         criteria: ClientAbilities,
         action: keyof MirrorClient['client'],
     ): Promise<ResultWithStatus<T>> {

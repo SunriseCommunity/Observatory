@@ -5,6 +5,7 @@ import {
     DownloadBeatmapSetOptions,
     GetBeatmapOptions,
     GetBeatmapSetOptions,
+    GetBeatmapsOptions,
     ResultWithStatus,
     SearchBeatmapsets,
 } from './base-client.types';
@@ -40,6 +41,12 @@ export class BaseClient {
     async getBeatmapSet(
         ctx: GetBeatmapSetOptions,
     ): Promise<ResultWithStatus<Beatmapset | null>> {
+        throw new Error('Method not implemented.');
+    }
+
+    async getBeatmaps(
+        ctx: GetBeatmapsOptions,
+    ): Promise<ResultWithStatus<Beatmap[] | null>> {
         throw new Error('Method not implemented.');
     }
 

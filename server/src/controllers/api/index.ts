@@ -101,6 +101,24 @@ export default (app: App) => {
                 }),
                 tags: ['v2'],
             },
+        )
+        .get(
+            'v2/beatmaps',
+            async ({ BeatmapsManagerInstance, query }) => {
+                const data = await BeatmapsManagerInstance.getBeatmaps({
+                    ids: query.ids,
+                });
+
+                if (!data.data) return data;
+
+                return data.data;
+            },
+            {
+                query: t.Object({
+                    ids: t.Array(t.Numeric()),
+                }),
+                tags: ['v2'],
+            },
         );
 
     return app;
