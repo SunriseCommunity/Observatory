@@ -15,7 +15,9 @@ export default (app: App) => {
                     beatmapId: Number(id),
                 });
 
-                if (!beatmap.data || !full) return beatmap;
+                if (!beatmap.data) return beatmap;
+
+                if (!full) return beatmap.data;
 
                 const beatmapset = await BeatmapsManagerInstance.getBeatmapSet({
                     beatmapSetId: beatmap.data?.beatmapset_id,
@@ -44,7 +46,9 @@ export default (app: App) => {
                     beatmapHash: hash,
                 });
 
-                if (!beatmap.data || !full) return beatmap;
+                if (!beatmap.data) return beatmap;
+
+                if (!full) return beatmap.data;
 
                 const beatmapset = await BeatmapsManagerInstance.getBeatmapSet({
                     beatmapSetId: beatmap.data?.beatmapset_id,
@@ -111,15 +115,26 @@ export default (app: App) => {
 
                 if (!data.data) return data;
 
-                return data.data;
+                if (!query.full) return data.data;
+
+                const beatmapsets =
+                    await BeatmapsManagerInstance.getBeatmapsets({
+                        ids: data.data.map((beatmap) => beatmap.beatmapset_id),
+                    });
+
+                if (!beatmapsets.data) return beatmapsets;
+
+                return beatmapsets.data;
             },
             {
                 query: t.Object({
+                    full: t.Optional(t.Boolean({ default: false })),
                     ids: t.Array(t.Numeric()),
                 }),
                 tags: ['v2'],
             },
-        ).get(
+        )
+        .get(
             'v2/beatmapsets',
             async ({ BeatmapsManagerInstance, query }) => {
                 const data = await BeatmapsManagerInstance.getBeatmapsets({
