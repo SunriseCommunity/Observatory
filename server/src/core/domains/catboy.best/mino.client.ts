@@ -4,12 +4,13 @@ import {
     DownloadBeatmapSetOptions,
     GetBeatmapOptions,
     GetBeatmapSetOptions,
+    GetBeatmapsOptions,
     ResultWithStatus,
     SearchBeatmapsets,
 } from '../../abstracts/client/base-client.types';
 import logger from '../../../utils/logger';
 import { Beatmap, Beatmapset } from '../../../types/general/beatmap';
-import { MinoBeatmapset } from './mino-client.types';
+import { MinoBeatmap, MinoBeatmapset } from './mino-client.types';
 
 export class MinoClient extends BaseClient {
     constructor() {
@@ -23,6 +24,7 @@ export class MinoClient extends BaseClient {
                     ClientAbilities.DownloadBeatmapSetByIdNoVideo,
                     ClientAbilities.DownloadBeatmapSetById,
                     ClientAbilities.SearchBeatmapsets,
+                    ClientAbilities.GetBeatmaps,
                 ],
             },
             {
@@ -46,7 +48,12 @@ export class MinoClient extends BaseClient {
                         reset: 60,
                     },
                     {
-                        routes: ['api/v2/s/', 'api/v2/b/', 'api/v2/md5/'],
+                        routes: [
+                            'api/v2/s/',
+                            'api/v2/b/',
+                            'api/v2/md5/',
+                            'api/v2/beatmaps',
+                        ],
                         limit: 500,
                         reset: 60,
                     },
@@ -108,6 +115,27 @@ export class MinoClient extends BaseClient {
         return {
             result: result.data.map((b: MinoBeatmapset) =>
                 this.convertService.convertBeatmapset(b),
+            ),
+            status: result.status,
+        };
+    }
+
+    async getBeatmaps(
+        ctx: GetBeatmapsOptions,
+    ): Promise<ResultWithStatus<Beatmap[] | null>> {
+        const { ids } = ctx;
+
+        const result = await this.api.get<MinoBeatmap[]>(
+            `api/v2/beatmaps?${ids.map((id) => `ids=${id}`).join('&')}`,
+        );
+
+        if (!result || result.status !== 200) {
+            return { result: null, status: result?.status ?? 500 };
+        }
+
+        return {
+            result: result.data?.map((b: MinoBeatmap) =>
+                this.convertService.convertBeatmap(b),
             ),
             status: result.status,
         };

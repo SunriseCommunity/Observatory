@@ -65,7 +65,7 @@ export class BanchoClient extends BaseClient {
     ): Promise<ResultWithStatus<Beatmap[] | null>> {
         const { ids } = ctx;
 
-        const result = await this.api.get<BanchoBeatmapset[]>(
+        const result = await this.api.get<{ beatmaps: BanchoBeatmap[] }>(
             `api/v2/beatmaps?${ids.map((id) => `ids[]=${id}`).join('&')}`,
             {
                 config: {
