@@ -79,6 +79,28 @@ export default (app: App) => {
                 }),
                 tags: ['v2'],
             },
+        )
+        .get(
+            'v2/search',
+            async ({ BeatmapsManagerInstance, query }) => {
+                const data = await BeatmapsManagerInstance.searchBeatmapsets({
+                    ...query,
+                });
+
+                if (!data.data) return data;
+
+                return data.data;
+            },
+            {
+                query: t.Object({
+                    query: t.Optional(t.String()),
+                    limit: t.Optional(t.Numeric()),
+                    offset: t.Optional(t.Numeric()),
+                    status: t.Optional(t.Numeric()),
+                    mode: t.Optional(t.Numeric()),
+                }),
+                tags: ['v2'],
+            },
         );
 
     return app;

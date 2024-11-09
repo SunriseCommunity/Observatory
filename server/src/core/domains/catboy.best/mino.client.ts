@@ -5,9 +5,11 @@ import {
     GetBeatmapOptions,
     GetBeatmapSetOptions,
     ResultWithStatus,
+    SearchBeatmapsets,
 } from '../../abstracts/client/base-client.types';
 import logger from '../../../utils/logger';
 import { Beatmap, Beatmapset } from '../../../types/general/beatmap';
+import { MinoBeatmapset } from './mino-client.types';
 
 export class MinoClient extends BaseClient {
     constructor() {
@@ -20,6 +22,7 @@ export class MinoClient extends BaseClient {
                     ClientAbilities.GetBeatmapByHash,
                     ClientAbilities.DownloadBeatmapSetByIdNoVideo,
                     ClientAbilities.DownloadBeatmapSetById,
+                    ClientAbilities.SearchBeatmapsets,
                 ],
             },
             {
@@ -35,6 +38,11 @@ export class MinoClient extends BaseClient {
                     {
                         routes: ['osu/'],
                         limit: 120,
+                        reset: 60,
+                    },
+                    {
+                        routes: ['api/v2/search'],
+                        limit: 500,
                         reset: 60,
                     },
                     {
@@ -76,6 +84,33 @@ export class MinoClient extends BaseClient {
         }
 
         throw new Error('Invalid arguments');
+    }
+
+    async searchBeatmapsets(
+        ctx: SearchBeatmapsets,
+    ): Promise<ResultWithStatus<Beatmapset[] | null>> {
+        const result = await this.api.get<Beatmapset>(`api/v2/search`, {
+            config: {
+                params: {
+                    query: ctx.query,
+                    limit: ctx.limit,
+                    offset: ctx.offset,
+                    status: ctx.status,
+                    mode: ctx.mode,
+                },
+            },
+        });
+
+        if (!result || result.status !== 200) {
+            return { result: null, status: result?.status ?? 500 };
+        }
+
+        return {
+            result: result.data.map((b: MinoBeatmapset) =>
+                this.convertService.convertBeatmapset(b),
+            ),
+            status: result.status,
+        };
     }
 
     async getBeatmap(

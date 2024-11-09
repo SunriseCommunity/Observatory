@@ -1,9 +1,19 @@
 import { HttpStatusCode } from 'axios';
 import { BaseClient } from './base-client.abstract';
+import { RankStatusInt } from '../../../types/general/rankStatus';
+import { GameModeInt } from '../../../types/general/gameMode';
 
 export type ClientOptions = {
     baseUrl: string;
     abilities: ClientAbilities[];
+};
+
+export type SearchBeatmapsets = {
+    query?: string;
+    limit?: number;
+    offset?: number;
+    status?: RankStatusInt;
+    mode?: GameModeInt;
 };
 
 export type GetBeatmapSetOptions = {
@@ -34,17 +44,7 @@ export enum ClientAbilities {
     GetBeatmapByHash = 1 << 5, // 32
     DownloadBeatmapSetById = 1 << 6, // 64
     DownloadBeatmapSetByIdNoVideo = 1 << 7, // 128 // TODO: Investigate if this is needed
-
-    // FIXME: Enum is strange in TS, find a better way to represent this
-    // // Combinations for rate limiting routes
-    // GetBeatmap = GetBeatmapById | GetBeatmapByHash | GetBeatmapBySetId,
-    // GetBeatmapSet = GetBeatmapSetById |
-    //     GetBeatmapSetByBeatmapHash |
-    //     GetBeatmapSetByBeatmapId,
-    // DownloadBeatmapSet = DownloadBeatmapSetById | DownloadBeatmapSetByIdNoVideo,
-
-    // API = GetBeatmap | GetBeatmapSet,
-    // Download = DownloadBeatmapSet,
+    SearchBeatmapsets = 1 << 8, // 256
 }
 
 export type MirrorClient<T extends BaseClient = BaseClient> = {
