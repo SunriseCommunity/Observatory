@@ -125,15 +125,19 @@ export class BaseApi {
     }
 
     private handleResponse(res: any) {
+        if (!res) return;
+
         const data: AxiosResponseLog = {
             status: res.status,
             url: res.config.url,
             baseUrl: this.config.baseURL ?? 'localhost',
             method: res.config.method,
-            latency: res.headers['request-duration'] ?? 'unknown',
+            latency: res.headers['request-duration'] ?? -1,
             contentType: res.headers['content-type']?.split(';')[0],
             data: res.data,
         };
+
+        console.log(data);
 
         if (res.config.responseType === 'arraybuffer') {
             data.downloadSpeed = Math.round(
