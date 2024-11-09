@@ -7,6 +7,7 @@ export type RateLimitOptions = {
         reset?: string;
     };
     rateLimits: RateLimit[];
+    onCooldownUntil?: number; // Active only if we got 429 status code before
 };
 
 export type RateLimit = {
@@ -14,5 +15,4 @@ export type RateLimit = {
     routes: string[]; // ! Make sure this matches the "defaultUrl + route + value" logic
     limit: number;
     reset: number;
-    onCooldownUntil?: number; // Active only if we got 429 status code // TODO: Maybe should be just single cooldown for all routes?
 };

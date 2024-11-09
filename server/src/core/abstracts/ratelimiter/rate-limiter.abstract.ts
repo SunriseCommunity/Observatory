@@ -106,8 +106,8 @@ export class ApiRateLimiter {
         const limit = this.getRateLimit(route);
 
         if (
-            limit.onCooldownUntil &&
-            limit.onCooldownUntil > new Date().getTime()
+            this.config.onCooldownUntil &&
+            this.config.onCooldownUntil > new Date().getTime()
         ) {
             this.log(
                 `Tried to make request to ${route} while on cooldown. Ignored`,
@@ -168,7 +168,7 @@ export class ApiRateLimiter {
                 `Rate limit exceeded for ${route}. Setting cooldown`,
                 'warn',
             );
-            limit.onCooldownUntil = Date.now() + limit.reset * 1000;
+            this.config.onCooldownUntil = Date.now() + limit.reset * 1000;
         }
     }
 
