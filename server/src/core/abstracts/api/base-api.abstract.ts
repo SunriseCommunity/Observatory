@@ -137,8 +137,6 @@ export class BaseApi {
             data: res.data,
         };
 
-        console.log(data);
-
         if (res.config.responseType === 'arraybuffer') {
             data.downloadSpeed = Math.round(
                 (res.data.byteLength || 0) / 1024 / (data.latency / 1000),
