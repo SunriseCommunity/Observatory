@@ -110,6 +110,13 @@ export const beatmapsetsFiles = pgTable('beatmapsets_files', {
     ...validTimestamps,
 });
 
+export const beatmapOsuFiles = pgTable('beatmap_osu_files', {
+    id: integer('id').primaryKey(),
+    path: text('path').notNull(),
+    ...timestamps,
+    ...validTimestamps,
+});
+
 export const beatmaps = pgTable(
     'beatmaps',
     {
@@ -158,6 +165,9 @@ export type NewBeatmap = typeof beatmaps.$inferInsert;
 
 export type BeatmapsetFile = typeof beatmapsetsFiles.$inferSelect;
 export type NewBeatmapsetFile = typeof beatmapsetsFiles.$inferInsert;
+
+export type BeatmapOsuFile = typeof beatmapOsuFiles.$inferSelect;
+export type NewBeatmapOsuFile = typeof beatmapOsuFiles.$inferInsert;
 
 export type Mirror = typeof mirrors.$inferSelect;
 export type NewMirror = typeof mirrors.$inferInsert;

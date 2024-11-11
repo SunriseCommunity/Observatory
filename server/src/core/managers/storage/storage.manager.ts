@@ -1,5 +1,6 @@
 import {
     DownloadBeatmapSetOptions,
+    DownloadOsuBeatmap,
     GetBeatmapOptions,
     GetBeatmapSetOptions,
 } from '../../abstracts/client/base-client.types';
@@ -79,6 +80,14 @@ export class StorageManager {
         return entity;
     }
 
+    async getOsuBeatmapFile(
+        ctx: DownloadOsuBeatmap,
+    ): Promise<ArrayBuffer | undefined | null> {
+        let entity = await this.filesService.getOsuBeatmapFile(ctx);
+
+        return entity;
+    }
+
     async insertBeatmap(
         beatmap: Beatmap | null,
         ctx: GetBeatmapOptions,
@@ -108,5 +117,12 @@ export class StorageManager {
         ctx: DownloadBeatmapSetOptions,
     ): Promise<void> {
         await this.filesService.insertBeatmapsetFile(file, ctx);
+    }
+
+    async insertBeatmapOsuFile(
+        file: ArrayBuffer | null,
+        ctx: DownloadOsuBeatmap,
+    ): Promise<void> {
+        await this.filesService.insertBeatmapOsuFile(file, ctx);
     }
 }

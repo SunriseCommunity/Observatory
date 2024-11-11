@@ -33,6 +33,10 @@ export type DownloadBeatmapSetOptions = {
     noVideo?: boolean;
 };
 
+export type DownloadOsuBeatmap = {
+    beatmapId: number;
+};
+
 export type GetBeatmapOptions = {
     beatmapId?: number;
     beatmapHash?: string;
@@ -51,10 +55,11 @@ export enum ClientAbilities {
     GetBeatmapBySetId = 1 << 4, // 16
     GetBeatmapByHash = 1 << 5, // 32
     DownloadBeatmapSetById = 1 << 6, // 64
-    DownloadBeatmapSetByIdNoVideo = 1 << 7, // 128 // TODO: Investigate if this is needed
+    DownloadBeatmapSetByIdNoVideo = 1 << 7, // 128
     SearchBeatmapsets = 1 << 8, // 256
     GetBeatmaps = 1 << 9, // 512
     GetBeatmapsets = 1 << 10, // 1024
+    DownloadOsuBeatmap = 1 << 11, // 2048
 }
 
 export type MirrorClient<T extends BaseClient = BaseClient> = {

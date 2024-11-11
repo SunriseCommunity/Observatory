@@ -71,6 +71,13 @@
       "when": 1731071834151,
       "tag": "0009_parched_genesis",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1731352050468,
+      "tag": "0010_cheerful_khan",
+      "breakpoints": true
     }
   ]
 }

@@ -3,6 +3,7 @@ import {
     ClientAbilities,
     ClientOptions,
     DownloadBeatmapSetOptions,
+    DownloadOsuBeatmap,
     GetBeatmapOptions,
     GetBeatmapSetOptions,
     GetBeatmapsetsOptions,
@@ -75,7 +76,11 @@ export class BaseClient {
         throw new Error('Method not implemented.');
     }
 
-    // todo: add .osu file download method
+    async downloadOsuBeatmap(
+        ctx: DownloadOsuBeatmap,
+    ): Promise<ResultWithStatus<ArrayBuffer | null>> {
+        throw new Error('Method not implemented.');
+    }
 
     getCapacity(ability: ClientAbilities): {
         limit: number;

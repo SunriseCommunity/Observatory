@@ -7,6 +7,7 @@ import {
     SearchBeatmapsets,
     GetBeatmapsOptions,
     GetBeatmapsetsOptions,
+    DownloadOsuBeatmap,
 } from '../../abstracts/client/base-client.types';
 import { MirrorsManager } from '../mirrors/mirrors.manager';
 import { ServerResponse } from './beatmaps-manager.types';
@@ -178,6 +179,40 @@ export class BeatmapsManager {
         }
 
         this.StorageManager.insertBeatmapsetFile(result.result, ctx);
+
+        if (result.status >= 400 || !result.result) {
+            return {
+                data: null,
+                status: HttpStatusCode.NotFound,
+                message: 'Beatmapset not found',
+            };
+        }
+
+        return result.result;
+    }
+
+    async downloadOsuBeatmap(
+        ctx: DownloadOsuBeatmap,
+    ): Promise<ServerResponse<null> | ArrayBuffer> {
+        const beatmapOsuFile = await this.StorageManager.getOsuBeatmapFile(ctx);
+
+        if (beatmapOsuFile) {
+            return beatmapOsuFile;
+        } else if (beatmapOsuFile === null) {
+            return {
+                data: null,
+                status: HttpStatusCode.NotFound,
+                message: 'Osu file not found',
+            };
+        }
+
+        const result = await this.MirrorsManager.downloadOsuBeatmap(ctx);
+
+        if (result.status >= 500) {
+            return SERVICE_UNAVAILABLE_RESPONSE;
+        }
+
+        this.StorageManager.insertBeatmapOsuFile(result.result, ctx);
 
         if (result.status >= 400 || !result.result) {
             return {

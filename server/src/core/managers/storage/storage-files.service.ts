@@ -5,12 +5,21 @@ import {
     getUnvalidBeatmapSetsFiles,
 } from '../../../database/models/beatmapsetFile';
 import { getUTCDate } from '../../../utils/date';
-import { DownloadBeatmapSetOptions } from '../../abstracts/client/base-client.types';
+import {
+    DownloadBeatmapSetOptions,
+    DownloadOsuBeatmap,
+} from '../../abstracts/client/base-client.types';
 import { StorageCacheService } from './storage-cache.service';
 import { unlink } from 'node:fs/promises';
 import AdmZip from 'adm-zip';
 import logger from '../../../utils/logger';
 import config from '../../../config';
+import {
+    createBeatmapOsuFile,
+    deleteBeatmapsOsuFiles,
+    getBeatmapOsuFile,
+    getUnvalidBeatmapOsuFiles,
+} from '../../../database/models/beatmapOsuFile';
 
 export class StorageFilesService {
     private readonly dataPath = 'data';
@@ -23,12 +32,12 @@ export class StorageFilesService {
 
         setInterval(
             () => {
-                this.clearOldBeatmaps();
+                this.clearOldFiles();
             },
             1000 * 60 * 30,
         ); // 30 minutes
 
-        this.clearOldBeatmaps();
+        this.clearOldFiles();
 
         this.log('Initialized');
     }
@@ -62,6 +71,57 @@ export class StorageFilesService {
         });
 
         await this.cacheService.insertBeatmapsetFile(ctx, beatmapsetFile);
+    }
+
+    async insertBeatmapOsuFile(
+        file: ArrayBuffer | null,
+        ctx: DownloadOsuBeatmap,
+    ) {
+        if (!file) {
+            await this.cacheService.insertEmptyBeatmapOsuFile(ctx);
+            return;
+        }
+
+        const path = await this.saveFile(file, `${ctx.beatmapId}.osu`);
+
+        const beatmapOsuFile = await createBeatmapOsuFile({
+            id: ctx.beatmapId,
+            path,
+            validUntil: new Date(
+                getUTCDate().getTime() +
+                    1000 * 60 * 60 * config.OSZ_FILES_LIFE_SPAN, // Same as .osz files
+            ).toISOString(),
+        });
+
+        await this.cacheService.insertBeatmapOsuFile(ctx, beatmapOsuFile);
+    }
+
+    async getOsuBeatmapFile(
+        ctx: DownloadOsuBeatmap,
+    ): Promise<ArrayBuffer | undefined | null> {
+        let data = await this.cacheService.getBeatmapOsuFile(ctx);
+
+        if (data === undefined) {
+            data = await getBeatmapOsuFile(ctx);
+        } else if (data === null) {
+            return null;
+        }
+
+        if (!data) {
+            return undefined;
+        }
+
+        await this.cacheService.insertBeatmapOsuFile(ctx, data);
+
+        const { path } = data;
+
+        const isFileExists = await this.isFileExists(path);
+
+        if (!isFileExists) {
+            return undefined;
+        }
+
+        return this.readFile(path);
     }
 
     async getBeatmapsetFile(
@@ -151,8 +211,11 @@ export class StorageFilesService {
         return path;
     }
 
-    private async clearOldBeatmaps() {
-        const forRemoval = await getUnvalidBeatmapSetsFiles();
+    private async clearOldFiles() {
+        const beatmapsetsForRemoval = await getUnvalidBeatmapSetsFiles();
+        const osuBeatmapsForRemoval = await getUnvalidBeatmapOsuFiles();
+
+        const forRemoval = [...beatmapsetsForRemoval, ...osuBeatmapsForRemoval];
 
         if (!forRemoval) {
             this.log('Nothing to remove. Skip cleaning.');
@@ -165,7 +228,8 @@ export class StorageFilesService {
             await this.removeIfExists(beatmapset.path);
         }
 
-        await deleteBeatmapsetsFiles(forRemoval);
+        await deleteBeatmapsetsFiles(beatmapsetsForRemoval);
+        await deleteBeatmapsOsuFiles(osuBeatmapsForRemoval);
 
         this.log('Cleaning is finished!');
     }

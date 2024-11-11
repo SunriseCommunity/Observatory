@@ -4,9 +4,7 @@ import { BeatmapsetFile, beatmapsetsFiles, NewBeatmapsetFile } from '../schema';
 import { getUTCDate } from '../../utils/date';
 import { DownloadBeatmapSetOptions } from '../../core/abstracts/client/base-client.types';
 
-export async function getUnvalidBeatmapSetsFiles(): Promise<
-    BeatmapsetFile[] | null
-> {
+export async function getUnvalidBeatmapSetsFiles(): Promise<BeatmapsetFile[]> {
     const entities = await db
         .select()
         .from(beatmapsetsFiles)
@@ -19,7 +17,7 @@ export async function getUnvalidBeatmapSetsFiles(): Promise<
             ),
         );
 
-    return entities;
+    return entities ?? [];
 }
 
 export async function getBeatmapSetFile(

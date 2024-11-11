@@ -46,6 +46,7 @@ package-lock.json
 
 # osu files
 *.osz
+*.osu
 *.temp
 
 # other stuff

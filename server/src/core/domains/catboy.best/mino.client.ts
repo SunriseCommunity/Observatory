@@ -2,6 +2,7 @@ import { BaseClient } from '../../abstracts/client/base-client.abstract';
 import {
     ClientAbilities,
     DownloadBeatmapSetOptions,
+    DownloadOsuBeatmap,
     GetBeatmapOptions,
     GetBeatmapSetOptions,
     GetBeatmapsetsOptions,
@@ -27,6 +28,7 @@ export class MinoClient extends BaseClient {
                     ClientAbilities.SearchBeatmapsets,
                     ClientAbilities.GetBeatmaps,
                     ClientAbilities.GetBeatmapsets,
+                    ClientAbilities.DownloadOsuBeatmap,
                 ],
             },
             {
@@ -78,6 +80,22 @@ export class MinoClient extends BaseClient {
                 },
             },
         );
+
+        if (!result || result.status !== 200) {
+            return { result: null, status: result?.status ?? 500 };
+        }
+
+        return { result: result.data, status: result.status };
+    }
+
+    async downloadOsuBeatmap(
+        ctx: DownloadOsuBeatmap,
+    ): Promise<ResultWithStatus<ArrayBuffer | null>> {
+        const result = await this.api.get<ArrayBuffer>(`osu/${ctx.beatmapId}`, {
+            config: {
+                responseType: 'arraybuffer',
+            },
+        });
 
         if (!result || result.status !== 200) {
             return { result: null, status: result?.status ?? 500 };

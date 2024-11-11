@@ -1,5 +1,6 @@
 import {
     DownloadBeatmapSetOptions,
+    DownloadOsuBeatmap,
     GetBeatmapOptions,
     GetBeatmapSetOptions,
 } from '../../abstracts/client/base-client.types';
@@ -8,7 +9,7 @@ import Redis from 'ioredis';
 import { RedisKeys } from '../../../types/redis';
 import { RankStatus } from '../../../types/general/rankStatus';
 import config from '../../../config';
-import { BeatmapsetFile } from '../../../database/schema';
+import { BeatmapOsuFile, BeatmapsetFile } from '../../../database/schema';
 
 const ONE_DAY = 1000 * 60 * 60 * 24;
 
@@ -134,6 +135,39 @@ export class StorageCacheService {
 
         const cache = await this.redis.get(
             `${RedisKeys.BEATMAPSET_FILE_BY_ID}${beatmapsetId}`,
+        );
+
+        return cache ? JSON.parse(cache) : undefined;
+    }
+
+    async insertEmptyBeatmapOsuFile(ctx: DownloadOsuBeatmap) {
+        const key = `${RedisKeys.BEATMAP_OSU_FILE}${ctx.beatmapId}`;
+        await this.redis.set(
+            key,
+            'null',
+            'PX',
+            this.getRedisTTLBasedOnStatus(),
+        );
+        return;
+    }
+
+    async insertBeatmapOsuFile(
+        ctx: DownloadOsuBeatmap,
+        beatmapOsuFile: BeatmapOsuFile,
+    ) {
+        await this.redis.set(
+            `${RedisKeys.BEATMAP_OSU_FILE}${ctx.beatmapId}`,
+            JSON.stringify(beatmapOsuFile),
+            'PX',
+            (ONE_DAY / 24) * config.OSZ_FILES_LIFE_SPAN, // Let .osu files live for the same time as .osz files
+        );
+    }
+
+    async getBeatmapOsuFile(
+        ctx: DownloadOsuBeatmap,
+    ): Promise<BeatmapOsuFile | null | undefined> {
+        const cache = await this.redis.get(
+            `${RedisKeys.BEATMAP_OSU_FILE}${ctx.beatmapId}`,
         );
 
         return cache ? JSON.parse(cache) : undefined;

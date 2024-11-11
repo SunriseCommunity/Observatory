@@ -8,6 +8,7 @@ import {
     SearchBeatmapsets,
     GetBeatmapsOptions,
     GetBeatmapsetsOptions,
+    DownloadOsuBeatmap,
 } from '../../abstracts/client/base-client.types';
 import { DirectClient, BanchoClient } from '../../domains';
 import { MirrorsManagerService } from './mirrors-manager.service';
@@ -169,6 +170,18 @@ export class MirrorsManager {
             ctx,
             criteria,
             'downloadBeatmapSet',
+        );
+    }
+
+    async downloadOsuBeatmap(
+        ctx: DownloadOsuBeatmap,
+    ): Promise<ResultWithStatus<ArrayBuffer>> {
+        const criteria = ClientAbilities.DownloadOsuBeatmap;
+
+        return await this.useMirror<ArrayBuffer>(
+            ctx,
+            criteria,
+            'downloadOsuBeatmap',
         );
     }
 
