@@ -6,7 +6,6 @@ import {
     DownloadOsuBeatmap,
     GetBeatmapOptions,
     GetBeatmapSetOptions,
-    GetBeatmapsetsOptions,
     GetBeatmapsOptions,
     ResultWithStatus,
     SearchBeatmapsets,
@@ -49,12 +48,6 @@ export class BaseClient {
     async getBeatmaps(
         ctx: GetBeatmapsOptions,
     ): Promise<ResultWithStatus<Beatmap[] | null>> {
-        throw new Error('Method not implemented.');
-    }
-
-    async getBeatmapsets(
-        ctx: GetBeatmapsetsOptions,
-    ): Promise<ResultWithStatus<Beatmapset[] | null>> {
         throw new Error('Method not implemented.');
     }
 

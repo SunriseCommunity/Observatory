@@ -115,34 +115,6 @@ export default (app: App) => {
 
                 if (!data.data) return data;
 
-                if (!query.full) return data.data;
-
-                const beatmapsets =
-                    await BeatmapsManagerInstance.getBeatmapsets({
-                        ids: data.data.map((beatmap) => beatmap.beatmapset_id),
-                    });
-
-                if (!beatmapsets.data) return beatmapsets;
-
-                return beatmapsets.data;
-            },
-            {
-                query: t.Object({
-                    full: t.Optional(t.Boolean({ default: false })),
-                    ids: t.Array(t.Numeric()),
-                }),
-                tags: ['v2'],
-            },
-        )
-        .get(
-            'v2/beatmapsets',
-            async ({ BeatmapsManagerInstance, query }) => {
-                const data = await BeatmapsManagerInstance.getBeatmapsets({
-                    ...query,
-                });
-
-                if (!data.data) return data;
-
                 return data.data;
             },
             {

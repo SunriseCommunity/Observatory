@@ -24,10 +24,6 @@ export type GetBeatmapsOptions = {
     ids: number[];
 };
 
-export type GetBeatmapsetsOptions = {
-    ids: number[];
-};
-
 export type DownloadBeatmapSetOptions = {
     beatmapSetId: number;
     noVideo?: boolean;
@@ -58,7 +54,7 @@ export enum ClientAbilities {
     DownloadBeatmapSetByIdNoVideo = 1 << 7, // 128
     SearchBeatmapsets = 1 << 8, // 256
     GetBeatmaps = 1 << 9, // 512
-    GetBeatmapsets = 1 << 10, // 1024
+    //GetBeatmapsets = 1 << 10, // 1024
     DownloadOsuBeatmap = 1 << 11, // 2048
 }
 

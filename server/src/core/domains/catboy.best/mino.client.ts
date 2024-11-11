@@ -5,14 +5,12 @@ import {
     DownloadOsuBeatmap,
     GetBeatmapOptions,
     GetBeatmapSetOptions,
-    GetBeatmapsetsOptions,
-    GetBeatmapsOptions,
     ResultWithStatus,
     SearchBeatmapsets,
 } from '../../abstracts/client/base-client.types';
 import logger from '../../../utils/logger';
 import { Beatmap, Beatmapset } from '../../../types/general/beatmap';
-import { MinoBeatmap, MinoBeatmapset } from './mino-client.types';
+import { MinoBeatmapset } from './mino-client.types';
 
 export class MinoClient extends BaseClient {
     constructor() {
@@ -26,8 +24,6 @@ export class MinoClient extends BaseClient {
                     ClientAbilities.DownloadBeatmapSetByIdNoVideo,
                     ClientAbilities.DownloadBeatmapSetById,
                     ClientAbilities.SearchBeatmapsets,
-                    ClientAbilities.GetBeatmaps,
-                    ClientAbilities.GetBeatmapsets,
                     ClientAbilities.DownloadOsuBeatmap,
                 ],
             },
@@ -137,52 +133,6 @@ export class MinoClient extends BaseClient {
             result: result.data.map((b: MinoBeatmapset) =>
                 this.convertService.convertBeatmapset(b),
             ),
-            status: result.status,
-        };
-    }
-
-    // ! Each ID counts as a request
-    async getBeatmaps(
-        ctx: GetBeatmapsOptions,
-    ): Promise<ResultWithStatus<Beatmap[] | null>> {
-        const { ids } = ctx;
-
-        const result = await this.api.get<MinoBeatmap | null[]>(
-            `api/v2/beatmaps?${ids.map((id) => `ids=${id}`).join('&')}`,
-        );
-
-        if (!result || result.status !== 200) {
-            return { result: null, status: result?.status ?? 500 };
-        }
-
-        return {
-            result: result.data
-                ?.filter((s: MinoBeatmapset | null) => s !== null)
-                .map((b: MinoBeatmap) => this.convertService.convertBeatmap(b)),
-            status: result.status,
-        };
-    }
-
-    // ! Each ID counts as a request
-    async getBeatmapsets(
-        ctx: GetBeatmapsetsOptions,
-    ): Promise<ResultWithStatus<Beatmapset[] | null>> {
-        const { ids } = ctx;
-
-        const result = await this.api.get<MinoBeatmapset | null[]>(
-            `api/v2/beatmapsets?${ids.map((id) => `ids=${id}`).join('&')}`,
-        );
-
-        if (!result || result.status !== 200) {
-            return { result: null, status: result?.status ?? 500 };
-        }
-
-        return {
-            result: result.data
-                ?.filter((s: MinoBeatmapset | null) => s !== null)
-                .map((s: MinoBeatmapset) =>
-                    this.convertService.convertBeatmapset(s),
-                ),
             status: result.status,
         };
     }
