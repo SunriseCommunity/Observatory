@@ -170,6 +170,14 @@ export class ApiRateLimiter {
             );
             this.config.onCooldownUntil = Date.now() + limit.reset * 1000;
         }
+
+        if (response?.status === 502) {
+            this.log(
+                `Bad gateway for ${route}. Setting cooldown of 5 minutes`,
+                'warn',
+            );
+            this.config.onCooldownUntil = Date.now() + 5 * 60 * 1000; // 5 minutes
+        }
     }
 
     private getRateLimit(route: string) {
