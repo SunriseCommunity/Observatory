@@ -192,7 +192,7 @@ export class BeatmapsManager {
             return {
                 data: null,
                 status: HttpStatusCode.NotFound,
-                message: 'Beatmapset not found',
+                message: 'Osu file not found',
             };
         }
 

@@ -235,6 +235,7 @@ export class MirrorsManager {
         const isDownload = [
             ClientAbilities.DownloadBeatmapSetById,
             ClientAbilities.DownloadBeatmapSetByIdNoVideo,
+            ClientAbilities.DownloadOsuBeatmap,
         ].includes(ability);
 
         const latencyWeight = isDownload

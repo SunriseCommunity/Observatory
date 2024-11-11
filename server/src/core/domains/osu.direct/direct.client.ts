@@ -15,6 +15,7 @@ export class DirectClient extends BaseClient {
                 abilities: [
                     ClientAbilities.DownloadBeatmapSetById,
                     ClientAbilities.DownloadBeatmapSetByIdNoVideo,
+                    ClientAbilities.DownloadOsuBeatmap,
                 ],
             },
             {

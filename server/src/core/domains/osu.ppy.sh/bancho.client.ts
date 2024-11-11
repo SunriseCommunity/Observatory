@@ -3,6 +3,7 @@ import logger from '../../../utils/logger';
 import { BaseClient } from '../../abstracts/client/base-client.abstract';
 import {
     ClientAbilities,
+    DownloadOsuBeatmap,
     GetBeatmapOptions,
     GetBeatmapSetOptions,
     GetBeatmapsOptions,
@@ -24,6 +25,7 @@ export class BanchoClient extends BaseClient {
                     ClientAbilities.GetBeatmapSetById,
                     ClientAbilities.GetBeatmapSetByBeatmapId,
                     ClientAbilities.GetBeatmaps,
+                    ClientAbilities.DownloadOsuBeatmap,
                 ],
             },
             {
@@ -86,6 +88,24 @@ export class BanchoClient extends BaseClient {
             ),
             status: result.status,
         };
+    }
+
+    async downloadOsuBeatmap(
+        ctx: DownloadOsuBeatmap,
+    ): Promise<ResultWithStatus<ArrayBuffer | null>> {
+        const result = await this.api.get<ArrayBuffer>(`osu/${ctx.beatmapId}`, {
+            config: {
+                responseType: 'arraybuffer',
+            },
+        });
+
+        if (!result || result.status !== 200) {
+            return { result: null, status: result?.status ?? 500 };
+        } else if (result.data.length === 0) {
+            return { result: null, status: 404 };
+        }
+
+        return { result: result.data, status: result.status };
     }
 
     private async getBeatmapSetById(

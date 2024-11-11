@@ -8,6 +8,7 @@ import {
 
 export class CompareService {
     private readonly beatmapSetId: number = 1357624;
+    private readonly beatmapId: number = 1003401;
 
     async benchmarkMirror(mirror: MirrorClient): Promise<BenchmarkResult> {
         const downloadBenchmark = await this.latencyBenchmark(mirror);
@@ -20,6 +21,7 @@ export class CompareService {
         const downloadAbilities = [
             ClientAbilities.DownloadBeatmapSetByIdNoVideo,
             ClientAbilities.DownloadBeatmapSetById,
+            ClientAbilities.DownloadOsuBeatmap,
         ];
 
         return {
@@ -63,22 +65,46 @@ export class CompareService {
         if (toBenchmark.download) {
             start = performance.now();
 
-            const downloadWithoutVideo = client.clientConfig.abilities.includes(
-                ClientAbilities.DownloadBeatmapSetByIdNoVideo,
+            const downloadOsuBeatmap = client.clientConfig.abilities.includes(
+                ClientAbilities.DownloadOsuBeatmap,
             );
 
-            const downloadResult = await client.downloadBeatmapSet({
-                beatmapSetId: this.beatmapSetId,
-                noVideo: downloadWithoutVideo ? true : false,
-            });
+            let downloadResult: { result: ArrayBuffer | null } = {
+                result: null,
+            };
 
-            if (!downloadResult) {
-                this.log(
-                    `Failed to download beatmap set ${this.beatmapSetId} from ${client.clientConfig.baseUrl}`,
-                    'error',
-                );
+            if (downloadOsuBeatmap) {
+                downloadResult = await client.downloadOsuBeatmap({
+                    beatmapId: this.beatmapId,
+                });
 
-                return results;
+                if (!downloadResult) {
+                    this.log(
+                        `Failed to download .osu beatmap from ${client.clientConfig.baseUrl}`,
+                        'error',
+                    );
+
+                    return results;
+                }
+            } else {
+                const downloadWithoutVideo =
+                    client.clientConfig.abilities.includes(
+                        ClientAbilities.DownloadBeatmapSetByIdNoVideo,
+                    );
+
+                downloadResult = await client.downloadBeatmapSet({
+                    beatmapSetId: this.beatmapSetId,
+                    noVideo: downloadWithoutVideo ? true : false,
+                });
+
+                if (!downloadResult) {
+                    this.log(
+                        `Failed to download beatmap set ${this.beatmapSetId} from ${client.clientConfig.baseUrl}`,
+                        'error',
+                    );
+
+                    return results;
+                }
             }
 
             const downloadResultSize = downloadResult.result?.byteLength || 0;

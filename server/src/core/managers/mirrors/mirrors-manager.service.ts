@@ -83,7 +83,7 @@ export class MirrorsManagerService {
         );
 
         const [jsonRequests, downloadRequests] = this.splitByCondition(
-            successfulRequests,
+            successfulRequests.filter((r) => r.status !== 404),
             (r) => r.contentType === 'application/json',
         );
 
