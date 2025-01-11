@@ -1,4 +1,4 @@
-import { AxiosResponse } from 'axios';
+import { AxiosError, AxiosResponse } from 'axios';
 import logger from '../../../utils/logger';
 import { BaseApi } from '../api/base-api.abstract';
 import { BaseApiOptions } from '../api/base-api.types';
@@ -129,16 +129,19 @@ export class ApiRateLimiter {
 
     private async checkRateLimit<Q>(
         route: string,
-        response: AxiosResponse<Q, any> | null,
+        response: AxiosResponse<Q, any> | AxiosError<Q, any> | null,
     ) {
         const limit = this.getRateLimit(route);
 
         this.addRequest(limit);
 
-        const headerRemaining =
-            response?.headers[
-                this.config.headers?.remaining ?? 'x-ratelimit-remaining'
-            ] ?? this.getRemainingRequests(limit);
+        const isAxiosError = response instanceof AxiosError;
+
+        const headerRemaining = isAxiosError
+            ? this.getRemainingRequests(limit)
+            : (response?.headers[
+                  this.config.headers?.remaining ?? 'x-ratelimit-remaining'
+              ] ?? this.getRemainingRequests(limit));
 
         let remaining = this.getRemainingRequests(limit);
 
@@ -163,12 +166,28 @@ export class ApiRateLimiter {
             this.log(`Rate limit reached for ${route}`, 'warn');
         }
 
+        if (isAxiosError) {
+            this.log(
+                `Got axios error while making request to ${route}. Setting cooldown of 5 minutes`,
+                'warn',
+            );
+            this.config.onCooldownUntil = Date.now() + 5 * 60 * 1000; // 5 minutes
+        }
+
         if (response?.status === 429) {
             this.log(
                 `Rate limit exceeded for ${route}. Setting cooldown`,
                 'warn',
             );
             this.config.onCooldownUntil = Date.now() + limit.reset * 1000;
+        }
+
+        if (response?.status === 403) {
+            this.log(
+                `Got forbidden status for ${route}. Setting cooldown of 1 hour`,
+                'warn',
+            );
+            this.config.onCooldownUntil = Date.now() + 60 * 60 * 1000; // 1 hour
         }
 
         if (response?.status === 502) {
