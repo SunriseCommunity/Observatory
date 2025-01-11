@@ -9,13 +9,7 @@ import {
 } from '../domains/osu.ppy.sh/bancho-client.types';
 
 export class ConvertService {
-    private mirror:
-        | 'mino'
-        | 'bancho'
-        | 'direct'
-        | 'gatari'
-        | 'nerinyan'
-        | 'okayu';
+    private mirror: 'mino' | 'bancho' | 'direct' | 'gatari' | 'nerinyan';
 
     constructor(mirror: string) {
         switch (mirror) {
@@ -33,9 +27,6 @@ export class ConvertService {
                 break;
             case 'https://api.nerinyan.moe':
                 this.mirror = 'nerinyan';
-                break;
-            case 'https://direct.osuokayu.moe/api/v1':
-                this.mirror = 'okayu';
                 break;
             default:
                 throw new Error('ConvertService: Invalid mirror provided');
