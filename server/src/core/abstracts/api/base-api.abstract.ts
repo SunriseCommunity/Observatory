@@ -167,7 +167,7 @@ export class BaseApi {
             data: isAxiosError ? res : res.data,
         };
 
-        if (res.config.responseType === 'arraybuffer') {
+        if (!isAxiosError && res.config.responseType === 'arraybuffer') {
             data.downloadSpeed = Math.round(
                 (res.data.byteLength || 0) / 1024 / (data.latency / 1000),
             ); // KB/s
