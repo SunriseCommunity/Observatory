@@ -2,6 +2,7 @@ name: observatory
 services:
     observatory:
         image: 'oven/bun:latest'
+        restart: unless-stopped
         working_dir: /usr/src/app
         volumes:
             - .:/usr/src/app
@@ -24,7 +25,7 @@ services:
 
     postgres:
         image: postgres:latest
-        restart: always
+        restart: unless-stopped
         environment:
             POSTGRES_USER: ${POSTGRES_USER}
             POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -38,7 +39,7 @@ services:
 
     grafana:
         image: grafana/grafana
-        restart: always
+        restart: unless-stopped
         ports:
             - '3033:3000'
         environment:
@@ -57,7 +58,7 @@ services:
 
     redis:
         image: redis:latest
-        restart: always
+        restart: unless-stopped
         volumes:
             - redis:/data
         networks:

@@ -2,7 +2,7 @@ name: observatory-dev
 services:
     postgres:
         image: postgres:latest
-        restart: always
+        restart: unless-stopped
         ports:
             - ${POSTGRES_PORT}:5432
         environment:
@@ -14,7 +14,7 @@ services:
 
     grafana:
         image: grafana/grafana
-        restart: always
+        restart: unless-stopped
         ports:
             - '3060:3000'
         environment:
@@ -28,6 +28,7 @@ services:
 
     loki:
         image: grafana/loki:2.7.3
+        restart: unless-stopped
         ports:
             - '3100:3100'
         networks:
@@ -35,7 +36,7 @@ services:
 
     redis:
         image: redis:latest
-        restart: always
+        restart: unless-stopped
         ports:
             - 6379:6379
         volumes:
