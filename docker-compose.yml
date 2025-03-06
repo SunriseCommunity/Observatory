@@ -2,7 +2,7 @@ name: observatory
 services:
     observatory:
         image: 'oven/bun:latest'
-        restart: unless-stopped
+        restart: always
         working_dir: /usr/src/app
         volumes:
             - .:/usr/src/app
@@ -22,11 +22,6 @@ services:
             - grafana
         networks:
             - container_network
-        healthcheck:
-            test: ['CMD', 'curl', '-f', 'http://localhost:${PORT} || exit 1']
-            interval: 10s
-            timeout: 5s
-            retries: 5
 
     postgres:
         image: postgres:latest
