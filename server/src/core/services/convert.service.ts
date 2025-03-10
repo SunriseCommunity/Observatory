@@ -62,6 +62,7 @@ export class ConvertService {
         delete beatmapset.recent_favourites;
         delete beatmapset.discussions;
         delete beatmapset.events;
+        delete beatmapset.related_tags;
 
         return {
             ...beatmapset,
@@ -76,6 +77,7 @@ export class ConvertService {
 
     private convertBanchoBeatmap(beatmap: BanchoBeatmap): Beatmap {
         delete beatmap.beatmapset;
+        delete beatmap.owners;
 
         return {
             ...beatmap,
@@ -85,6 +87,9 @@ export class ConvertService {
     private convertMinoBeatmap(beatmap: MinoBeatmap): Beatmap {
         delete beatmap.set;
         delete beatmap.last_checked;
+        delete beatmap.owners;
+        delete beatmap.current_user_tag_ids;
+        delete beatmap.top_tag_ids;
 
         return {
             ...beatmap,
@@ -97,6 +102,7 @@ export class ConvertService {
         delete beatmapset.last_checked;
         delete beatmapset.has_favourited;
         delete beatmapset.recent_favourites;
+        delete beatmapset.related_tags;
         delete beatmapset.rating;
 
         return {

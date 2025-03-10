@@ -52,6 +52,7 @@ export interface Beatmapset {
     pack_tags?: string[];
     ratings?: number[];
     related_users?: UserCompact[];
+  
     user?: UserCompact;
 }
 
@@ -103,6 +104,11 @@ export interface Beatmap {
     failtimes?: Failtimes;
     /** Integer */
     max_combo?: number;
+
+    /** Not parsed values */
+    owners?: any;
+    current_user_tag_ids?: any;
+    top_tag_ids?: any;
 }
 
 export interface Covers {
