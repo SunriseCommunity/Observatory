@@ -324,8 +324,10 @@ export interface UserCompact {
     guest_beatmapset_count?: number;
     /**
      * Unique identifier for user.
+     *
+     * Note: Id can be null for deleted users on beatmapSets, beatmap id with this example: 6527
      */
-    id: number;
+    id?: number;
     /**
      * Has this account been active in the last x months?
      */
