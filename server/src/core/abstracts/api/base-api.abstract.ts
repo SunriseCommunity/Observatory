@@ -164,6 +164,9 @@ export class BaseApi {
             contentType: isAxiosError
                 ? 'application/json'
                 : res.headers['content-type']?.split(';')[0],
+            contentLength: isAxiosError
+                ? '-1'
+                : (res.headers.getContentLength() ?? '-1'),
             data: isAxiosError ? res : res.data,
         };
 

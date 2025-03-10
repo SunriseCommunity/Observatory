@@ -12,6 +12,7 @@ export type AxiosResponseLog = {
     method: string;
     latency: number;
     contentType: string;
+    contentLength: string;
     downloadSpeed?: number;
     data?: any;
 };
