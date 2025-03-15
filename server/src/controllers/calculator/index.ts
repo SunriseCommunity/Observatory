@@ -2,8 +2,6 @@ import { t } from 'elysia';
 import { App } from '../../app';
 import { BeatmapsManagerPlugin } from '../../plugins/beatmapManager';
 import { CalculatorServicePlugin } from '../../plugins/calculatorService';
-import { ServerResponse } from '../../core/managers/beatmaps/beatmaps-manager.types';
-import { HttpStatusCode } from 'axios';
 import { GameModBitwise } from '../../types/general/gameMod';
 
 export default (app: App) => {
@@ -31,19 +29,21 @@ export default (app: App) => {
                         beatmapBuffer,
                     );
 
-                const beatmapMode = mode
-                    ? CalculatorServiceInstance.TryConvertToGamemode(mode)
-                    : undefined;
+                const beatmapMode =
+                    CalculatorServiceInstance.TryConvertToGamemode(mode) ??
+                    beatmap.mode;
 
                 const results =
                     CalculatorServiceInstance.CalculateBeatmapPerfomance(
                         beatmap,
                         acc,
-                        beatmapMode ?? beatmap.mode,
-                        mods,
+                        beatmapMode,
+                        mods ?? GameModBitwise.NoMod,
                         combo,
                         misses,
                     );
+
+                beatmap.free();
 
                 return results;
             },
@@ -94,15 +94,15 @@ export default (app: App) => {
                         beatmapBuffer,
                     );
 
-                const beatmapMode = mode
-                    ? CalculatorServiceInstance.TryConvertToGamemode(mode)
-                    : undefined;
+                const beatmapMode =
+                    CalculatorServiceInstance.TryConvertToGamemode(mode) ??
+                    beatmap.mode;
 
                 const result =
                     CalculatorServiceInstance.CalculateScorePerfomance(
                         beatmap,
                         acc,
-                        beatmapMode ?? beatmap.mode,
+                        beatmapMode,
                         mods ?? GameModBitwise.NoMod,
                         combo,
                         n300,
@@ -112,6 +112,8 @@ export default (app: App) => {
                         n50,
                         misses,
                     );
+
+                beatmap.free();
 
                 return result;
             },
