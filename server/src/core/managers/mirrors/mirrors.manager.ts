@@ -39,26 +39,37 @@ export class MirrorsManager {
 
         const banchoClient = new BanchoClient();
 
-        this.clients = [
-            {
+        this.clients = [];
+
+        if (!config.MirrorsToIgnore.includes('direct')) {
+            this.clients.push({
                 client: directClient,
                 ...DEFAULT_CLIENT_PROPS,
-            },
-            {
+            });
+        }
+
+        if (!config.MirrorsToIgnore.includes('mino')) {
+            this.clients.push({
                 client: minoClient,
                 ...DEFAULT_CLIENT_PROPS,
-            },
-            {
+            });
+        }
+
+        if (!config.MirrorsToIgnore.includes('gatari')) {
+            this.clients.push({
                 client: gatariClient,
                 ...DEFAULT_CLIENT_PROPS,
-            },
-            {
+            });
+        }
+
+        if (!config.MirrorsToIgnore.includes('nerinyan')) {
+            this.clients.push({
                 client: nerinyanClient,
                 ...DEFAULT_CLIENT_PROPS,
-            },
-        ];
+            });
+        }
 
-        if (config.UseBancho) {
+        if (!config.MirrorsToIgnore.includes('bancho') && config.UseBancho) {
             this.clients.push({
                 client: banchoClient,
                 ...DEFAULT_CLIENT_PROPS,

@@ -21,6 +21,7 @@ const {
     RATELIMIT_CALLS_PER_WINDOW,
     RATELIMIT_TIME_WINDOW,
     OSZ_FILES_LIFE_SPAN,
+    MIRRORS_TO_IGNORE,
 } = process.env;
 
 if (!POSTGRES_USER || !POSTGRES_PASSWORD) {
@@ -48,7 +49,7 @@ const config: {
     REDIS_PORT: number;
     BANCHO_CLIENT_SECRET?: string;
     BANCHO_CLIENT_ID?: string;
-    REDIS_HOST?:string;
+    REDIS_HOST?: string;
     LOKI_HOST: string;
     IGNORE_RATELIMIT_KEY?: string;
     RATELIMIT_CALLS_PER_WINDOW: number;
@@ -57,6 +58,7 @@ const config: {
     IsProduction: boolean;
     IsDebug: boolean;
     UseBancho: boolean;
+    MirrorsToIgnore: string[];
 } = {
     PORT: PORT || '3000',
     POSTGRES_USER: POSTGRES_USER || 'admin',
@@ -76,6 +78,7 @@ const config: {
     IsProduction: Bun.env.NODE_ENV === 'production',
     IsDebug: DEBUG_MODE === 'true',
     UseBancho: BANCHO_CLIENT_SECRET && BANCHO_CLIENT_ID ? true : false,
+    MirrorsToIgnore: MIRRORS_TO_IGNORE?.split(',') ?? [],
 };
 
 export default config;
