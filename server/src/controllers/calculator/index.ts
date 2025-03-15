@@ -36,7 +36,7 @@ export default (app: App) => {
                 const results =
                     CalculatorServiceInstance.CalculateBeatmapPerfomance(
                         beatmap,
-                        acc,
+                        acc ?? [100],
                         beatmapMode,
                         mods ?? GameModBitwise.NoMod,
                         combo,
@@ -52,7 +52,9 @@ export default (app: App) => {
                     id: t.Number(),
                 }),
                 query: t.Object({
-                    acc: t.Array(t.Numeric(), { minItems: 1, maxItems: 5 }),
+                    acc: t.Optional(
+                        t.Array(t.Numeric(), { minItems: 1, maxItems: 5 }),
+                    ),
                     mode: t.Optional(t.Numeric()),
                     mods: t.Optional(t.Numeric()),
                     combo: t.Optional(t.Numeric()),
