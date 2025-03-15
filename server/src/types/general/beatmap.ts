@@ -52,8 +52,11 @@ export interface Beatmapset {
     pack_tags?: string[];
     ratings?: number[];
     related_users?: UserCompact[];
-  
+
     user?: UserCompact;
+
+    /** Not parsed values */
+    related_tags: any;
 }
 
 export interface Beatmap {
