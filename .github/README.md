@@ -13,8 +13,9 @@ Observatory is a powerful "on demand" beatmap manager which uses osu! API and po
 -   [x] **Plug and Use**: Just compile the docker image and run it. No need to worry about dependencies.
 -   [x] **Don't fret about rate limits**: Rate limits are handled by the application, so peppy or beatmap mirror's owners won't get angry at you.
 -   [x] **Fastest wins the race**: The application is designed to prioritize the fastest API's first to provide the best experience.
--   [x] **Long and reliable memory**: The application saves the data in database to avoid unnecessary API calls, also including TTL (time-to-live) for the data to be reliable
--   [x] **Everyone loves caching**: We also have a caching layer between the requests and our database, which allows processing requests _very_ quickly
+-   [x] **Long and reliable memory**: The application saves the data in database to avoid unnecessary API calls, also including TTL (time-to-live) for the data to be reliable.
+-   [x] **Everyone loves caching**: We also have a caching layer between the requests and our database, which allows processing requests _blazingly_ fast.
+-   [x] **Perfomance Points calculation**: If you're frequently calculating pp, you can use the `/calculator` endpoint, which utilizes [rosu-pp-js](https://github.com/MaxOhn/rosu-pp-js) to compute pp, star rating and other related data.
 
 ## Installation 📩
 
