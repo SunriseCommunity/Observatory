@@ -17,6 +17,8 @@ import { Beatmap, Beatmapset } from '../../../types/general/beatmap';
 import { MinoClient } from '../../domains/catboy.best/mino.client';
 import { GatariClient } from '../../domains/gatari.pw/gatari.client';
 import { NerinyanClient } from '../../domains/nerinyan.moe/nerinyan.client';
+import { getRequestsCount } from '../../../database/models/requests';
+import { getUTCDate } from '../../../utils/date';
 
 const DEFAULT_CLIENT_PROPS = {
     weights: {
@@ -172,6 +174,61 @@ export class MirrorsManager {
             criteria,
             'downloadOsuBeatmap',
         );
+    }
+
+    async getMirrorsStatistics() {
+        const applicationStartTime =
+            getUTCDate().getTime() - Bun.nanoseconds() / 1000000;
+
+        const successfulStatusCodes = [200, 404];
+        const failedStatusCodes = [500, 502, 503, 504, 429];
+
+        return {
+            activeMirrors: await Promise.all(
+                this.clients.map(async (c) => {
+                    return {
+                        name: c.client.constructor.name,
+                        url: c.client.clientConfig.baseUrl,
+                        lifetime: {
+                            total: await getRequestsCount(
+                                c.client.clientConfig.baseUrl,
+                            ),
+                            succsssful: await getRequestsCount(
+                                c.client.clientConfig.baseUrl,
+                                undefined,
+                                successfulStatusCodes,
+                            ),
+                            failed: await getRequestsCount(
+                                c.client.clientConfig.baseUrl,
+                                undefined,
+                                failedStatusCodes,
+                            ),
+                        },
+                        session: {
+                            total: await getRequestsCount(
+                                c.client.clientConfig.baseUrl,
+                                applicationStartTime,
+                            ),
+                            succsssful: await getRequestsCount(
+                                c.client.clientConfig.baseUrl,
+                                applicationStartTime,
+                                successfulStatusCodes,
+                            ),
+                            failed: await getRequestsCount(
+                                c.client.clientConfig.baseUrl,
+                                applicationStartTime,
+                                failedStatusCodes,
+                            ),
+                        },
+                    };
+                }),
+            ),
+            activeMethods: this.clients
+                .map((client) => client.client.clientConfig.abilities)
+                .flat()
+                .filter((value, index, self) => self.indexOf(value) === index)
+                .map((a) => ClientAbilities[a]),
+        };
     }
 
     private async useMirror<T>(

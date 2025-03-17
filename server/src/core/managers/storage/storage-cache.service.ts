@@ -173,6 +173,45 @@ export class StorageCacheService {
         return cache ? JSON.parse(cache) : undefined;
     }
 
+    async getRedisStats() {
+        const beatmapsByIdKeys = await this.redis.keys(
+            RedisKeys.BEATMAP_BY_ID + '*',
+        );
+        const beatmapsIdByHashKeys = await this.redis.keys(
+            RedisKeys.BEATMAP_ID_BY_HASH + '*',
+        );
+
+        const beatmapsetsByIdKeys = await this.redis.keys(
+            RedisKeys.BEATMAPSET_BY_ID + '*',
+        );
+
+        const beatmapsetFilesByIdKeys = await this.redis.keys(
+            RedisKeys.BEATMAPSET_FILE_BY_ID + '*',
+        );
+
+        const beatmapOsuFilesByIdKeys = await this.redis.keys(
+            RedisKeys.BEATMAP_OSU_FILE + '*',
+        );
+
+        return {
+            beatmaps: {
+                byId: beatmapsByIdKeys.length,
+                ids: {
+                    byHash: beatmapsIdByHashKeys.length,
+                },
+            },
+            beatmapsets: {
+                byId: beatmapsetsByIdKeys.length,
+            },
+            beatmapsetFiles: {
+                byId: beatmapsetFilesByIdKeys.length,
+            },
+            beatmapOsuFiles: {
+                byId: beatmapOsuFilesByIdKeys.length,
+            },
+        };
+    }
+
     private getRedisTTLBasedOnStatus(status?: RankStatus): number {
         switch (status) {
             case RankStatus.GRAVEYARD:

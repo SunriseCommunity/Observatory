@@ -1,8 +1,26 @@
-import { and, eq, gte, inArray, sql } from 'drizzle-orm';
+import { and, count, eq, gte, inArray, sql } from 'drizzle-orm';
 import { db } from '../client';
 import { BeatmapOsuFile, beatmapOsuFiles, NewBeatmapOsuFile } from '../schema';
 import { getUTCDate } from '../../utils/date';
 import { DownloadOsuBeatmap } from '../../core/abstracts/client/base-client.types';
+
+export async function getBeatmapOsuFileCount() {
+    const entities = await db
+        .select({ count: count() })
+        .from(beatmapOsuFiles)
+        .where(
+            gte(
+                sql`cast(${beatmapOsuFiles.validUntil} as timestamp)`,
+                sql`cast(${getUTCDate()} as timestamp)`,
+            ),
+        );
+
+    if (entities.length <= 0) {
+        return 0;
+    }
+
+    return entities[0].count;
+}
 
 export async function getUnvalidBeatmapOsuFiles(): Promise<BeatmapOsuFile[]> {
     const entities = await db

@@ -9,13 +9,17 @@ import {
     createBeatmap,
     getBeatmapByHash,
     getBeatmapById,
+    getBeatmapCount,
 } from '../../../database/models/beatmap';
 import {
     createBeatmapset,
     getBeatmapSetById,
+    getBeatmapSetCount,
 } from '../../../database/models/beatmapset';
 import { StorageCacheService } from './storage-cache.service';
 import { StorageFilesService } from './storage-files.service';
+import { getBeatmapSetsFilesCount } from '../../../database/models/beatmapsetFile';
+import { getBeatmapOsuFileCount } from '../../../database/models/beatmapOsuFile';
 
 export class StorageManager {
     private readonly cacheService: StorageCacheService;
@@ -43,7 +47,7 @@ export class StorageManager {
 
         if (entity) {
             this.cacheService.insertBeatmap(entity);
-        } 
+        }
 
         return entity ?? undefined;
     }
@@ -63,7 +67,7 @@ export class StorageManager {
 
         if (entity) {
             this.cacheService.insertBeatmapset(entity);
-        } 
+        }
 
         return entity ?? undefined;
     }
@@ -120,5 +124,18 @@ export class StorageManager {
         ctx: DownloadOsuBeatmap,
     ): Promise<void> {
         await this.filesService.insertBeatmapOsuFile(file, ctx);
+    }
+
+    public async getStorageStatistics() {
+        return {
+            database: {
+                beatmaps: await getBeatmapCount(),
+                beatmapSets: await getBeatmapSetCount(),
+                beatmapSetFile: await getBeatmapSetsFilesCount(),
+                beatmapOsuFile: await getBeatmapOsuFileCount(),
+            },
+            files: await this.filesService.getStorageFilesStats(),
+            cache: await this.cacheService.getRedisStats(),
+        };
     }
 }

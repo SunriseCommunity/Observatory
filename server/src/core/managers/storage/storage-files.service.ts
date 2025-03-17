@@ -20,6 +20,10 @@ import {
     getBeatmapOsuFile,
     getUnvalidBeatmapOsuFiles,
 } from '../../../database/models/beatmapOsuFile';
+import {
+    bytesToHumanReadableMegabytes,
+    getDirectoryStats,
+} from '../../../utils/stats';
 
 export class StorageFilesService {
     private readonly dataPath = 'data';
@@ -152,6 +156,15 @@ export class StorageFilesService {
         }
 
         return this.getZippedFile(path, { noVideo: ctx.noVideo || false });
+    }
+
+    public async getStorageFilesStats() {
+        const directoryStats = await getDirectoryStats(this.dataPath);
+
+        return {
+            totalFiles: directoryStats.fileCount,
+            totalBytes: bytesToHumanReadableMegabytes(directoryStats.totalSize),
+        };
     }
 
     private async getZippedFile(path: string, ctx: { noVideo: boolean }) {

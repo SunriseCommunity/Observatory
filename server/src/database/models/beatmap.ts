@@ -1,4 +1,4 @@
-import { and, eq, gte, sql } from 'drizzle-orm';
+import { and, count, eq, gte, sql } from 'drizzle-orm';
 import { db } from '../client';
 import { beatmaps, NewBeatmap } from '../schema';
 import { Beatmap as BeatmapObject } from '../../types/general/beatmap';
@@ -8,6 +8,24 @@ import { getUTCDate } from '../../utils/date';
 import { GameMode } from '../../types/general/gameMode';
 
 const ONE_DAY = 1000 * 60 * 60 * 24;
+
+export async function getBeatmapCount() {
+    const entities = await db
+        .select({ count: count() })
+        .from(beatmaps)
+        .where(
+            gte(
+                sql`cast(${beatmaps.validUntil} as timestamp)`,
+                sql`cast(${getUTCDate()} as timestamp)`,
+            ),
+        );
+
+    if (entities.length <= 0) {
+        return 0;
+    }
+
+    return entities[0].count;
+}
 
 export async function getBeatmapById(
     beatmapId: number,

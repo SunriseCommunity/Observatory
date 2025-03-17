@@ -201,6 +201,13 @@ export class BeatmapsManager {
         return result.result;
     }
 
+    public async getManagerStats() {
+        return {
+            storage: await this.StorageManager.getStorageStatistics(),
+            mirrors: await this.MirrorsManager.getMirrorsStatistics()
+        };
+    }
+
     private formatResultAsServerError<T>(result: ResultWithStatus<T>) {
         var message = INTERNAL_ERROR_RESPONSE;
         message.status = result.status;
