@@ -7,10 +7,13 @@ export default (app: App) => {
         '/:id',
         ({ BeatmapsManagerInstance, params: { id }, query }) =>
             BeatmapsManagerInstance.downloadBeatmapSet({
-                beatmapSetId: Number(id),
+                beatmapSetId: id,
                 noVideo: query.noVideo,
             }),
         {
+            params: t.Object({
+                id: t.Number(),
+            }),
             query: t.Object({
                 noVideo: t.Optional(t.Boolean()),
             }),

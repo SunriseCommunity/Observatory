@@ -12,7 +12,7 @@ export default (app: App) => {
                 query: { full },
             }) => {
                 const beatmap = await BeatmapsManagerInstance.getBeatmap({
-                    beatmapId: Number(id),
+                    beatmapId: id,
                 });
 
                 if (!beatmap.data) return beatmap;
@@ -70,7 +70,7 @@ export default (app: App) => {
             'v2/s/:id',
             async ({ BeatmapsManagerInstance, params: { id } }) => {
                 const data = await BeatmapsManagerInstance.getBeatmapSet({
-                    beatmapSetId: Number(id),
+                    beatmapSetId: id,
                 });
 
                 if (!data.data) return data;
