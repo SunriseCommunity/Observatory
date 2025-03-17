@@ -1,5 +1,6 @@
 import * as rosu from 'rosu-pp-js';
 import { GameModBitwise } from '../../types/general/gameMod';
+import crypto from 'crypto';
 
 export class CalculatorService {
     public CalculateBeatmapPerfomance(
@@ -70,5 +71,11 @@ export class CalculatorService {
         return Object.values(rosu.GameMode).includes(value as rosu.GameMode)
             ? (value as rosu.GameMode)
             : undefined;
+    }
+
+    public GetHashOfOsuFile(arrayBuffer: ArrayBuffer) {
+        const hash = crypto.createHash('md5');
+        hash.update(new Uint8Array(arrayBuffer));
+        return hash.digest('hex');
     }
 }

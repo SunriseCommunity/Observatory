@@ -3,6 +3,7 @@ import { App } from '../../app';
 import { BeatmapsManagerPlugin } from '../../plugins/beatmapManager';
 import { CalculatorServicePlugin } from '../../plugins/calculatorService';
 import { GameModBitwise } from '../../types/general/gameMod';
+import { HttpStatusCode } from 'axios';
 
 export default (app: App) => {
     app.use(BeatmapsManagerPlugin)
@@ -70,6 +71,7 @@ export default (app: App) => {
                 CalculatorServiceInstance,
                 body: {
                     beatmapId,
+                    beatmapHash,
                     mode,
                     acc,
                     mods,
@@ -89,6 +91,22 @@ export default (app: App) => {
 
                 if ('data' in beatmapBuffer) {
                     return beatmapBuffer;
+                }
+
+                if (beatmapHash) {
+                    const fileHash =
+                        CalculatorServiceInstance.GetHashOfOsuFile(
+                            beatmapBuffer,
+                        );
+
+                    if (fileHash != beatmapHash) {
+                        return {
+                            data: null,
+                            status: HttpStatusCode.NotFound,
+                            message:
+                                'Osu file with provided beatmap hash not found',
+                        };
+                    }
                 }
 
                 const beatmap =
@@ -122,6 +140,7 @@ export default (app: App) => {
             {
                 body: t.Object({
                     beatmapId: t.Numeric(),
+                    beatmapHash: t.Optional(t.String()),
                     acc: t.Numeric(),
                     combo: t.Numeric(),
                     n300: t.Numeric(),
