@@ -43,9 +43,7 @@ export class StorageManager {
 
         if (entity) {
             this.cacheService.insertBeatmap(entity);
-        } else {
-            this.cacheService.insertEmptyBeatmap(ctx);
-        }
+        } 
 
         return entity ?? undefined;
     }
@@ -65,9 +63,7 @@ export class StorageManager {
 
         if (entity) {
             this.cacheService.insertBeatmapset(entity);
-        } else {
-            this.cacheService.insertEmptyBeatmapset(ctx);
-        }
+        } 
 
         return entity ?? undefined;
     }
