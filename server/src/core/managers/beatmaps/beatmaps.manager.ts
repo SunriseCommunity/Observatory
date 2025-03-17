@@ -7,16 +7,18 @@ import {
     SearchBeatmapsets,
     GetBeatmapsOptions,
     DownloadOsuBeatmap,
+    ResultWithStatus,
 } from '../../abstracts/client/base-client.types';
 import { MirrorsManager } from '../mirrors/mirrors.manager';
 import { ServerResponse } from './beatmaps-manager.types';
 import { Beatmap, Beatmapset } from '../../../types/general/beatmap';
 import { StorageManager } from '../storage/storage.manager';
 
-const SERVICE_UNAVAILABLE_RESPONSE = {
+const INTERNAL_ERROR_RESPONSE = {
     data: null,
-    status: HttpStatusCode.ServiceUnavailable,
-    message: 'Server is currently at its limit. Please try again later. >.<',
+    status: HttpStatusCode.InternalServerError,
+    message:
+        'An unexpected error occurred. Please check the status code for more details and try again later. >.<',
 };
 
 export class BeatmapsManager {
@@ -41,7 +43,7 @@ export class BeatmapsManager {
         const result = await this.MirrorsManager.getBeatmap(ctx);
 
         if (result.status >= 500) {
-            return SERVICE_UNAVAILABLE_RESPONSE;
+            return this.formatResultAsServerError(result);
         }
 
         this.StorageManager.insertBeatmap(result.result, ctx);
@@ -70,7 +72,7 @@ export class BeatmapsManager {
         const result = await this.MirrorsManager.getBeatmapSet(ctx);
 
         if (result.status >= 500) {
-            return SERVICE_UNAVAILABLE_RESPONSE;
+            return this.formatResultAsServerError(result);
         }
 
         this.StorageManager.insertBeatmapset(result.result, ctx);
@@ -88,7 +90,7 @@ export class BeatmapsManager {
         const result = await this.MirrorsManager.searchBeatmapsets(ctx);
 
         if (result.status >= 500) {
-            return SERVICE_UNAVAILABLE_RESPONSE;
+            return this.formatResultAsServerError(result);
         }
 
         if (result.result && result.result.length > 0) {
@@ -113,7 +115,7 @@ export class BeatmapsManager {
         const result = await this.MirrorsManager.getBeatmaps(ctx);
 
         if (result.status >= 500) {
-            return SERVICE_UNAVAILABLE_RESPONSE;
+            return this.formatResultAsServerError(result);
         }
 
         if (result.result && result.result.length > 0) {
@@ -149,7 +151,7 @@ export class BeatmapsManager {
         const result = await this.MirrorsManager.downloadBeatmapSet(ctx);
 
         if (result.status >= 500) {
-            return SERVICE_UNAVAILABLE_RESPONSE;
+            return this.formatResultAsServerError(result);
         }
 
         this.StorageManager.insertBeatmapsetFile(result.result, ctx);
@@ -183,7 +185,7 @@ export class BeatmapsManager {
         const result = await this.MirrorsManager.downloadOsuBeatmap(ctx);
 
         if (result.status >= 500) {
-            return SERVICE_UNAVAILABLE_RESPONSE;
+            return this.formatResultAsServerError(result);
         }
 
         this.StorageManager.insertBeatmapOsuFile(result.result, ctx);
@@ -197,5 +199,12 @@ export class BeatmapsManager {
         }
 
         return result.result;
+    }
+
+    private formatResultAsServerError<T>(result: ResultWithStatus<T>) {
+        var message = INTERNAL_ERROR_RESPONSE;
+        message.status = result.status;
+
+        return message;
     }
 }
