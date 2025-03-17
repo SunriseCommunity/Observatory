@@ -5,21 +5,9 @@ import { Axios, AxiosError, AxiosRequestConfig } from 'axios';
 
 export class BaseApi {
     constructor(
-        private axios: Axios,
-        private config: AxiosRequestConfig,
-    ) {
-        axios.interceptors.request.use((config) => {
-            config.headers['request-startTime'] = new Date().getTime();
-            return config;
-        });
-
-        axios.interceptors.response.use((response) => {
-            const currentTime = new Date().getTime();
-            const startTime = response.config.headers['request-startTime'];
-            response.headers['request-duration'] = currentTime - startTime;
-            return response;
-        });
-    }
+        private readonly axios: Axios,
+        private readonly config: AxiosRequestConfig,
+    ) {}
 
     public async get<
         Q,
@@ -32,21 +20,18 @@ export class BaseApi {
         );
         const formedConfig = this.formConfig(options?.config);
 
-        return await this.axios
-            .get<Q>(formedUrlWithAttachedParams, formedConfig)
-            .then((res) => {
-                this.handleResponse(res);
-                return res;
-            })
-            .catch((e) => {
-                if (e.response) {
-                    this.handleResponse(e.response);
-                } else {
-                    this.handleResponse(e);
-                }
+        try {
+            const res = await this.axios.get<Q>(
+                formedUrlWithAttachedParams,
+                formedConfig,
+            );
 
-                return e.response || e;
-            });
+            this.handleResponse(res);
+            return res;
+        } catch (e: any) {
+            this.handleResponse(e.response || e);
+            return e.response || e;
+        }
     }
 
     public async post<Q, B extends Record<string, any>>(
@@ -56,21 +41,19 @@ export class BaseApi {
         const formedUrl = this.createUrl(endpoint);
         const formedConfig = this.formConfig(options?.config);
 
-        return await this.axios
-            .post<Q>(formedUrl, options?.body, formedConfig)
-            .then((res) => {
-                this.handleResponse(res);
-                return res;
-            })
-            .catch((e) => {
-                if (e.response) {
-                    this.handleResponse(e.response);
-                } else {
-                    this.handleResponse(e);
-                }
+        try {
+            const res = await this.axios.post<Q>(
+                formedUrl,
+                options?.body,
+                formedConfig,
+            );
 
-                return e.response || e;
-            });
+            this.handleResponse(res);
+            return res;
+        } catch (e: any) {
+            this.handleResponse(e.response || e);
+            return e.response || e;
+        }
     }
 
     public async put<Q, B extends Record<string, any>>(
@@ -80,21 +63,19 @@ export class BaseApi {
         const formedUrl = this.createUrl(endpoint);
         const formedConfig = this.formConfig(options?.config);
 
-        return await this.axios
-            .put<Q>(formedUrl, options?.body, formedConfig)
-            .then((res) => {
-                this.handleResponse(res);
-                return res;
-            })
-            .catch((e) => {
-                if (e.response) {
-                    this.handleResponse(e.response);
-                } else {
-                    this.handleResponse(e);
-                }
+        try {
+            const res = await this.axios.put<Q>(
+                formedUrl,
+                options?.body,
+                formedConfig,
+            );
 
-                return e.response || e;
-            });
+            this.handleResponse(res);
+            return res;
+        } catch (e: any) {
+            this.handleResponse(e.response || e);
+            return e.response || e;
+        }
     }
 
     public async patch<Q, B extends Record<string, any>>(
@@ -104,21 +85,19 @@ export class BaseApi {
         const formedUrl = this.createUrl(endpoint);
         const formedConfig = this.formConfig(options?.config);
 
-        return await this.axios
-            .patch<Q>(formedUrl, options?.body, formedConfig)
-            .then((res) => {
-                this.handleResponse(res);
-                return res;
-            })
-            .catch((e) => {
-                if (e.response) {
-                    this.handleResponse(e.response);
-                } else {
-                    this.handleResponse(e);
-                }
+        try {
+            const res = await this.axios.patch<Q>(
+                formedUrl,
+                options?.body,
+                formedConfig,
+            );
 
-                return e.response || e;
-            });
+            this.handleResponse(res);
+            return res;
+        } catch (e: any) {
+            this.handleResponse(e.response || e);
+            return e.response || e;
+        }
     }
 
     public async delete<Q, B extends Record<string, any>>(
@@ -128,21 +107,15 @@ export class BaseApi {
         const formedUrl = this.createUrl(endpoint);
         const formedConfig = this.formConfig(options?.config);
 
-        return await this.axios
-            .delete<Q>(formedUrl, formedConfig)
-            .then((res) => {
-                this.handleResponse(res);
-                return res;
-            })
-            .catch((e) => {
-                if (e.response) {
-                    this.handleResponse(e.response);
-                } else {
-                    this.handleResponse(e);
-                }
+        try {
+            const res = await this.axios.delete<Q>(formedUrl, formedConfig);
 
-                return e.response || e;
-            });
+            this.handleResponse(res);
+            return res;
+        } catch (e: any) {
+            this.handleResponse(e.response || e);
+            return e.response || e;
+        }
     }
 
     public get axiosConfig() {
