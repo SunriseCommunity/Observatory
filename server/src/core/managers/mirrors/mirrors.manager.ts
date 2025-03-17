@@ -32,16 +32,11 @@ export class MirrorsManager {
     private readonly clients: MirrorClient[] = [];
 
     constructor() {
-        const directClient = new DirectClient();
-        const gatariClient = new GatariClient();
-        const minoClient = new MinoClient();
-        const nerinyanClient = new NerinyanClient();
-
-        const banchoClient = new BanchoClient();
-
         this.clients = [];
 
         if (!config.MirrorsToIgnore.includes('direct')) {
+            const directClient = new DirectClient();
+
             this.clients.push({
                 client: directClient,
                 ...DEFAULT_CLIENT_PROPS,
@@ -49,6 +44,8 @@ export class MirrorsManager {
         }
 
         if (!config.MirrorsToIgnore.includes('mino')) {
+            const minoClient = new MinoClient();
+
             this.clients.push({
                 client: minoClient,
                 ...DEFAULT_CLIENT_PROPS,
@@ -56,6 +53,8 @@ export class MirrorsManager {
         }
 
         if (!config.MirrorsToIgnore.includes('gatari')) {
+            const gatariClient = new GatariClient();
+
             this.clients.push({
                 client: gatariClient,
                 ...DEFAULT_CLIENT_PROPS,
@@ -63,6 +62,8 @@ export class MirrorsManager {
         }
 
         if (!config.MirrorsToIgnore.includes('nerinyan')) {
+            const nerinyanClient = new NerinyanClient();
+
             this.clients.push({
                 client: nerinyanClient,
                 ...DEFAULT_CLIENT_PROPS,
@@ -70,6 +71,8 @@ export class MirrorsManager {
         }
 
         if (!config.MirrorsToIgnore.includes('bancho') && config.UseBancho) {
+            const banchoClient = new BanchoClient();
+
             this.clients.push({
                 client: banchoClient,
                 ...DEFAULT_CLIENT_PROPS,
@@ -185,7 +188,7 @@ export class MirrorsManager {
         const usedClients: MirrorClient[] = [];
         for (const _ of this.clients) {
             const client = this.getClient(criteria, usedClients);
-            if (!client) return { result: null, status: 500 };
+            if (!client) return { result: null, status: 501 };
 
             const result = await (client.client[action] as Function)(ctx);
             if (result.result || result.status === 404) return result;
@@ -215,7 +218,7 @@ export class MirrorsManager {
         clients: MirrorClient[],
     ): MirrorClient | null {
         let bestClient: MirrorClient | null = null;
-        let bestWeight = 0;
+        let bestWeight = -1;
 
         for (const client of clients) {
             const weight = this.getClientWeight(client, criteria);
@@ -226,7 +229,7 @@ export class MirrorsManager {
             }
         }
 
-        if (bestWeight === 0 || !bestClient) {
+        if (bestWeight === -1 || !bestClient) {
             return null;
         }
 
