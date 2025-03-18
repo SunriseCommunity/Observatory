@@ -43,6 +43,7 @@ export class CalculatorService {
         nKatu: number,
         n50: number,
         misses: number,
+        isScoreFailed: boolean = true,
     ) {
         if (beatmap.mode != mode) {
             beatmap.convert(mode);
@@ -58,6 +59,9 @@ export class CalculatorService {
             nKatu,
             n50,
             misses,
+            hitresultPriority: isScoreFailed
+                ? rosu.HitResultPriority.WorstCase
+                : rosu.HitResultPriority.BestCase,
         }).calculate(beatmap);
 
         return performance;

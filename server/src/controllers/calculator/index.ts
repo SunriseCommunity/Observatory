@@ -82,6 +82,7 @@ export default (app: App) => {
                     nKatu,
                     n50,
                     misses,
+                    isScoreFailed,
                 },
             }) => {
                 const beatmapBuffer =
@@ -131,6 +132,7 @@ export default (app: App) => {
                         nKatu,
                         n50,
                         misses,
+                        isScoreFailed,
                     );
 
                 beatmap.free();
@@ -151,6 +153,7 @@ export default (app: App) => {
                     misses: t.Numeric(),
                     mode: t.Optional(t.Numeric()),
                     mods: t.Optional(t.Numeric()),
+                    isScoreFailed: t.Optional(t.Boolean()),
                 }),
                 tags: ['Calculators'],
             },
