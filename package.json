@@ -34,7 +34,7 @@
         "pino-loki": "^2.3.1",
         "pino-pretty": "^11.3.0",
         "postgres": "^3.4.5",
-        "rosu-pp-js": "1.1.1"
+        "rosu-pp-js": "1.1.0"
     },
     "devDependencies": {
         "@types/pg": "^8.11.10",
