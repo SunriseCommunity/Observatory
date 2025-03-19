@@ -10,13 +10,13 @@ import {
 } from '../../abstracts/client/base-client.types';
 import logger from '../../../utils/logger';
 import { Beatmap, Beatmapset } from '../../../types/general/beatmap';
-import { MinoBeatmapset } from './mino-client.types';
+import { OsulabsBeatmapset } from './osulabs-client.types';
 
-export class MinoClient extends BaseClient {
+export class OsulabsClient extends BaseClient {
     constructor() {
         super(
             {
-                baseUrl: 'https://catboy.best',
+                baseUrl: 'https://beatmaps.download',
                 abilities: [
                     ClientAbilities.GetBeatmapById,
                     ClientAbilities.GetBeatmapSetById,
@@ -28,9 +28,6 @@ export class MinoClient extends BaseClient {
                 ],
             },
             {
-                headers: {
-                    remaining: 'x-ratelimit-remaining',
-                },
                 rateLimits: [
                     {
                         routes: ['d/'],
@@ -62,7 +59,7 @@ export class MinoClient extends BaseClient {
             },
         );
 
-        logger.info('MinoClient initialized');
+        logger.info('OsulabsClient initialized');
     }
 
     async downloadBeatmapSet(
@@ -130,7 +127,7 @@ export class MinoClient extends BaseClient {
         }
 
         return {
-            result: result.data.map((b: MinoBeatmapset) =>
+            result: result.data.map((b: OsulabsBeatmapset) =>
                 this.convertService.convertBeatmapset(b),
             ),
             status: result.status,

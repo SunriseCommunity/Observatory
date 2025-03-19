@@ -1,5 +1,9 @@
 import { Beatmap, Beatmapset } from '../../types/general/beatmap';
 import {
+    OsulabsBeatmap,
+    OsulabsBeatmapset,
+} from '../domains/beatmaps.download/osulabs-client.types';
+import {
     MinoBeatmap,
     MinoBeatmapset,
 } from '../domains/catboy.best/mino-client.types';
@@ -9,7 +13,13 @@ import {
 } from '../domains/osu.ppy.sh/bancho-client.types';
 
 export class ConvertService {
-    private mirror: 'mino' | 'bancho' | 'direct' | 'gatari' | 'nerinyan';
+    private mirror:
+        | 'mino'
+        | 'bancho'
+        | 'direct'
+        | 'gatari'
+        | 'nerinyan'
+        | 'osulabs';
 
     constructor(mirror: string) {
         switch (mirror) {
@@ -28,6 +38,9 @@ export class ConvertService {
             case 'https://api.nerinyan.moe':
                 this.mirror = 'nerinyan';
                 break;
+            case 'https://beatmaps.download':
+                this.mirror = 'osulabs';
+                break;
             default:
                 throw new Error('ConvertService: Invalid mirror provided');
         }
@@ -41,6 +54,10 @@ export class ConvertService {
                 );
             case 'mino':
                 return this.convertMinoBeatmapset(beatmapset as MinoBeatmapset);
+            case 'osulabs':
+                return this.convertOsulabsBeatmapset(
+                    beatmapset as OsulabsBeatmapset,
+                );
             default:
                 throw new Error('ConvertService: Cannot convert beatmapset');
         }
@@ -52,6 +69,8 @@ export class ConvertService {
                 return this.convertBanchoBeatmap(beatmap as BanchoBeatmap);
             case 'mino':
                 return this.convertMinoBeatmap(beatmap as MinoBeatmap);
+            case 'osulabs':
+                return this.convertOsulabsBeatmap(beatmap as OsulabsBeatmap);
             default:
                 throw new Error('ConvertService: Cannot convert beatmap');
         }
@@ -97,6 +116,19 @@ export class ConvertService {
         } as Beatmap;
     }
 
+    private convertOsulabsBeatmap(beatmap: OsulabsBeatmap): Beatmap {
+        delete beatmap.set;
+        delete beatmap.last_checked;
+        delete beatmap.owners;
+        delete beatmap.current_user_tag_ids;
+        delete beatmap.top_tag_ids;
+
+        return {
+            ...beatmap,
+            last_updated: new Date(beatmap.last_updated).toISOString(),
+        } as Beatmap;
+    }
+
     private convertMinoBeatmapset(beatmapset: MinoBeatmapset): Beatmapset {
         delete beatmapset.next_update;
         delete beatmapset.last_checked;
@@ -113,6 +145,28 @@ export class ConvertService {
             ),
             converts: beatmapset.converts?.map((beatmap) =>
                 this.convertMinoBeatmap(beatmap),
+            ),
+        } as Beatmapset;
+    }
+
+    private convertOsulabsBeatmapset(
+        beatmapset: OsulabsBeatmapset,
+    ): Beatmapset {
+        delete beatmapset.next_update;
+        delete beatmapset.last_checked;
+        delete beatmapset.has_favourited;
+        delete beatmapset.recent_favourites;
+        delete beatmapset.related_tags;
+        delete beatmapset.rating;
+
+        return {
+            ...beatmapset,
+            last_updated: new Date(beatmapset.last_updated).toISOString(),
+            beatmaps: beatmapset.beatmaps?.map((beatmap) =>
+                this.convertOsulabsBeatmap(beatmap),
+            ),
+            converts: beatmapset.converts?.map((beatmap) =>
+                this.convertOsulabsBeatmap(beatmap),
             ),
         } as Beatmapset;
     }

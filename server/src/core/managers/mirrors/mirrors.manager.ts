@@ -19,6 +19,7 @@ import { GatariClient } from '../../domains/gatari.pw/gatari.client';
 import { NerinyanClient } from '../../domains/nerinyan.moe/nerinyan.client';
 import { getRequestsCount } from '../../../database/models/requests';
 import { getUTCDate } from '../../../utils/date';
+import { OsulabsClient } from '../../domains/beatmaps.download/osulabs.client';
 
 const DEFAULT_CLIENT_PROPS = {
     weights: {
@@ -50,6 +51,15 @@ export class MirrorsManager {
 
             this.clients.push({
                 client: minoClient,
+                ...DEFAULT_CLIENT_PROPS,
+            });
+        }
+
+        if (!config.MirrorsToIgnore.includes('osulabs')) {
+            const osulabsClient = new OsulabsClient();
+
+            this.clients.push({
+                client: osulabsClient,
                 ...DEFAULT_CLIENT_PROPS,
             });
         }

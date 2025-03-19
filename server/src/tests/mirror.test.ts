@@ -7,10 +7,12 @@ import { MinoClient } from '../core/domains/catboy.best/mino.client';
 import config from '../config';
 import { NerinyanClient } from '../core/domains/nerinyan.moe/nerinyan.client';
 import { GatariClient } from '../core/domains/gatari.pw/gatari.client';
+import { OsulabsClient } from '../core/domains/beatmaps.download/osulabs.client';
 
 describe('Mirror tests', () => {
     const banchoClient = new BanchoClient();
     const minoClient = new MinoClient();
+    const osulabsClient = new OsulabsClient();
     const directClient = new DirectClient();
     const nerinyanClient = new NerinyanClient();
     const gatariClient = new GatariClient();
@@ -113,6 +115,72 @@ describe('Mirror tests', () => {
             const { beatmapSetId } = randomTest;
 
             const beatmap = await minoClient.downloadBeatmapSet({
+                beatmapSetId,
+                noVideo: false,
+            });
+
+            const expected = await Bun.file(
+                `${import.meta.dir}/data/${beatmapSetId}.osz`,
+            ).arrayBuffer();
+
+            expect(beatmap.result?.byteLength).toBeWithin(
+                expected.byteLength - 1000,
+                expected.byteLength + 1000,
+            );
+        }, 30000);
+    });
+
+    describe('Osulabs tests', () => {
+        it('Osulabs: should return converted beatmap', async () => {
+            const randomTest = getRandomTest('getBeatmapById');
+            const { beatmapId } = randomTest;
+
+            const beatmap = await osulabsClient.getBeatmap({
+                beatmapId,
+            });
+
+            expect(beatmap.result).toContainAllKeys(
+                Object.keys(randomTest.data),
+            );
+        });
+
+        it('Osulabs: should return converted beatmapset', async () => {
+            const randomTest = getRandomTest('getBeatmapsetById');
+            const { beatmapSetId } = randomTest;
+
+            const beatmap = await osulabsClient.getBeatmapSet({
+                beatmapSetId,
+            });
+
+            expect(beatmap.result).toContainAllKeys(
+                Object.keys(randomTest.data),
+            );
+        });
+
+        it('Osulabs: should download beatmap set without video', async () => {
+            const randomTest = getRandomTest('downloadBeatmapSet');
+            const { beatmapSetId } = randomTest;
+
+            const beatmap = await osulabsClient.downloadBeatmapSet({
+                beatmapSetId,
+                noVideo: true,
+            });
+
+            const expected = await Bun.file(
+                `${import.meta.dir}/data/${beatmapSetId}n.osz`,
+            ).arrayBuffer();
+
+            expect(beatmap.result?.byteLength).toBeWithin(
+                expected.byteLength - 1000,
+                expected.byteLength + 1000,
+            );
+        }, 30000);
+
+        it('Osulabs: should download beatmap set with video', async () => {
+            const randomTest = getRandomTest('downloadBeatmapSet');
+            const { beatmapSetId } = randomTest;
+
+            const beatmap = await osulabsClient.downloadBeatmapSet({
                 beatmapSetId,
                 noVideo: false,
             });
