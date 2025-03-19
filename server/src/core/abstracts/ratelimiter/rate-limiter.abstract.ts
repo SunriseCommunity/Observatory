@@ -35,60 +35,75 @@ export class ApiRateLimiter {
         Q,
         B extends Record<string, never> = Record<string, never>,
     >(endpoint: string, options?: BaseApiOptions<B>) {
-        return this.isOnCooldown(endpoint)
-            ? null
-            : await this.api.get<Q, B>(endpoint, options).then((res) => {
-                  this.checkRateLimit(endpoint, res);
-                  return res;
-              });
+        const isOnCooldown = this.isOnCooldown(endpoint);
+        if (isOnCooldown) return null;
+
+        this.addNewRequest(endpoint);
+
+        return await this.api.get<Q, B>(endpoint, options).then((res) => {
+            this.checkRateLimit(endpoint, res);
+            return res;
+        });
     }
 
     public async post<Q, B extends Record<string, any>>(
         endpoint: string,
         options?: BaseApiOptions<B>,
     ) {
-        return this.isOnCooldown(endpoint)
-            ? null
-            : await this.api.post<Q, B>(endpoint, options).then((res) => {
-                  this.checkRateLimit(endpoint, res);
-                  return res;
-              });
+        const isOnCooldown = this.isOnCooldown(endpoint);
+        if (isOnCooldown) return null;
+
+        this.addNewRequest(endpoint);
+
+        return await this.api.post<Q, B>(endpoint, options).then((res) => {
+            this.checkRateLimit(endpoint, res);
+            return res;
+        });
     }
 
     public async put<Q, B extends Record<string, any>>(
         endpoint: string,
         options?: BaseApiOptions<B>,
     ) {
-        return this.isOnCooldown(endpoint)
-            ? null
-            : await this.api.put<Q, B>(endpoint, options).then((res) => {
-                  this.checkRateLimit(endpoint, res);
-                  return res;
-              });
+        const isOnCooldown = this.isOnCooldown(endpoint);
+        if (isOnCooldown) return null;
+
+        this.addNewRequest(endpoint);
+
+        return await this.api.put<Q, B>(endpoint, options).then((res) => {
+            this.checkRateLimit(endpoint, res);
+            return res;
+        });
     }
 
     public async patch<Q, B extends Record<string, any>>(
         endpoint: string,
         options?: BaseApiOptions<B>,
     ) {
-        return this.isOnCooldown(endpoint)
-            ? null
-            : await this.api.patch<Q, B>(endpoint, options).then((res) => {
-                  this.checkRateLimit(endpoint, res);
-                  return res;
-              });
+        const isOnCooldown = this.isOnCooldown(endpoint);
+        if (isOnCooldown) return null;
+
+        this.addNewRequest(endpoint);
+
+        return await this.api.patch<Q, B>(endpoint, options).then((res) => {
+            this.checkRateLimit(endpoint, res);
+            return res;
+        });
     }
 
     public async delete<Q, B extends Record<string, any>>(
         endpoint: string,
         options?: BaseApiOptions<B>,
     ) {
-        return this.isOnCooldown(endpoint)
-            ? null
-            : await this.api.delete<Q, B>(endpoint, options).then((res) => {
-                  this.checkRateLimit(endpoint, res);
-                  return res;
-              });
+        const isOnCooldown = this.isOnCooldown(endpoint);
+        if (isOnCooldown) return null;
+
+        this.addNewRequest(endpoint);
+
+        return await this.api.delete<Q, B>(endpoint, options).then((res) => {
+            this.checkRateLimit(endpoint, res);
+            return res;
+        });
     }
 
     public getCapacity(limit: RateLimit) {
@@ -132,8 +147,6 @@ export class ApiRateLimiter {
         response: AxiosResponse<Q, any> | AxiosError<Q, any> | null,
     ) {
         const limit = this.getRateLimit(route);
-
-        this.addRequest(limit);
 
         const isAxiosError = response instanceof AxiosError;
 
@@ -224,6 +237,12 @@ export class ApiRateLimiter {
         );
 
         return limit.limit - filteredRequests.length;
+    }
+
+    private addNewRequest(route: string) {
+        const limit = this.getRateLimit(route);
+
+        this.addRequest(limit);
     }
 
     private addRequest(limit: RateLimit) {
