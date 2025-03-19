@@ -16,20 +16,6 @@ import { ApiRateLimiter } from '../ratelimiter/rate-limiter.abstract';
 import { Beatmap, Beatmapset } from '../../../types/general/beatmap';
 import { ConvertService } from '../../services/convert.service';
 
-export const AxiosInstance = axios.create();
-
-AxiosInstance.interceptors.request.use((config) => {
-    config.headers['request-startTime'] = new Date().getTime();
-    return config;
-});
-
-AxiosInstance.interceptors.response.use((response) => {
-    const currentTime = new Date().getTime();
-    const startTime = response.config.headers['request-startTime'];
-    response.headers['request-duration'] = currentTime - startTime;
-    return response;
-});
-
 export class BaseClient {
     protected config: ClientOptions;
     protected api: ApiRateLimiter;
@@ -40,7 +26,7 @@ export class BaseClient {
     constructor(config: ClientOptions, rateLimitConfig: RateLimitOptions) {
         this.config = config;
 
-        this.baseApi = new BaseApi(AxiosInstance, {
+        this.baseApi = new BaseApi(axios.create(), {
             baseURL: this.config.baseUrl,
             headers: {
                 Accept: 'application/json',

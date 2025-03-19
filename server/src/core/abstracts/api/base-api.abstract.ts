@@ -7,7 +7,19 @@ export class BaseApi {
     constructor(
         private readonly axios: Axios,
         private readonly config: AxiosRequestConfig,
-    ) {}
+    ) {
+        axios.interceptors.request.use((config) => {
+            config.headers['request-startTime'] = new Date().getTime();
+            return config;
+        });
+
+        axios.interceptors.response.use((response) => {
+            const currentTime = new Date().getTime();
+            const startTime = response.config.headers['request-startTime'];
+            response.headers['request-duration'] = currentTime - startTime;
+            return response;
+        });
+    }
 
     public async get<
         Q,
