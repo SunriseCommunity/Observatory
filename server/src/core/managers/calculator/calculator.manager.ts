@@ -3,7 +3,7 @@ import { BeatmapsManagerInstance } from '../../../plugins/beatmapManager';
 import { BeatmapsManager } from '../beatmaps/beatmaps.manager';
 import { CalculatorService } from './calculator.service';
 import { Score, ScoreShort } from './calculator.types';
-import { Beatmap } from 'osu-pp-js';
+import { Beatmap } from '@richardscull/rosu-pp-js';
 
 export class CalculatorManager {
     private readonly calculatorService: CalculatorService;
