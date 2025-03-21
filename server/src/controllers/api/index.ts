@@ -61,7 +61,7 @@ export default (app: App) => {
                     hash: t.String(),
                 }),
                 query: t.Object({
-                    full: t.Optional(t.Boolean()),
+                    full: t.Optional(t.BooleanString()),
                 }),
                 tags: ['v2'],
             },
