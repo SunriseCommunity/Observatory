@@ -14,7 +14,7 @@ export class ApiRateLimiter {
     protected api: BaseApi;
     protected config: RateLimitOptions;
 
-    private readonly requests = new Map<string[], Date[]>();
+    private readonly requests = new Map<string[], Map<string, Date>>();
 
     constructor(api: BaseApi, config: RateLimitOptions) {
         this.api = api;
@@ -27,7 +27,7 @@ export class ApiRateLimiter {
         }
 
         this.config.rateLimits.forEach((limit) => {
-            this.requests.set(limit.routes, []);
+            this.requests.set(limit.routes, new Map());
         });
     }
 
@@ -38,10 +38,12 @@ export class ApiRateLimiter {
         const isOnCooldown = this.isOnCooldown(endpoint);
         if (isOnCooldown) return null;
 
-        this.addNewRequest(endpoint);
+        const requestUid = this.addNewRequest(endpoint);
 
         return await this.api.get<Q, B>(endpoint, options).then((res) => {
             this.checkRateLimit(endpoint, res);
+            this.addNewRequest(endpoint, requestUid);
+
             return res;
         });
     }
@@ -53,10 +55,12 @@ export class ApiRateLimiter {
         const isOnCooldown = this.isOnCooldown(endpoint);
         if (isOnCooldown) return null;
 
-        this.addNewRequest(endpoint);
+        const requestUid = this.addNewRequest(endpoint);
 
         return await this.api.post<Q, B>(endpoint, options).then((res) => {
             this.checkRateLimit(endpoint, res);
+            this.addNewRequest(endpoint, requestUid);
+
             return res;
         });
     }
@@ -68,10 +72,12 @@ export class ApiRateLimiter {
         const isOnCooldown = this.isOnCooldown(endpoint);
         if (isOnCooldown) return null;
 
-        this.addNewRequest(endpoint);
+        const requestUid = this.addNewRequest(endpoint);
 
         return await this.api.put<Q, B>(endpoint, options).then((res) => {
             this.checkRateLimit(endpoint, res);
+            this.addNewRequest(endpoint, requestUid);
+
             return res;
         });
     }
@@ -83,10 +89,12 @@ export class ApiRateLimiter {
         const isOnCooldown = this.isOnCooldown(endpoint);
         if (isOnCooldown) return null;
 
-        this.addNewRequest(endpoint);
+        const requestUid = this.addNewRequest(endpoint);
 
         return await this.api.patch<Q, B>(endpoint, options).then((res) => {
             this.checkRateLimit(endpoint, res);
+            this.addNewRequest(endpoint, requestUid);
+
             return res;
         });
     }
@@ -98,10 +106,12 @@ export class ApiRateLimiter {
         const isOnCooldown = this.isOnCooldown(endpoint);
         if (isOnCooldown) return null;
 
-        this.addNewRequest(endpoint);
+        const requestUid = this.addNewRequest(endpoint);
 
         return await this.api.delete<Q, B>(endpoint, options).then((res) => {
             this.checkRateLimit(endpoint, res);
+            this.addNewRequest(endpoint, requestUid);
+
             return res;
         });
     }
@@ -231,31 +241,39 @@ export class ApiRateLimiter {
     private getRemainingRequests(limit: RateLimit) {
         const requests = this.getRequestsArray(limit.routes);
 
-        const filteredRequests = requests.filter(
-            (date) =>
+        const filteredRequests = Array.from(requests).flatMap(
+            ([_, date]) =>
                 new Date().getTime() - date.getTime() < limit.reset * 1000,
         );
 
         return limit.limit - filteredRequests.length;
     }
 
-    private addNewRequest(route: string) {
+    private addNewRequest(route: string, replaceUid?: string) {
         const limit = this.getRateLimit(route);
 
-        this.addRequest(limit);
+        return this.addRequest(limit, replaceUid);
     }
 
-    private addRequest(limit: RateLimit) {
+    private addRequest(limit: RateLimit, replaceUid?: string) {
         const requests = this.getRequestsArray(limit.routes);
 
-        requests.push(new Date());
+        if (replaceUid) requests.delete(replaceUid);
+
+        const uid = crypto.randomUUID();
+        requests.set(uid, new Date());
+
+        return uid;
     }
 
     private getRequestsArray(routes: string[]) {
         const map = this.requests.get(routes);
 
         if (!map) {
-            return this.requests.set(routes, []).get(routes) ?? [];
+            return (
+                this.requests.set(routes, new Map()).get(routes) ??
+                new Map<string, Date>()
+            );
         } else {
             return map;
         }
