@@ -1,50 +1,49 @@
 import { t } from 'elysia';
 import { App } from '../../app';
-import { BeatmapsManagerPlugin } from '../../plugins/beatmapManager';
-import { CalculatorServicePlugin } from '../../plugins/calculatorService';
-import { GameModBitwise } from '../../types/general/gameMod';
-import { HttpStatusCode } from 'axios';
+import { CalculatorManagerPlugin } from '../../plugins/calculatorManager';
+import {
+    Score,
+    ScoreShort,
+} from '../../core/managers/calculator/calculator.types';
+import { TryConvertToGamemode } from '../../utils/beatmap';
 
 export default (app: App) => {
-    app.use(BeatmapsManagerPlugin)
-        .use(CalculatorServicePlugin)
+    app.use(CalculatorManagerPlugin)
         .get(
             '/beatmap/:id',
             async ({
-                BeatmapsManagerInstance,
-                CalculatorServiceInstance,
+                CalculatorManagerInstance,
                 params: { id },
-                query: { acc, mode, mods, combo, misses },
+                query: {
+                    acc,
+                    mode,
+                    mods,
+                    combo,
+                    misses,
+                    isScoreFailed,
+                    isPlayedOnLazer,
+                },
             }) => {
-                const beatmapBuffer =
-                    await BeatmapsManagerInstance.downloadOsuBeatmap({
-                        beatmapId: id,
-                    });
+                const scores: ScoreShort[] = [];
+                const beatmapMode = TryConvertToGamemode(mode);
 
-                if ('data' in beatmapBuffer) {
-                    return beatmapBuffer;
-                }
-
-                const beatmap =
-                    CalculatorServiceInstance.ConvertBufferToBeatmap(
-                        beatmapBuffer,
-                    );
-
-                const beatmapMode =
-                    CalculatorServiceInstance.TryConvertToGamemode(mode) ??
-                    beatmap.mode;
-
-                const results =
-                    CalculatorServiceInstance.CalculateBeatmapPerfomance(
-                        beatmap,
-                        acc ?? [100],
-                        beatmapMode,
-                        mods ?? GameModBitwise.NoMod,
+                for (let accuracy of acc ?? [100]) {
+                    scores.push({
+                        accuracy,
+                        mode: beatmapMode,
+                        mods: mods,
                         combo,
                         misses,
-                    );
+                        isScoreFailed: isScoreFailed ?? false,
+                        isLazer: isPlayedOnLazer ?? false,
+                    });
+                }
 
-                beatmap.free();
+                const results =
+                    await CalculatorManagerInstance.CalculateBeatmapPerformances(
+                        id,
+                        scores,
+                    );
 
                 return results;
             },
@@ -60,6 +59,8 @@ export default (app: App) => {
                     mods: t.Optional(t.Numeric()),
                     combo: t.Optional(t.Numeric()),
                     misses: t.Optional(t.Numeric()),
+                    isScoreFailed: t.Optional(t.Boolean()),
+                    isPlayedOnLazer: t.Optional(t.Boolean()),
                 }),
                 tags: ['Calculators'],
             },
@@ -67,8 +68,7 @@ export default (app: App) => {
         .post(
             '/score',
             async ({
-                BeatmapsManagerInstance,
-                CalculatorServiceInstance,
+                CalculatorManagerInstance,
                 body: {
                     beatmapId,
                     beatmapHash,
@@ -83,77 +83,51 @@ export default (app: App) => {
                     n50,
                     misses,
                     isScoreFailed,
+                    isPlayedOnLazer,
                 },
             }) => {
-                const beatmapBuffer =
-                    await BeatmapsManagerInstance.downloadOsuBeatmap({
+                const beatmapMode = TryConvertToGamemode(mode);
+
+                const score: Score = {
+                    accuracy: acc,
+                    mode: beatmapMode,
+                    mods: mods,
+                    n300: n300,
+                    nGeki: nGeki,
+                    n100: n100,
+                    nKatu: nKatu,
+                    n50: n50,
+                    combo,
+                    misses,
+                    isScoreFailed: isScoreFailed ?? false,
+                    isLazer: isPlayedOnLazer ?? false,
+                };
+
+                const results =
+                    await CalculatorManagerInstance.CalculateScorePerformance(
                         beatmapId,
-                    });
-
-                if ('data' in beatmapBuffer) {
-                    return beatmapBuffer;
-                }
-
-                if (beatmapHash) {
-                    const fileHash =
-                        CalculatorServiceInstance.GetHashOfOsuFile(
-                            beatmapBuffer,
-                        );
-
-                    if (fileHash != beatmapHash) {
-                        return {
-                            data: null,
-                            status: HttpStatusCode.NotFound,
-                            message:
-                                'Osu file with provided beatmap hash not found',
-                        };
-                    }
-                }
-
-                const beatmap =
-                    CalculatorServiceInstance.ConvertBufferToBeatmap(
-                        beatmapBuffer,
+                        score,
+                        beatmapHash,
                     );
 
-                const beatmapMode =
-                    CalculatorServiceInstance.TryConvertToGamemode(mode) ??
-                    beatmap.mode;
-
-                const result =
-                    CalculatorServiceInstance.CalculateScorePerfomance(
-                        beatmap,
-                        acc,
-                        beatmapMode,
-                        mods ?? GameModBitwise.NoMod,
-                        combo,
-                        n300,
-                        nGeki,
-                        n100,
-                        nKatu,
-                        n50,
-                        misses,
-                        isScoreFailed,
-                    );
-
-                beatmap.free();
-
-                return result;
+                return results;
             },
             {
                 body: t.Object({
                     beatmapId: t.Numeric(),
                     beatmapHash: t.Optional(t.String()),
-                    acc: t.Numeric(),
-                    combo: t.Numeric(),
-                    n300: t.Numeric(),
-                    nGeki: t.Numeric(),
-                    n100: t.Numeric(),
-                    nKatu: t.Numeric(),
-                    n50: t.Numeric(),
-                    misses: t.Numeric(),
+                    acc: t.Optional(t.Numeric()),
+                    combo: t.Optional(t.Numeric()),
+                    n300: t.Optional(t.Numeric()),
+                    nGeki: t.Optional(t.Numeric()),
+                    n100: t.Optional(t.Numeric()),
+                    nKatu: t.Optional(t.Numeric()),
+                    n50: t.Optional(t.Numeric()),
+                    misses: t.Optional(t.Numeric()),
                     mode: t.Optional(t.Numeric()),
                     mods: t.Optional(t.Numeric()),
                     isScoreFailed: t.Optional(t.Boolean()),
+                    isPlayedOnLazer: t.Optional(t.Boolean()),
                 }),
                 tags: ['Calculators'],
             },
