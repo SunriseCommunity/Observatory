@@ -203,7 +203,7 @@ export class MirrorsManager {
                             total: await getRequestsCount(
                                 c.client.clientConfig.baseUrl,
                             ),
-                            succsssful: await getRequestsCount(
+                            successful: await getRequestsCount(
                                 c.client.clientConfig.baseUrl,
                                 undefined,
                                 successfulStatusCodes,
@@ -219,7 +219,7 @@ export class MirrorsManager {
                                 c.client.clientConfig.baseUrl,
                                 applicationStartTime,
                             ),
-                            succsssful: await getRequestsCount(
+                            succsesful: await getRequestsCount(
                                 c.client.clientConfig.baseUrl,
                                 applicationStartTime,
                                 successfulStatusCodes,
