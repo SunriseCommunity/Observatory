@@ -241,7 +241,7 @@ export class ApiRateLimiter {
     private getRemainingRequests(limit: RateLimit) {
         const requests = this.getRequestsArray(limit.routes);
 
-        const filteredRequests = Array.from(requests).flatMap(
+        const filteredRequests = Array.from(requests).filter(
             ([_, date]) =>
                 new Date().getTime() - date.getTime() < limit.reset * 1000,
         );
