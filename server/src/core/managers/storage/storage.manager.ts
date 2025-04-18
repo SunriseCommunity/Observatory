@@ -13,13 +13,16 @@ import {
 } from '../../../database/models/beatmap';
 import {
     createBeatmapset,
+    deleteBeatmapsets,
     getBeatmapSetById,
     getBeatmapSetCount,
+    getUnvalidBeatmapSets,
 } from '../../../database/models/beatmapset';
 import { StorageCacheService } from './storage-cache.service';
 import { StorageFilesService } from './storage-files.service';
 import { getBeatmapSetsFilesCount } from '../../../database/models/beatmapsetFile';
 import { getBeatmapOsuFileCount } from '../../../database/models/beatmapOsuFile';
+import logger from '../../../utils/logger';
 
 export class StorageManager {
     private readonly cacheService: StorageCacheService;
@@ -28,6 +31,15 @@ export class StorageManager {
     constructor() {
         this.cacheService = new StorageCacheService();
         this.filesService = new StorageFilesService(this.cacheService);
+
+        setInterval(
+            () => {
+                this.clearOldBeatmapsets();
+            },
+            1000 * 60 * 30,
+        ); // 30 minutes
+
+        this.clearOldBeatmapsets();
     }
 
     async getBeatmap(
@@ -137,5 +149,29 @@ export class StorageManager {
             files: await this.filesService.getStorageFilesStats(),
             cache: await this.cacheService.getRedisStats(),
         };
+    }
+
+    private async clearOldBeatmapsets() {
+        const beatmapsetsForRemoval = await getUnvalidBeatmapSets();
+
+        const forRemoval = [...beatmapsetsForRemoval];
+
+        if (!forRemoval) {
+            this.log('Nothing to remove. Skip cleaning unvalid beatmaps.');
+            return;
+        }
+
+        this.log(
+            `Going to remove ${beatmapsetsForRemoval.length} unvalid beatmapsets from database`,
+            'warn',
+        );
+
+        await deleteBeatmapsets(beatmapsetsForRemoval);
+
+        this.log('Cleaning unvalid beatmaps is finished!');
+    }
+
+    private log(message: string, level: 'info' | 'warn' | 'error' = 'info') {
+        logger[level](`StorageManager: ${message}`);
     }
 }

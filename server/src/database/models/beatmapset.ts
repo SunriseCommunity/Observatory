@@ -1,6 +1,6 @@
-import { and, count, eq, gte, sql } from 'drizzle-orm';
+import { and, count, eq, gte, inArray, sql } from 'drizzle-orm';
 import { db } from '../client';
-import { beatmaps, beatmapsets, NewBeatmapset } from '../schema';
+import { beatmaps, Beatmapset, beatmapsets, NewBeatmapset } from '../schema';
 import {
     Beatmapset as BeatmapsetObject,
     Beatmap as BeatmapObject,
@@ -31,6 +31,22 @@ export async function getBeatmapSetCount() {
     }
 
     return entities[0].count;
+}
+
+export async function getUnvalidBeatmapSets(): Promise<Beatmapset[]> {
+    const entities = await db
+        .select()
+        .from(beatmapsets)
+        .where(
+            and(
+                gte(
+                    sql`cast(${getUTCDate()} as timestamp)`,
+                    sql`cast(${beatmapsets.validUntil} as timestamp)`,
+                ),
+            ),
+        );
+
+    return entities;
 }
 
 export async function getBeatmapSetById(
@@ -97,6 +113,22 @@ export async function createBeatmapset(
         })
         .returning();
     return entities[0];
+}
+
+export async function deleteBeatmapsets(data: Beatmapset[]) {
+    await db.delete(beatmapsets).where(
+        inArray(
+            beatmapsets.id,
+            data.map((s) => s.id),
+        ),
+    );
+
+    await db.delete(beatmaps).where(
+        inArray(
+            beatmaps.beatmapset_id,
+            data.map((s) => s.id),
+        ),
+    );
 }
 
 async function enrichWithBeatmaps(
