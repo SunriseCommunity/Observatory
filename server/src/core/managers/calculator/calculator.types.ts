@@ -1,4 +1,4 @@
-import * as rosu from '@richardscull/rosu-pp-js';
+import * as rosu from 'rosu-pp-js';
 import { GameModBitwise } from '../../../types/general/gameMod';
 
 export interface Score extends ScoreShort {

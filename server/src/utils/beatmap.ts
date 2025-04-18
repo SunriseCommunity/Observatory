@@ -1,4 +1,4 @@
-import * as rosu from '@richardscull/rosu-pp-js';
+import * as rosu from 'rosu-pp-js';
 
 export function TryConvertToGamemode(value: any) {
     return Object.values(rosu.GameMode).includes(value as rosu.GameMode)

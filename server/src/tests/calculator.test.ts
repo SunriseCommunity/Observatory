@@ -7,7 +7,7 @@ import {
     it,
 } from 'bun:test';
 
-import * as rosu from '@richardscull/rosu-pp-js';
+import * as rosu from 'rosu-pp-js';
 import { CalculatorService } from '../core/managers/calculator/calculator.service';
 import { GameModBitwise } from '../types/general/gameMod';
 import { TryConvertToGamemode } from '../utils/beatmap';
