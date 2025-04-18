@@ -134,7 +134,7 @@ function objectToDatabase(obj: BeatmapObject): BeatmapDatabase {
     return data;
 }
 
-function databaseToObject(obj: BeatmapDatabase): BeatmapObject {
+export function databaseToObject(obj: BeatmapDatabase): BeatmapObject {
     return {
         ...obj,
         mode: obj.mode as GameMode,
@@ -153,9 +153,13 @@ function getTTLBasedOnStatus(status: RankStatus): number {
     switch (status) {
         case RankStatus.GRAVEYARD:
             return ONE_DAY * 7; // 7 days
-        case RankStatus.WIP || RankStatus.PENDING || RankStatus.QUALIFIED:
+        case RankStatus.PENDING:
+        case RankStatus.QUALIFIED:
+        case RankStatus.WIP:
             return 1000 * 60 * 5; // 5 minutes
-        case RankStatus.RANKED || RankStatus.APPROVED || RankStatus.LOVED:
+        case RankStatus.APPROVED:
+        case RankStatus.LOVED:
+        case RankStatus.RANKED:
             return ONE_DAY * 30; // 30 days
         default:
             return -1;

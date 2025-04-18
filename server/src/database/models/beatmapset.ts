@@ -1,11 +1,17 @@
 import { and, count, eq, gte, sql } from 'drizzle-orm';
 import { db } from '../client';
-import { beatmapsets, NewBeatmapset } from '../schema';
-import { Beatmapset as BeatmapsetObject } from '../../types/general/beatmap';
+import { beatmaps, beatmapsets, NewBeatmapset } from '../schema';
+import {
+    Beatmapset as BeatmapsetObject,
+    Beatmap as BeatmapObject,
+} from '../../types/general/beatmap';
+
+import { databaseToObject as beatmapDatabaseToObject } from './beatmap';
 import { Beatmapset as BeatmapsetDatabase } from '../schema';
 import { RankStatus } from '../../types/general/rankStatus';
 import { getUTCDate } from '../../utils/date';
-import { createBeatmap, getBeatmapsBySetId } from './beatmap';
+import { createBeatmap } from './beatmap';
+import { splitByCondition } from '../../utils/array';
 
 const ONE_DAY = 1000 * 60 * 60 * 24;
 
@@ -41,13 +47,30 @@ export async function getBeatmapSetById(
                     sql`cast(${getUTCDate()} as timestamp)`,
                 ),
             ),
-        );
+        )
+        .innerJoin(beatmaps, eq(beatmapsets.id, beatmaps.beatmapset_id));
 
     if (entities.length === 0) {
         return null;
     }
 
-    return await enrichWithBeatmaps(databaseToObject(entities[0]));
+    const result = {
+        beatmapsets: entities[0].beatmapsets,
+        beatmaps: entities.map((e) => e.beatmaps),
+    };
+
+    if (
+        result.beatmaps.some(
+            (b) => Date.parse(b.validUntil) < getUTCDate().getTime(),
+        )
+    ) {
+        return null;
+    }
+
+    return await enrichWithBeatmaps(
+        databaseToObject(result.beatmapsets),
+        result.beatmaps.map((b) => beatmapDatabaseToObject(b)),
+    );
 }
 
 export async function createBeatmapset(
@@ -61,6 +84,10 @@ export async function createBeatmapset(
 
     await Promise.all(createBeatmapsPromises);
 
+    data.validUntil = getValidUntilBasedOnBeatmapsTTL(
+        [obj.beatmaps ?? [], obj.converts ?? []].flat(),
+    );
+
     const entities = await db
         .insert(beatmapsets)
         .values(data)
@@ -73,14 +100,17 @@ export async function createBeatmapset(
 }
 
 async function enrichWithBeatmaps(
-    obj: BeatmapsetObject,
+    beatmapset: BeatmapsetObject,
+    beatmaps: BeatmapObject[],
 ): Promise<BeatmapsetObject> {
-    const beatmaps = await getBeatmapsBySetId(obj.id, false);
-    const convertedBeatmaps = await getBeatmapsBySetId(obj.id, true);
+    const [convertedBeatmaps, defaultBeatmaps] = splitByCondition(
+        beatmaps,
+        (b) => b.convert,
+    );
 
     return {
-        ...obj,
-        beatmaps: beatmaps ?? undefined,
+        ...beatmapset,
+        beatmaps: defaultBeatmaps ?? undefined,
         converts: convertedBeatmaps ?? undefined,
     };
 }
@@ -138,6 +168,7 @@ function databaseToObject(obj: BeatmapsetDatabase): BeatmapsetObject {
         user: JSON.parse(obj.user ?? '{}'),
         bpm: obj.bpm ?? 0,
         legacy_thread_url: obj.legacy_thread_url ?? undefined,
+        related_tags: undefined,
         // @ts-ignore
         validUntil: undefined,
     };
@@ -149,11 +180,30 @@ function getTTLBasedOnStatus(status: RankStatus): number {
     switch (status) {
         case RankStatus.GRAVEYARD:
             return ONE_DAY * 7; // 7 days
-        case RankStatus.WIP || RankStatus.PENDING || RankStatus.QUALIFIED:
+        case RankStatus.PENDING:
+        case RankStatus.WIP:
+        case RankStatus.QUALIFIED:
             return 1000 * 60 * 5; // 5 minutes
-        case RankStatus.RANKED || RankStatus.APPROVED || RankStatus.LOVED:
+        case RankStatus.APPROVED:
+        case RankStatus.LOVED:
+        case RankStatus.RANKED:
             return ONE_DAY * 30; // 30 days
         default:
             return -1;
     }
+}
+
+function getValidUntilBasedOnBeatmapsTTL(beatmaps: BeatmapObject[]): string {
+    return new Date(
+        getUTCDate().getTime() +
+            getLowestTTLBasedOnStatuses(beatmaps.map((b) => b.status)),
+    ).toISOString();
+}
+
+function getLowestTTLBasedOnStatuses(statuses: RankStatus[]): number {
+    if (statuses.length === 0) return 0;
+
+    return statuses
+        .map((status) => getTTLBasedOnStatus(status))
+        .sort((a, b) => a - b)[0];
 }

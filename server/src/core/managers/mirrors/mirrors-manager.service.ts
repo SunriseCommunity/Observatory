@@ -2,6 +2,7 @@ import { getMirrors, createMirror } from '../../../database/models/mirrors';
 import { getRequestsByBaseUrl } from '../../../database/models/requests';
 import { Mirror } from '../../../database/schema';
 import { BenchmarkResult } from '../../../types/benchmark';
+import { splitByCondition } from '../../../utils/array';
 import { getUTCDate } from '../../../utils/date';
 import logger from '../../../utils/logger';
 import { MirrorClient } from '../../abstracts/client/base-client.types';
@@ -77,12 +78,12 @@ export class MirrorsManagerService {
             getUTCDate().getTime() - 3 * 60 * 60 * 1000, // 3 hours
         );
 
-        const [failedRequests, successfulRequests] = this.splitByCondition(
+        const [failedRequests, successfulRequests] = splitByCondition(
             requests,
             (r) => r.status >= 400 && r.status !== 404,
         );
 
-        const [jsonRequests, downloadRequests] = this.splitByCondition(
+        const [jsonRequests, downloadRequests] = splitByCondition(
             successfulRequests.filter((r) => r.status !== 404),
             (r) => r.contentType === 'application/json',
         );
@@ -139,23 +140,6 @@ export class MirrorsManagerService {
         const result = await this.compareService.benchmarkMirror(client);
 
         return result;
-    }
-
-    private splitByCondition<T>(
-        array: T[],
-        condition: (item: T) => boolean,
-    ): [T[], T[]] {
-        return array.reduce(
-            ([trueArr, falseArr], item) => {
-                if (condition(item)) {
-                    trueArr.push(item);
-                } else {
-                    falseArr.push(item);
-                }
-                return [trueArr, falseArr];
-            },
-            [[], []] as [T[], T[]],
-        );
     }
 
     private log(message: string, level: 'info' | 'warn' | 'error' = 'info') {

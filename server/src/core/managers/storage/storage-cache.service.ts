@@ -213,15 +213,21 @@ export class StorageCacheService {
     }
 
     private getRedisTTLBasedOnStatus(status?: RankStatus): number {
+        const ONE_MINUTE = 1000 * 60;
+
         switch (status) {
             case RankStatus.GRAVEYARD:
-                return ONE_DAY * 2; // 2 days
-            case RankStatus.WIP || RankStatus.PENDING || RankStatus.QUALIFIED:
-                return 1000 * 60 * 5; // 5 minutes
-            case RankStatus.RANKED || RankStatus.APPROVED || RankStatus.LOVED:
-                return ONE_DAY; // 1 day
+                return ONE_MINUTE * 30;
+            case RankStatus.PENDING:
+            case RankStatus.QUALIFIED:
+            case RankStatus.WIP:
+                return ONE_MINUTE * 5;
+            case RankStatus.APPROVED:
+            case RankStatus.LOVED:
+            case RankStatus.RANKED:
+                return ONE_MINUTE * 15;
             default:
-                return 1000 * 60 * 5; // 5 minutes
+                return ONE_MINUTE * 5;
         }
     }
 }
