@@ -100,7 +100,7 @@ export default (app: App) => {
                     query: t.Optional(t.String()),
                     limit: t.Optional(t.Numeric()),
                     offset: t.Optional(t.Numeric()),
-                    status: t.Optional(t.Numeric()),
+                    status: t.Optional(t.Array(t.Numeric())),
                     mode: t.Optional(t.Numeric()),
                 }),
                 tags: ['v2'],

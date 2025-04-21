@@ -12,7 +12,7 @@ export type SearchBeatmapsets = {
     query?: string;
     limit?: number;
     offset?: number;
-    status?: RankStatusInt;
+    status?: RankStatusInt[];
     mode?: GameModeInt;
 };
 

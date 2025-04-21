@@ -11,6 +11,7 @@ import {
 import logger from '../../../utils/logger';
 import { Beatmap, Beatmapset } from '../../../types/general/beatmap';
 import { MinoBeatmapset } from './mino-client.types';
+import qs from 'qs';
 
 export class MinoClient extends BaseClient {
     constructor() {
@@ -122,6 +123,8 @@ export class MinoClient extends BaseClient {
                     status: ctx.status,
                     mode: ctx.mode,
                 },
+                paramsSerializer: (params) =>
+                    qs.stringify(params, { indices: false }),
             },
         });
 
