@@ -130,7 +130,7 @@ export interface BeatmapsetDescription {
 }
 
 export interface BeatmapsetGenre {
-    id: number;
+    id?: number;
     name: string;
 }
 
