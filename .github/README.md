@@ -4,6 +4,9 @@
   <img src="./readme.png" alt="We don't own the rights to this image. If you are the owner and want it removed, please contact us." />
 </p>
 
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![GitHub stars](https://img.shields.io/github/stars/SunriseCommunity/Observatory.svg?style=social&label=Star)](https://github.com/SunriseCommunity/Observatory)
+
 ## Description
 
 Observatory is a powerful "on demand" beatmap manager which uses osu! API and popular beatmap mirrors to prioritize speed and efficiency. It fetches beatmaps from the API's, and stores them in a local database for faster access.
