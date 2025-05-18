@@ -3,6 +3,7 @@ import logger from '../../../utils/logger';
 import { BaseApi } from '../api/base-api.abstract';
 import { BaseApiOptions } from '../api/base-api.types';
 import { RateLimit, RateLimitOptions } from './rate-limiter.types';
+import config from '../../../config';
 
 const DEFAULT_RATE_LIMIT = {
     routes: ['/'],
@@ -235,7 +236,12 @@ export class ApiRateLimiter {
             );
         }
 
-        return limit;
+        return {
+            ...limit,
+            limit: !config.DisableSafeRatelimitMode
+                ? Math.floor(limit.limit * 0.9)
+                : limit.limit,
+        };
     }
 
     private getRemainingRequests(limit: RateLimit) {

@@ -22,6 +22,7 @@ const {
     RATELIMIT_TIME_WINDOW,
     OSZ_FILES_LIFE_SPAN,
     MIRRORS_TO_IGNORE,
+    DISABLE_SAFE_RATELIMIT_MODE,
 } = process.env;
 
 if (!POSTGRES_USER || !POSTGRES_PASSWORD) {
@@ -59,6 +60,7 @@ const config: {
     IsDebug: boolean;
     UseBancho: boolean;
     MirrorsToIgnore: string[];
+    DisableSafeRatelimitMode: boolean;
 } = {
     PORT: PORT || '3000',
     POSTGRES_USER: POSTGRES_USER || 'admin',
@@ -79,6 +81,7 @@ const config: {
     IsDebug: DEBUG_MODE === 'true',
     UseBancho: BANCHO_CLIENT_SECRET && BANCHO_CLIENT_ID ? true : false,
     MirrorsToIgnore: MIRRORS_TO_IGNORE?.split(',') ?? [],
+    DisableSafeRatelimitMode: DISABLE_SAFE_RATELIMIT_MODE === 'true',
 };
 
 export default config;
