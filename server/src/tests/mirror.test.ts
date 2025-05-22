@@ -8,11 +8,14 @@ import config from '../config';
 import { NerinyanClient } from '../core/domains/nerinyan.moe/nerinyan.client';
 import { GatariClient } from '../core/domains/gatari.pw/gatari.client';
 import { OsulabsClient } from '../core/domains/beatmaps.download/osulabs.client';
+import { StorageManager } from '../core/managers/storage/storage.manager';
 
 describe('Mirror tests', () => {
+    const storageManager = new StorageManager();
+
     const banchoClient = new BanchoClient();
-    const minoClient = new MinoClient();
-    const osulabsClient = new OsulabsClient();
+    const minoClient = new MinoClient(storageManager);
+    const osulabsClient = new OsulabsClient(storageManager);
     const directClient = new DirectClient();
     const nerinyanClient = new NerinyanClient();
     const gatariClient = new GatariClient();

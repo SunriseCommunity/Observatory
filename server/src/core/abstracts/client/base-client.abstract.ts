@@ -15,16 +15,25 @@ import { RateLimitOptions } from '../ratelimiter/rate-limiter.types';
 import { ApiRateLimiter } from '../ratelimiter/rate-limiter.abstract';
 import { Beatmap, Beatmapset } from '../../../types/general/beatmap';
 import { ConvertService } from '../../services/convert.service';
+import { StorageManager } from '../../managers/storage/storage.manager';
 
 export class BaseClient {
+    protected storageManager?: StorageManager;
+
     protected config: ClientOptions;
     protected api: ApiRateLimiter;
     protected baseApi: BaseApi;
 
     protected convertService: ConvertService;
 
-    constructor(config: ClientOptions, rateLimitConfig: RateLimitOptions) {
+    constructor(
+        config: ClientOptions,
+        rateLimitConfig: RateLimitOptions,
+        storageManager?: StorageManager,
+    ) {
         this.config = config;
+
+        this.storageManager = storageManager;
 
         this.baseApi = new BaseApi(axios.create(), {
             baseURL: this.config.baseUrl,

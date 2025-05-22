@@ -20,6 +20,7 @@ import { NerinyanClient } from '../../domains/nerinyan.moe/nerinyan.client';
 import { getRequestsCount } from '../../../database/models/requests';
 import { getUTCDate } from '../../../utils/date';
 import { OsulabsClient } from '../../domains/beatmaps.download/osulabs.client';
+import { StorageManager } from '../storage/storage.manager';
 
 const DEFAULT_CLIENT_PROPS = {
     weights: {
@@ -31,11 +32,14 @@ const DEFAULT_CLIENT_PROPS = {
 
 export class MirrorsManager {
     private readonly managerService: MirrorsManagerService;
+    private readonly storageManager: StorageManager;
 
     private readonly clients: MirrorClient[] = [];
 
-    constructor() {
+    constructor(storageManager: StorageManager) {
         this.clients = [];
+
+        this.storageManager = storageManager;
 
         if (!config.MirrorsToIgnore.includes('direct')) {
             const directClient = new DirectClient();
@@ -47,7 +51,7 @@ export class MirrorsManager {
         }
 
         if (!config.MirrorsToIgnore.includes('mino')) {
-            const minoClient = new MinoClient();
+            const minoClient = new MinoClient(storageManager);
 
             this.clients.push({
                 client: minoClient,
@@ -56,7 +60,7 @@ export class MirrorsManager {
         }
 
         if (!config.MirrorsToIgnore.includes('osulabs')) {
-            const osulabsClient = new OsulabsClient();
+            const osulabsClient = new OsulabsClient(storageManager);
 
             this.clients.push({
                 client: osulabsClient,

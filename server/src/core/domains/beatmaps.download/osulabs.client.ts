@@ -10,10 +10,11 @@ import {
 } from '../../abstracts/client/base-client.types';
 import logger from '../../../utils/logger';
 import { Beatmap, Beatmapset } from '../../../types/general/beatmap';
-import { OsulabsBeatmapset } from './osulabs-client.types';
+import { OsulabsBeatmap, OsulabsBeatmapset } from './osulabs-client.types';
+import { StorageManager } from '../../managers/storage/storage.manager';
 
 export class OsulabsClient extends BaseClient {
-    constructor() {
+    constructor(storageManager: StorageManager) {
         super(
             {
                 baseUrl: 'https://beatmaps.download',
@@ -57,6 +58,7 @@ export class OsulabsClient extends BaseClient {
                     },
                 ],
             },
+            storageManager,
         );
 
         logger.info('OsulabsClient initialized');
@@ -172,6 +174,14 @@ export class OsulabsClient extends BaseClient {
             return { result: null, status: result?.status ?? 500 };
         }
 
+        var beatmap = result.data as OsulabsBeatmap;
+        if (beatmap.set) {
+            var beatmapSet = this.convertService.convertBeatmapset(beatmap.set);
+            await this.storageManager?.insertBeatmapset(beatmapSet, {
+                beatmapSetId: beatmapSet.id,
+            });
+        }
+
         return {
             result: this.convertService.convertBeatmap(result.data),
             status: result.status,
@@ -185,6 +195,14 @@ export class OsulabsClient extends BaseClient {
 
         if (!result || result.status !== 200) {
             return { result: null, status: result?.status ?? 500 };
+        }
+
+        var beatmap = result.data as OsulabsBeatmap;
+        if (beatmap.set) {
+            var beatmapSet = this.convertService.convertBeatmapset(beatmap.set);
+            await this.storageManager?.insertBeatmapset(beatmapSet, {
+                beatmapSetId: beatmapSet.id,
+            });
         }
 
         return {

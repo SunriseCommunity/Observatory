@@ -10,11 +10,12 @@ import {
 } from '../../abstracts/client/base-client.types';
 import logger from '../../../utils/logger';
 import { Beatmap, Beatmapset } from '../../../types/general/beatmap';
-import { MinoBeatmapset } from './mino-client.types';
+import { MinoBeatmap, MinoBeatmapset } from './mino-client.types';
 import qs from 'qs';
+import { StorageManager } from '../../managers/storage/storage.manager';
 
 export class MinoClient extends BaseClient {
-    constructor() {
+    constructor(storageManager: StorageManager) {
         super(
             {
                 baseUrl: 'https://catboy.best',
@@ -61,6 +62,7 @@ export class MinoClient extends BaseClient {
                     },
                 ],
             },
+            storageManager,
         );
 
         logger.info('MinoClient initialized');
@@ -178,6 +180,14 @@ export class MinoClient extends BaseClient {
             return { result: null, status: result?.status ?? 500 };
         }
 
+        var beatmap = result.data as MinoBeatmap;
+        if (beatmap.set) {
+            var beatmapSet = this.convertService.convertBeatmapset(beatmap.set);
+            await this.storageManager?.insertBeatmapset(beatmapSet, {
+                beatmapSetId: beatmapSet.id,
+            });
+        }
+
         return {
             result: this.convertService.convertBeatmap(result.data),
             status: result.status,
@@ -191,6 +201,14 @@ export class MinoClient extends BaseClient {
 
         if (!result || result.status !== 200) {
             return { result: null, status: result?.status ?? 500 };
+        }
+
+        var beatmap = result.data as MinoBeatmap;
+        if (beatmap.set) {
+            var beatmapSet = this.convertService.convertBeatmapset(beatmap.set);
+            await this.storageManager?.insertBeatmapset(beatmapSet, {
+                beatmapSetId: beatmapSet.id,
+            });
         }
 
         return {

@@ -26,8 +26,8 @@ export class BeatmapsManager {
     private readonly StorageManager: StorageManager;
 
     constructor() {
-        this.MirrorsManager = new MirrorsManager();
         this.StorageManager = new StorageManager();
+        this.MirrorsManager = new MirrorsManager(this.StorageManager);
     }
 
     async getBeatmap(ctx: GetBeatmapOptions): Promise<ServerResponse<Beatmap>> {
@@ -204,7 +204,7 @@ export class BeatmapsManager {
     public async getManagerStats() {
         return {
             storage: await this.StorageManager.getStorageStatistics(),
-            mirrors: await this.MirrorsManager.getMirrorsStatistics()
+            mirrors: await this.MirrorsManager.getMirrorsStatistics(),
         };
     }
 
