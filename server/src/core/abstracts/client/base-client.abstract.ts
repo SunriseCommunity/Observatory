@@ -45,7 +45,12 @@ export class BaseClient {
 
         this.convertService = new ConvertService(this.config.baseUrl);
 
-        this.api = new ApiRateLimiter(this.baseApi, rateLimitConfig);
+        const domainHash = Bun.hash(this.config.baseUrl).toString();
+        this.api = new ApiRateLimiter(
+            domainHash,
+            this.baseApi,
+            rateLimitConfig,
+        );
     }
 
     async getBeatmapSet(

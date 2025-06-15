@@ -10,14 +10,12 @@ import { RedisKeys } from '../../../types/redis';
 import { RankStatus } from '../../../types/general/rankStatus';
 import config from '../../../config';
 import { BeatmapOsuFile, BeatmapsetFile } from '../../../database/schema';
+import { RedisInstance } from '../../../plugins/redisInstance';
 
 const ONE_DAY = 1000 * 60 * 60 * 24;
 
 export class StorageCacheService {
-    private readonly redis: Redis = new Redis({
-        port: config.REDIS_PORT,
-        host: config.REDIS_HOST,
-    });
+    private readonly redis: Redis = RedisInstance;
 
     async getBeatmap(
         ctx: GetBeatmapOptions,

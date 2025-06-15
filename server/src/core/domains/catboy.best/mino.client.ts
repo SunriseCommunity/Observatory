@@ -30,6 +30,7 @@ export class MinoClient extends BaseClient {
                 ],
             },
             {
+                dailyRateLimit: 10000,
                 headers: {
                     remaining: 'x-ratelimit-remaining',
                 },

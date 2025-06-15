@@ -4,6 +4,9 @@ import { BaseApi } from '../api/base-api.abstract';
 import { BaseApiOptions } from '../api/base-api.types';
 import { RateLimit, RateLimitOptions } from './rate-limiter.types';
 import config from '../../../config';
+import Redis from 'ioredis';
+import { RedisInstance } from '../../../plugins/redisInstance';
+import { RedisKeys } from '../../../types/redis';
 
 const DEFAULT_RATE_LIMIT = {
     routes: ['/'],
@@ -15,11 +18,25 @@ export class ApiRateLimiter {
     protected api: BaseApi;
     protected config: RateLimitOptions;
 
+    private readonly redis: Redis = RedisInstance;
+
     private readonly requests = new Map<string[], Map<string, Date>>();
 
-    constructor(api: BaseApi, config: RateLimitOptions) {
+    private readonly redisDailyLimitsKey: string;
+
+    private dailyLimit?: {
+        requestsLeft: number;
+        expiresAt: number;
+    } | null;
+
+    constructor(domainHash: string, api: BaseApi, config: RateLimitOptions) {
         this.api = api;
         this.config = config;
+        this.redisDailyLimitsKey = `${RedisKeys.DAILY_RATE_LIMIT}${domainHash}`;
+
+        if (config.dailyRateLimit) {
+            this.dailyLimit = null;
+        }
 
         if (
             !this.config.rateLimits.find((limit) => limit.routes.includes('/'))
@@ -36,7 +53,7 @@ export class ApiRateLimiter {
         Q,
         B extends Record<string, never> = Record<string, never>,
     >(endpoint: string, options?: BaseApiOptions<B>) {
-        const isOnCooldown = this.isOnCooldown(endpoint);
+        const isOnCooldown = await this.isOnCooldown(endpoint);
         if (isOnCooldown) return null;
 
         const requestUid = this.addNewRequest(endpoint);
@@ -53,7 +70,7 @@ export class ApiRateLimiter {
         endpoint: string,
         options?: BaseApiOptions<B>,
     ) {
-        const isOnCooldown = this.isOnCooldown(endpoint);
+        const isOnCooldown = await this.isOnCooldown(endpoint);
         if (isOnCooldown) return null;
 
         const requestUid = this.addNewRequest(endpoint);
@@ -70,7 +87,7 @@ export class ApiRateLimiter {
         endpoint: string,
         options?: BaseApiOptions<B>,
     ) {
-        const isOnCooldown = this.isOnCooldown(endpoint);
+        const isOnCooldown = await this.isOnCooldown(endpoint);
         if (isOnCooldown) return null;
 
         const requestUid = this.addNewRequest(endpoint);
@@ -87,7 +104,7 @@ export class ApiRateLimiter {
         endpoint: string,
         options?: BaseApiOptions<B>,
     ) {
-        const isOnCooldown = this.isOnCooldown(endpoint);
+        const isOnCooldown = await this.isOnCooldown(endpoint);
         if (isOnCooldown) return null;
 
         const requestUid = this.addNewRequest(endpoint);
@@ -104,7 +121,7 @@ export class ApiRateLimiter {
         endpoint: string,
         options?: BaseApiOptions<B>,
     ) {
-        const isOnCooldown = this.isOnCooldown(endpoint);
+        const isOnCooldown = await this.isOnCooldown(endpoint);
         if (isOnCooldown) return null;
 
         const requestUid = this.addNewRequest(endpoint);
@@ -128,8 +145,23 @@ export class ApiRateLimiter {
         return this.config;
     }
 
-    private isOnCooldown(route: string) {
+    private async isOnCooldown(route: string) {
         const limit = this.getRateLimit(route);
+        const dailyLimit = await this.getDailyRateLimitRemaining();
+
+        if (dailyLimit) {
+            const daiyLimitRequestsLeft = !config.DisableSafeRatelimitMode
+                ? Math.floor(dailyLimit.requestsLeft * 0.9)
+                : dailyLimit.requestsLeft;
+
+            if (daiyLimitRequestsLeft <= 0) {
+                this.log(
+                    `Tried to make request to ${route} while on daily cooldown. Ignored`,
+                    'warn',
+                );
+                return true;
+            }
+        }
 
         if (
             this.config.onCooldownUntil &&
@@ -244,6 +276,71 @@ export class ApiRateLimiter {
         };
     }
 
+    private async getDailyRateLimitRemaining(): Promise<{
+        requestsLeft: number;
+        expiresAt: number;
+    } | null> {
+        const isDailyLimitExists = this.config.dailyRateLimit;
+        if (!isDailyLimitExists) return null;
+
+        if (this.dailyLimit && this.dailyLimit.expiresAt > Date.now())
+            return this.dailyLimit;
+
+        const result = await this.redis
+            .multi()
+            .hget(this.redisDailyLimitsKey, 'value')
+            .ttl(this.redisDailyLimitsKey)
+            .exec();
+
+        if (!result || result.some(([_, v]) => v === null)) {
+            await this.updateDailyRateLimitRemaining(0, true);
+            return await this.getDailyRateLimitRemaining();
+        }
+
+        const [[, rawValue], [, ttlSeconds]] = result;
+
+        const value = isNaN(Number(rawValue)) ? 0 : Number(rawValue);
+        const expiresAt = isNaN(Number(ttlSeconds))
+            ? 0
+            : Number(ttlSeconds) * 1000;
+
+        this.dailyLimit = {
+            requestsLeft: value,
+            expiresAt: Date.now() + expiresAt,
+        };
+
+        return this.dailyLimit;
+    }
+
+    private async updateDailyRateLimitRemaining(
+        limitSpent: number,
+        resetTTL: boolean = false,
+    ) {
+        const dailyLimit = this.config.dailyRateLimit;
+        if (!dailyLimit) return null;
+
+        let currentDailyLimit = dailyLimit;
+
+        if (this.dailyLimit && this.dailyLimit.expiresAt > Date.now()) {
+            currentDailyLimit = this.dailyLimit.requestsLeft - limitSpent;
+
+            this.dailyLimit = {
+                ...this.dailyLimit,
+                requestsLeft: currentDailyLimit,
+            };
+        }
+
+        await this.redis.hset(
+            this.redisDailyLimitsKey,
+            'value',
+            currentDailyLimit,
+        );
+
+        if (resetTTL) await this.redis.expire(this.redisDailyLimitsKey, 86400); // 24 hours
+
+        return;
+    }
+
     private getRemainingRequests(limit: RateLimit) {
         const requests = this.getRequestsArray(limit.routes);
 
@@ -265,6 +362,10 @@ export class ApiRateLimiter {
         const requests = this.getRequestsArray(limit.routes);
 
         if (replaceUid) requests.delete(replaceUid);
+
+        if (this.config.dailyRateLimit && replaceUid == null) {
+            this.updateDailyRateLimitRemaining(1);
+        }
 
         const uid = crypto.randomUUID();
         requests.set(uid, new Date());

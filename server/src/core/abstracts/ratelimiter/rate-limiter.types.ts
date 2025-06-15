@@ -6,6 +6,7 @@ export type RateLimitOptions = {
         limit?: string;
         reset?: string;
     };
+    dailyRateLimit?: number;
     rateLimits: RateLimit[];
     onCooldownUntil?: number; // Active only if we got 429 status code before
 };
