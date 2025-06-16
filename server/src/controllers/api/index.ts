@@ -87,6 +87,8 @@ export default (app: App) => {
         .get(
             'v2/search',
             async ({ BeatmapsManagerInstance, query }) => {
+                // TODO: Add another search endpoint which would parse cursors instead of pages, to create compatibility with bancho api;
+
                 const data = await BeatmapsManagerInstance.searchBeatmapsets({
                     ...query,
                 });
