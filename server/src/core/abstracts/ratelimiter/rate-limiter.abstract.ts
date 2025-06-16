@@ -214,9 +214,13 @@ export class ApiRateLimiter {
             remaining = this.getRemainingRequests(limit);
         }
 
-        this.log(
-            `${this.api.axiosConfig.baseURL}/${route} | Routes: [${limit.routes.join(', ')}] | Remaining requests: ${remaining}/${limit.limit}`,
-        );
+        const logMessage =
+            `${this.api.axiosConfig.baseURL}/${route} | Routes: [${limit.routes.join(', ')}] | Remaining requests: ${remaining}/${limit.limit}` +
+            (this.dailyLimit && this.config.dailyRateLimit
+                ? ` | Remaining daily requests: ${this.dailyLimit.requestsLeft}/${this.config.dailyRateLimit}, refresh at ${new Date(this.dailyLimit.expiresAt).toLocaleString()}`
+                : '');
+
+        this.log(logMessage);
 
         if (remaining <= 0) {
             this.log(`Rate limit reached for ${route}`, 'warn');
