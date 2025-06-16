@@ -6,7 +6,7 @@ import {
     GetBeatmapOptions,
     GetBeatmapSetOptions,
     ResultWithStatus,
-    SearchBeatmapsets,
+    SearchBeatmapsetsOptions,
 } from '../../abstracts/client/base-client.types';
 import logger from '../../../utils/logger';
 import { Beatmap, Beatmapset } from '../../../types/general/beatmap';
@@ -114,7 +114,7 @@ export class OsulabsClient extends BaseClient {
     }
 
     async searchBeatmapsets(
-        ctx: SearchBeatmapsets,
+        ctx: SearchBeatmapsetsOptions,
     ): Promise<ResultWithStatus<Beatmapset[] | null>> {
         const result = await this.api.get<Beatmapset[]>(`api/v2/search`, {
             config: {

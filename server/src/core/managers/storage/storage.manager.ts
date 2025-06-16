@@ -3,6 +3,7 @@ import {
     DownloadOsuBeatmap,
     GetBeatmapOptions,
     GetBeatmapSetOptions,
+    SearchBeatmapsetsOptions,
 } from '../../abstracts/client/base-client.types';
 import { Beatmap, Beatmapset } from '../../../types/general/beatmap';
 import {
@@ -90,6 +91,27 @@ export class StorageManager {
         let entity = await this.filesService.getBeatmapsetFile(ctx);
 
         return entity;
+    }
+
+    async getSearchResult(
+        ctx: SearchBeatmapsetsOptions,
+    ): Promise<Beatmapset[] | undefined> {
+        let entity = await this.cacheService.getSearchResult(ctx);
+
+        return entity;
+    }
+
+    async insertSearchResult(
+        ctx: SearchBeatmapsetsOptions,
+        result: Beatmapset[],
+    ): Promise<void> {
+        for (const beatmapset of result) {
+            await this.insertBeatmapset(beatmapset, {
+                beatmapSetId: beatmapset.id,
+            });
+        }
+
+        await this.cacheService.insertSearchResult(ctx, result);
     }
 
     async getOsuBeatmapFile(

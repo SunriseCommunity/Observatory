@@ -4,10 +4,10 @@ import {
     GetBeatmapOptions,
     GetBeatmapSetOptions,
     DownloadBeatmapSetOptions,
-    SearchBeatmapsets,
     GetBeatmapsOptions,
     DownloadOsuBeatmap,
     ResultWithStatus,
+    SearchBeatmapsetsOptions,
 } from '../../abstracts/client/base-client.types';
 import { MirrorsManager } from '../mirrors/mirrors.manager';
 import { ServerResponse } from './beatmaps-manager.types';
@@ -85,20 +85,26 @@ export class BeatmapsManager {
     }
 
     async searchBeatmapsets(
-        ctx: SearchBeatmapsets,
+        ctx: SearchBeatmapsetsOptions,
     ): Promise<ServerResponse<Beatmapset[]>> {
+        const searchResult = await this.StorageManager.getSearchResult(ctx);
+
+        if (searchResult) {
+            return {
+                data: searchResult,
+                status: HttpStatusCode.Ok,
+                message: undefined,
+            };
+        }
+
         const result = await this.MirrorsManager.searchBeatmapsets(ctx);
 
         if (result.status >= 500) {
             return this.formatResultAsServerError(result);
         }
 
-        if (result.result && result.result.length > 0) {
-            for (const beatmapset of result.result) {
-                this.StorageManager.insertBeatmapset(beatmapset, {
-                    beatmapSetId: beatmapset.id,
-                });
-            }
+        if (result.result && result.status === 200) {
+            this.StorageManager.insertSearchResult(ctx, result.result);
         }
 
         return {

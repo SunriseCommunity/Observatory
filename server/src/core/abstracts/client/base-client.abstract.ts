@@ -8,7 +8,7 @@ import {
     GetBeatmapSetOptions,
     GetBeatmapsOptions,
     ResultWithStatus,
-    SearchBeatmapsets,
+    SearchBeatmapsetsOptions,
 } from './base-client.types';
 import { BaseApi } from '../api/base-api.abstract';
 import { RateLimitOptions } from '../ratelimiter/rate-limiter.types';
@@ -66,7 +66,7 @@ export class BaseClient {
     }
 
     async searchBeatmapsets(
-        ctx: SearchBeatmapsets,
+        ctx: SearchBeatmapsetsOptions,
     ): Promise<ResultWithStatus<Beatmapset[] | null>> {
         throw new Error('Method not implemented.');
     }

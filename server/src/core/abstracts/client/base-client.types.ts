@@ -8,7 +8,7 @@ export type ClientOptions = {
     abilities: ClientAbilities[];
 };
 
-export type SearchBeatmapsets = {
+export type SearchBeatmapsetsOptions = {
     query?: string;
     limit?: number;
     offset?: number;

@@ -5,7 +5,7 @@ import {
     ClientAbilities,
     GetBeatmapOptions,
     DownloadBeatmapSetOptions,
-    SearchBeatmapsets,
+    SearchBeatmapsetsOptions,
     GetBeatmapsOptions,
     DownloadOsuBeatmap,
 } from '../../abstracts/client/base-client.types';
@@ -132,7 +132,7 @@ export class MirrorsManager {
     }
 
     async searchBeatmapsets(
-        ctx: SearchBeatmapsets,
+        ctx: SearchBeatmapsetsOptions,
     ): Promise<ResultWithStatus<Beatmapset[]>> {
         const criteria = ClientAbilities.SearchBeatmapsets;
 
@@ -250,7 +250,7 @@ export class MirrorsManager {
             | DownloadBeatmapSetOptions
             | GetBeatmapOptions
             | GetBeatmapSetOptions
-            | SearchBeatmapsets
+            | SearchBeatmapsetsOptions
             | GetBeatmapsOptions
             | DownloadOsuBeatmap,
         criteria: ClientAbilities,

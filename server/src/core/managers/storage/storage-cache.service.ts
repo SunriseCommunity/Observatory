@@ -3,6 +3,7 @@ import {
     DownloadOsuBeatmap,
     GetBeatmapOptions,
     GetBeatmapSetOptions,
+    SearchBeatmapsetsOptions,
 } from '../../abstracts/client/base-client.types';
 import { Beatmap, Beatmapset } from '../../../types/general/beatmap';
 import Redis from 'ioredis';
@@ -13,6 +14,7 @@ import { BeatmapOsuFile, BeatmapsetFile } from '../../../database/schema';
 import { RedisInstance } from '../../../plugins/redisInstance';
 
 const ONE_DAY = 1000 * 60 * 60 * 24;
+const ONE_SECOND = 1000;
 
 export class StorageCacheService {
     private readonly redis: Redis = RedisInstance;
@@ -98,6 +100,38 @@ export class StorageCacheService {
 
         const cache = await this.redis.get(
             `${RedisKeys.BEATMAPSET_BY_ID}${beatmapsetId}`,
+        );
+
+        return cache ? JSON.parse(cache) : undefined;
+    }
+
+    async insertSearchResult(
+        ctx: SearchBeatmapsetsOptions,
+        result: Beatmapset[],
+    ) {
+        const requestRawKey = Object.values(ctx)
+            .reduce((p, v, i) => `${p}indx-${i}:${(v ?? '').toString()}:`, '')
+            .toString();
+        const requestKey = Bun.hash(requestRawKey).toString();
+
+        await this.redis.set(
+            `${RedisKeys.BEATMAPS_SEARCH_RESULT}${requestKey}`,
+            JSON.stringify(result),
+            'PX',
+            ONE_SECOND * 15,
+        );
+    }
+
+    async getSearchResult(
+        ctx: SearchBeatmapsetsOptions,
+    ): Promise<Beatmapset[] | undefined> {
+        const requestRawKey = Object.values(ctx)
+            .reduce((p, v, i) => `${p}indx-${i}:${(v ?? '').toString()}:`, '')
+            .toString();
+        const requestKey = Bun.hash(requestRawKey).toString();
+
+        const cache = await this.redis.get(
+            `${RedisKeys.BEATMAPS_SEARCH_RESULT}${requestKey}`,
         );
 
         return cache ? JSON.parse(cache) : undefined;
