@@ -21,11 +21,9 @@ export class OsulabsClient extends BaseClient {
                 abilities: [
                     ClientAbilities.GetBeatmapById,
                     ClientAbilities.GetBeatmapSetById,
-                    ClientAbilities.GetBeatmapByHash,
                     ClientAbilities.DownloadBeatmapSetByIdNoVideo,
                     ClientAbilities.DownloadBeatmapSetById,
                     ClientAbilities.SearchBeatmapsets,
-                    ClientAbilities.DownloadOsuBeatmap,
                 ],
             },
             {
@@ -40,23 +38,12 @@ export class OsulabsClient extends BaseClient {
                         reset: 60,
                     },
                     {
-                        routes: ['osu/'],
-                        limit: 120,
-                        reset: 60,
-                    },
-                    {
                         routes: ['api/v2/search'],
                         limit: 500,
                         reset: 60,
                     },
                     {
-                        routes: [
-                            'api/v2/s/',
-                            'api/v2/b/',
-                            'api/v2/md5/',
-                            'api/v2/beatmaps',
-                            'api/v2/beatmapsets',
-                        ],
+                        routes: ['api/v2/s/', 'api/v2/b/'],
                         limit: 500,
                         reset: 60,
                     },
@@ -79,22 +66,6 @@ export class OsulabsClient extends BaseClient {
                 },
             },
         );
-
-        if (!result || result.status !== 200) {
-            return { result: null, status: result?.status ?? 500 };
-        }
-
-        return { result: result.data, status: result.status };
-    }
-
-    async downloadOsuBeatmap(
-        ctx: DownloadOsuBeatmap,
-    ): Promise<ResultWithStatus<ArrayBuffer | null>> {
-        const result = await this.api.get<ArrayBuffer>(`osu/${ctx.beatmapId}`, {
-            config: {
-                responseType: 'arraybuffer',
-            },
-        });
 
         if (!result || result.status !== 200) {
             return { result: null, status: result?.status ?? 500 };
