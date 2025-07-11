@@ -32,7 +32,7 @@ Observatory is a powerful "on demand" beatmap manager which uses osu! API and po
 docker compose -f docker-compose.yml up -d # Creates the container with app and all dependencies
 ```
 
-3. The application will be available at `http://localhost:3000`
+3. The application will be available at `http://localhost:3333`
 
 ### Manual 🛠
 
@@ -41,7 +41,7 @@ docker compose -f docker-compose.yml up -d # Creates the container with app and 
 3. Fill the `.env` file with the required data
 4. Start needed services: `bun run setup`
 5. Run the application: `bun run dev`
-6. The application will be available at `http://localhost:3000`
+6. The application will be available at `http://localhost:3333` (or any other port you set up to)
 
 ## Contributing 💖
 
