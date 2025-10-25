@@ -94,14 +94,6 @@ describe('MirrorsManager', () => {
         ClientAbilities.GetBeatmapSetById,
     );
 
-    const mirrorsWithGetBeatmapSetByBeatmapHash = getMirrorsWithAbility(
-        ClientAbilities.GetBeatmapSetByBeatmapHash,
-    );
-
-    const mirrorsWithGetBeatmapSetByBeatmapId = getMirrorsWithAbility(
-        ClientAbilities.GetBeatmapSetByBeatmapId,
-    );
-
     const mirrorsWithGetBeatmapById = getMirrorsWithAbility(
         ClientAbilities.GetBeatmapById,
     );
@@ -110,261 +102,425 @@ describe('MirrorsManager', () => {
         ClientAbilities.GetBeatmapByHash,
     );
 
-    test.each(mirrorsWithGetBeatmapSetById)(
-        `$name: Should successfully fetch a beatmapset by id`,
-        async (mirror) => {
-            const client = getMirrorClient(mirror);
+    describe('GetBeatmapSetById', () => {
+        const mirrors = mirrorsWithGetBeatmapSetById;
 
-            const beatmapSetId = faker.number.int({ min: 1, max: 1000000 });
+        test.each(mirrors)(
+            `$name: Should successfully fetch a beatmapset by id`,
+            async (mirror) => {
+                const client = getMirrorClient(mirror);
 
-            const { mockBeatmapset, mockBeatmap } =
-                Mocker.getClientMockMethods(client);
+                const beatmapSetId = faker.number.int({ min: 1, max: 1000000 });
 
-            mockBeatmapset({
-                data: {
-                    id: beatmapSetId,
-                },
-            });
+                const { mockBeatmapset, mockBeatmap } =
+                    Mocker.getClientMockMethods(client);
 
-            const result = await mirrorsManager.getBeatmapSet({
-                beatmapSetId,
-            });
+                mockBeatmapset({
+                    data: {
+                        id: beatmapSetId,
+                    },
+                });
 
-            expect(result.status).toBe(200);
-            expect(result.result).not.toBeNull();
-            expect(result.result?.id).toBe(beatmapSetId);
-        },
-    );
-    1;
+                const result = await mirrorsManager.getBeatmapSet({
+                    beatmapSetId,
+                });
 
-    test.each(mirrorsWithGetBeatmapSetByBeatmapHash)(
-        `$name: Should successfully fetch a beatmapset by beatmap hash`,
-        async (mirror) => {
-            const client = getMirrorClient(mirror);
+                expect(result.status).toBe(200);
+                expect(result.result).not.toBeNull();
+                expect(result.result?.id).toBe(beatmapSetId);
+            },
+        );
 
-            const beatmapHash = faker.string.uuid();
+        test.each(mirrors)(
+            `$name: Should successfully update ratelimit during get beatmapset by id request`,
+            async (mirror) => {
+                const client = getMirrorClient(mirror);
 
-            const { mockBeatmapset, mockBeatmap } =
-                Mocker.getClientMockMethods(client);
+                const { generateBeatmapset } =
+                    Mocker.getClientGenerateMethods(client);
 
-            mockBeatmapset({
-                data: {
-                    beatmaps: [
-                        FakerGenerator.generateBeatmap({
+                const beatmapSetId = faker.number.int({ min: 1, max: 1000000 });
+
+                const mockApiGet = Mocker.mockRequest(
+                    client,
+                    'baseApi',
+                    'get',
+                    {
+                        data: generateBeatmapset({ id: beatmapSetId }),
+                        status: 200,
+                        headers: {},
+                    },
+                );
+
+                const request = mirrorsManager.getBeatmapSet({
+                    beatmapSetId,
+                });
+
+                // Skip a tick to check if is on cooldown
+                await new Promise((r) => setTimeout(r, 0));
+
+                let capacity = client.getCapacity(
+                    ClientAbilities.GetBeatmapSetById,
+                );
+
+                expect(capacity.remaining).toBeLessThan(capacity.limit);
+
+                const awaitedResult = await request;
+
+                expect(mockApiGet).toHaveBeenCalledTimes(1);
+
+                capacity = client.getCapacity(
+                    ClientAbilities.GetBeatmapSetById,
+                );
+
+                expect(awaitedResult.status).toBe(200);
+                expect(awaitedResult.result).not.toBeNull();
+                expect(awaitedResult.result?.id).toBe(beatmapSetId);
+
+                expect(capacity.remaining).toBeLessThan(capacity.limit);
+            },
+        );
+
+        test.each(mirrors)(
+            `$name: Should successfully return 404 when beatmapset is not found`,
+            async (mirror) => {
+                const client = getMirrorClient(mirror);
+
+                const beatmapSetId = faker.number.int({ min: 1, max: 1000000 });
+
+                const mockApiGet = Mocker.mockRequest(
+                    client,
+                    'baseApi',
+                    'get',
+                    {
+                        data: null,
+                        status: 404,
+                        headers: {},
+                    },
+                );
+
+                const request = mirrorsManager.getBeatmapSet({
+                    beatmapSetId,
+                });
+
+                const awaitedResult = await request;
+
+                expect(mockApiGet).toHaveBeenCalledTimes(1);
+
+                expect(awaitedResult.status).toBe(404);
+                expect(awaitedResult.result).toBeNull();
+            },
+        );
+
+        test.each(mirrors)(
+            `$name: Should successfully return 501 when API request fails and no other mirrors are available`,
+            async (mirror) => {
+                const client = getMirrorClient(mirror);
+
+                const beatmapSetId = faker.number.int({ min: 1, max: 1000000 });
+
+                const mockApiGet = Mocker.mockRequest(
+                    client,
+                    'baseApi',
+                    'get',
+                    {
+                        data: null,
+                        status: 500,
+                        headers: {},
+                    },
+                );
+
+                const request = mirrorsManager.getBeatmapSet({
+                    beatmapSetId,
+                });
+
+                const awaitedResult = await request;
+
+                expect(mockApiGet).toHaveBeenCalledTimes(1);
+
+                expect(awaitedResult.status).toBe(501);
+                expect(awaitedResult.result).toBeNull();
+            },
+        );
+    });
+
+    describe('GetBeatmapById', () => {
+        const mirrors = mirrorsWithGetBeatmapById;
+
+        test.each(mirrors)(
+            `$name: Should successfully fetch a beatmap by id`,
+            async (mirror) => {
+                const client = getMirrorClient(mirror);
+
+                const beatmapId = faker.number.int({ min: 1, max: 1000000 });
+
+                const { mockBeatmap } = Mocker.getClientMockMethods(client);
+                mockBeatmap({
+                    data: {
+                        id: beatmapId,
+                    },
+                });
+
+                const result = await mirrorsManager.getBeatmap({
+                    beatmapId,
+                });
+
+                expect(result.status).toBe(200);
+                expect(result.result).not.toBeNull();
+                expect(result.result?.id).toBe(beatmapId);
+            },
+        );
+
+        test.each(mirrors)(
+            `$name: Should successfully update ratelimit during get beatmap by id request`,
+            async (mirror) => {
+                const client = getMirrorClient(mirror);
+
+                const { generateBeatmap } =
+                    Mocker.getClientGenerateMethods(client);
+
+                const beatmapId = faker.number.int({ min: 1, max: 1000000 });
+
+                const mockApiGet = Mocker.mockRequest(
+                    client,
+                    'baseApi',
+                    'get',
+                    {
+                        data: generateBeatmap({ id: beatmapId }),
+                        status: 200,
+                        headers: {},
+                    },
+                );
+
+                const request = mirrorsManager.getBeatmap({
+                    beatmapId,
+                });
+
+                // Skip a tick to check if is on cooldown
+                await new Promise((r) => setTimeout(r, 0));
+
+                let capacity = client.getCapacity(
+                    ClientAbilities.GetBeatmapById,
+                );
+
+                expect(capacity.remaining).toBeLessThan(capacity.limit);
+
+                const awaitedResult = await request;
+
+                expect(mockApiGet).toHaveBeenCalledTimes(1);
+
+                capacity = client.getCapacity(ClientAbilities.GetBeatmapById);
+
+                expect(awaitedResult.status).toBe(200);
+                expect(awaitedResult.result).not.toBeNull();
+                expect(awaitedResult.result?.id).toBe(beatmapId);
+
+                expect(capacity.remaining).toBeLessThan(capacity.limit);
+            },
+        );
+
+        test.each(mirrors)(
+            `$name: Should successfully return 404 when beatmap is not found`,
+            async (mirror) => {
+                const client = getMirrorClient(mirror);
+
+                const beatmapId = faker.number.int({ min: 1, max: 1000000 });
+
+                const mockApiGet = Mocker.mockRequest(
+                    client,
+                    'baseApi',
+                    'get',
+                    {
+                        data: null,
+                        status: 404,
+                        headers: {},
+                    },
+                );
+
+                const request = mirrorsManager.getBeatmap({
+                    beatmapId,
+                });
+
+                const awaitedResult = await request;
+
+                expect(mockApiGet).toHaveBeenCalledTimes(1);
+
+                expect(awaitedResult.status).toBe(404);
+                expect(awaitedResult.result).toBeNull();
+            },
+        );
+
+        test.each(mirrors)(
+            `$name: Should successfully return 501 when API request fails and no other mirrors are available`,
+            async (mirror) => {
+                const client = getMirrorClient(mirror);
+
+                const beatmapId = faker.number.int({ min: 1, max: 1000000 });
+
+                const mockApiGet = Mocker.mockRequest(
+                    client,
+                    'baseApi',
+                    'get',
+                    {
+                        data: null,
+                        status: 500,
+                        headers: {},
+                    },
+                );
+
+                const request = mirrorsManager.getBeatmap({
+                    beatmapId,
+                });
+
+                const awaitedResult = await request;
+
+                expect(mockApiGet).toHaveBeenCalledTimes(1);
+
+                expect(awaitedResult.status).toBe(501);
+                expect(awaitedResult.result).toBeNull();
+            },
+        );
+    });
+
+    describe('GetBeatmapByHash', () => {
+        const mirrors = mirrorsWithGetBeatmapByHash;
+
+        test.each(mirrors)(
+            `$name: Should successfully fetch a beatmap by hash`,
+            async (mirror) => {
+                const client = getMirrorClient(mirror);
+
+                const beatmapHash = faker.string.uuid();
+
+                const { mockBeatmap } = Mocker.getClientMockMethods(client);
+
+                mockBeatmap({
+                    data: {
+                        checksum: beatmapHash,
+                    },
+                });
+
+                const result = await mirrorsManager.getBeatmap({
+                    beatmapHash,
+                });
+
+                expect(result.status).toBe(200);
+                expect(result.result).not.toBeNull();
+                expect(result.result?.checksum).toBe(beatmapHash);
+            },
+        );
+
+        test.each(mirrors)(
+            `$name: Should successfully update ratelimit during get beatmap by hash request`,
+            async (mirror) => {
+                const client = getMirrorClient(mirror);
+
+                const beatmapHash = faker.string.uuid();
+
+                const { generateBeatmap, generateBeatmapset } =
+                    Mocker.getClientGenerateMethods(client);
+
+                const mockApiGet = Mocker.mockRequest(
+                    client,
+                    'baseApi',
+                    'get',
+                    {
+                        data: generateBeatmap({
                             checksum: beatmapHash,
                         }),
-                    ],
-                },
-            });
+                        status: 200,
+                        headers: {},
+                    },
+                );
 
-            mockBeatmap({
-                data: {
-                    checksum: beatmapHash,
-                },
-            });
+                const request = mirrorsManager.getBeatmap({
+                    beatmapHash,
+                });
 
-            const result = await mirrorsManager.getBeatmap({
-                beatmapHash,
-            });
+                // Skip a tick to check if is on cooldown
+                await new Promise((r) => setTimeout(r, 0));
 
-            expect(result.status).toBe(200);
-            expect(result.result).not.toBeNull();
-            expect(result.result?.checksum).toBe(beatmapHash);
-        },
-    );
+                let capacity = client.getCapacity(
+                    ClientAbilities.GetBeatmapByHash,
+                );
 
-    test.each(mirrorsWithGetBeatmapSetByBeatmapId)(
-        `$name: Should successfully fetch a beatmapset by beatmap id`,
-        async (mirror) => {
-            const client = getMirrorClient(mirror);
+                expect(capacity.remaining).toBeLessThan(capacity.limit);
 
-            const beatmapId = faker.number.int({ min: 1, max: 1000000 });
+                const awaitedResult = await request;
 
-            const { mockBeatmap, mockBeatmapset } =
-                Mocker.getClientMockMethods(client);
+                expect(mockApiGet).toHaveBeenCalledTimes(1);
 
-            mockBeatmapset({
-                data: {
-                    id: beatmapId,
-                },
-            });
+                capacity = client.getCapacity(ClientAbilities.GetBeatmapByHash);
 
-            mockBeatmap({
-                data: {
-                    id: beatmapId,
-                },
-            });
+                expect(awaitedResult.status).toBe(200);
+                expect(awaitedResult.result).not.toBeNull();
 
-            const result = await mirrorsManager.getBeatmap({
-                beatmapId,
-            });
+                expect(awaitedResult.result?.checksum).toBe(beatmapHash);
 
-            expect(result.status).toBe(200);
-            expect(result.result).not.toBeNull();
-            expect(result.result?.id).toBe(beatmapId);
-        },
-    );
+                expect(capacity.remaining).toBeLessThan(capacity.limit);
+            },
+        );
 
-    test.each(mirrorsWithGetBeatmapById)(
-        `$name: Should successfully fetch a beatmap by id`,
-        async (mirror) => {
-            const client = getMirrorClient(mirror);
+        test.each(mirrors)(
+            `$name: Should successfully return 404 when beatmap is not found`,
+            async (mirror) => {
+                const client = getMirrorClient(mirror);
 
-            const beatmapId = faker.number.int({ min: 1, max: 1000000 });
+                const beatmapHash = faker.string.uuid();
 
-            const { mockBeatmap, mockBeatmapset } =
-                Mocker.getClientMockMethods(client);
+                const mockApiGet = Mocker.mockRequest(
+                    client,
+                    'baseApi',
+                    'get',
+                    {
+                        data: null,
+                        status: 404,
+                        headers: {},
+                    },
+                );
 
-            mockBeatmapset({
-                data: {
-                    id: beatmapId,
-                },
-            });
+                const request = mirrorsManager.getBeatmap({
+                    beatmapHash,
+                });
 
-            mockBeatmap({
-                data: {
-                    id: beatmapId,
-                },
-            });
+                const awaitedResult = await request;
 
-            const result = await mirrorsManager.getBeatmap({
-                beatmapId,
-            });
+                expect(mockApiGet).toHaveBeenCalledTimes(1);
 
-            expect(result.status).toBe(200);
-            expect(result.result).not.toBeNull();
-            expect(result.result?.id).toBe(beatmapId);
-        },
-    );
+                expect(awaitedResult.status).toBe(404);
+                expect(awaitedResult.result).toBeNull();
+            },
+        );
 
-    test.each(mirrorsWithGetBeatmapByHash)(
-        `$name: Should successfully fetch a beatmap by hash`,
-        async (mirror) => {
-            const client = getMirrorClient(mirror);
+        test.each(mirrors)(
+            `$name: Should successfully return 501 when API request fails and no other mirrors are available`,
+            async (mirror) => {
+                const client = getMirrorClient(mirror);
 
-            const beatmapHash = faker.string.uuid();
+                const beatmapHash = faker.string.uuid();
 
-            const { mockBeatmapset, mockBeatmap } =
-                Mocker.getClientMockMethods(client);
+                const mockApiGet = Mocker.mockRequest(
+                    client,
+                    'baseApi',
+                    'get',
+                    {
+                        data: null,
+                        status: 500,
+                        headers: {},
+                    },
+                );
 
-            mockBeatmapset({
-                data: {
-                    beatmaps: [
-                        FakerGenerator.generateBeatmap({
-                            checksum: beatmapHash,
-                        }),
-                    ],
-                },
-            });
+                const request = mirrorsManager.getBeatmap({
+                    beatmapHash,
+                });
 
-            mockBeatmap({
-                data: {
-                    checksum: beatmapHash,
-                },
-            });
+                const awaitedResult = await request;
 
-            const result = await mirrorsManager.getBeatmap({
-                beatmapHash,
-            });
+                expect(mockApiGet).toHaveBeenCalledTimes(1);
 
-            expect(result.status).toBe(200);
-            expect(result.result).not.toBeNull();
-            expect(result.result?.checksum).toBe(beatmapHash);
-        },
-    );
-
-    test.each(mirrorsWithGetBeatmapSetById)(
-        `$name: Should successfully update ratelimit during beatmapset request`,
-        async (mirror) => {
-            const client = getMirrorClient(mirror);
-
-            const { generateBeatmapset } =
-                Mocker.getClientGenerateMethods(client);
-
-            const beatmapSetId = faker.number.int({ min: 1, max: 1000000 });
-
-            const mockApiGet = Mocker.mockRequest(client, 'baseApi', 'get', {
-                data: generateBeatmapset({ id: beatmapSetId }),
-                status: 200,
-                headers: {},
-            });
-
-            const request = mirrorsManager.getBeatmapSet({
-                beatmapSetId,
-            });
-
-            // Skip a tick to check if is on cooldown
-            await new Promise((r) => setTimeout(r, 0));
-
-            let capacity = client.getCapacity(
-                ClientAbilities.GetBeatmapSetById,
-            );
-
-            expect(capacity.remaining).toBeLessThan(capacity.limit);
-
-            const awaitedResult = await request;
-
-            expect(mockApiGet).toHaveBeenCalledTimes(1);
-
-            capacity = client.getCapacity(ClientAbilities.GetBeatmapSetById);
-
-            expect(awaitedResult.status).toBe(200);
-            expect(awaitedResult.result).not.toBeNull();
-            expect(awaitedResult.result?.id).toBe(beatmapSetId);
-
-            expect(capacity.remaining).toBeLessThan(capacity.limit);
-        },
-    );
-
-    test.each(mirrorsWithGetBeatmapSetById)(
-        `$name: Should successfully return 404 when beatmapset is not found`,
-        async (mirror) => {
-            const client = getMirrorClient(mirror);
-
-            const beatmapSetId = faker.number.int({ min: 1, max: 1000000 });
-
-            const mockApiGet = Mocker.mockRequest(client, 'baseApi', 'get', {
-                data: null,
-                status: 404,
-                headers: {},
-            });
-
-            const request = mirrorsManager.getBeatmapSet({
-                beatmapSetId,
-            });
-
-            const awaitedResult = await request;
-
-            expect(mockApiGet).toHaveBeenCalledTimes(1);
-
-            expect(awaitedResult.status).toBe(404);
-            expect(awaitedResult.result).toBeNull();
-        },
-    );
-
-    test.each(mirrorsWithGetBeatmapSetById)(
-        `$name: Should successfully return 501 when API request fails and no other mirrors are available`,
-        async (mirror) => {
-            const client = getMirrorClient(mirror);
-
-            const beatmapSetId = faker.number.int({ min: 1, max: 1000000 });
-
-            const mockApiGet = Mocker.mockRequest(client, 'baseApi', 'get', {
-                data: null,
-                status: 500,
-                headers: {},
-            });
-
-            const request = mirrorsManager.getBeatmapSet({
-                beatmapSetId,
-            });
-
-            const awaitedResult = await request;
-
-            expect(mockApiGet).toHaveBeenCalledTimes(1);
-
-            expect(awaitedResult.status).toBe(501);
-            expect(awaitedResult.result).toBeNull();
-        },
-    );
+                expect(awaitedResult.status).toBe(501);
+                expect(awaitedResult.result).toBeNull();
+            },
+        );
+    });
 });

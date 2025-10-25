@@ -22,7 +22,6 @@ export class BanchoClient extends BaseClient {
                 abilities: [
                     ClientAbilities.GetBeatmapById,
                     ClientAbilities.GetBeatmapSetById,
-                    ClientAbilities.GetBeatmapSetByBeatmapId,
                     ClientAbilities.GetBeatmaps,
                     ClientAbilities.DownloadOsuBeatmap,
                 ],
@@ -33,7 +32,6 @@ export class BanchoClient extends BaseClient {
                         abilities: [
                             ClientAbilities.GetBeatmapById,
                             ClientAbilities.GetBeatmapSetById,
-                            ClientAbilities.GetBeatmapSetByBeatmapId,
                             ClientAbilities.GetBeatmaps,
                             ClientAbilities.DownloadOsuBeatmap,
                         ],

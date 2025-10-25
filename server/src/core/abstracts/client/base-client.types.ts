@@ -45,8 +45,6 @@ export type ResultWithStatus<T> = {
 
 export enum ClientAbilities {
     GetBeatmapSetById = 1 << 0, // 1
-    GetBeatmapSetByBeatmapHash = 1 << 1, // 2
-    GetBeatmapSetByBeatmapId = 1 << 2, // 4
     GetBeatmapById = 1 << 3, // 8
     GetBeatmapByHash = 1 << 5, // 32
     DownloadBeatmapSetById = 1 << 6, // 64
