@@ -25,12 +25,16 @@ const swaggerOptions: ElysiaSwaggerConfig<'/docs'> = {
 const loggerOptions = {
     transport: {
         targets: [
-            {
-                target: 'pino-pretty',
-                options: {
-                    colorize: true,
-                },
-            },
+            ...(config.IsAutomatedTesting
+                ? []
+                : [
+                      {
+                          target: 'pino-pretty',
+                          options: {
+                              colorize: true,
+                          },
+                      },
+                  ]),
             ...(config.LOKI_HOST
                 ? [
                       {

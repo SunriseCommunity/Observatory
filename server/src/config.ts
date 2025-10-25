@@ -4,6 +4,14 @@ import { exit } from 'process';
 
 dotenv.config();
 
+export type Mirror =
+    | 'direct'
+    | 'bancho'
+    | 'mino'
+    | 'osulabs'
+    | 'gatari'
+    | 'nerinyan';
+
 const {
     PORT,
     POSTGRES_USER,
@@ -57,6 +65,7 @@ const config: {
     RATELIMIT_TIME_WINDOW: number;
     OSZ_FILES_LIFE_SPAN: number;
     IsProduction: boolean;
+    IsAutomatedTesting: boolean;
     IsDebug: boolean;
     UseBancho: boolean;
     MirrorsToIgnore: string[];
@@ -78,6 +87,7 @@ const config: {
     RATELIMIT_TIME_WINDOW: Number(RATELIMIT_TIME_WINDOW) || 20 * 1000,
     OSZ_FILES_LIFE_SPAN: Number(OSZ_FILES_LIFE_SPAN) || 24,
     IsProduction: Bun.env.NODE_ENV === 'production',
+    IsAutomatedTesting: Bun.env.NODE_ENV === 'test',
     IsDebug: DEBUG_MODE === 'true',
     UseBancho: BANCHO_CLIENT_SECRET && BANCHO_CLIENT_ID ? true : false,
     MirrorsToIgnore: MIRRORS_TO_IGNORE?.split(',').map((v) => v.trim()) ?? [],
