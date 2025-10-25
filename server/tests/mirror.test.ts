@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'bun:test';
+import { beforeAll, describe, expect, it } from 'bun:test';
 import { BanchoClient, DirectClient } from '../src/core/domains';
 
 // @ts-ignore
@@ -25,6 +25,10 @@ describe('Mirror tests', () => {
             Math.floor(Math.random() * json.tests[key].length)
         ];
     };
+
+    beforeAll(() => {
+        config.IsAutomatedTesting = false; // Disable automated testing to allow sending requests to the APIs
+    });
 
     describe('Bancho tests', () => {
         const hasClientToken =
