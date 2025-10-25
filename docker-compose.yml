@@ -1,20 +1,20 @@
 name: observatory
 services:
     observatory:
-        image: 'oven/bun:latest'
-        restart: always
-        working_dir: /usr/src/app
+        build:
+        context: .
+        dockerfile: Dockerfile
         volumes:
-            - .:/usr/src/app
+            - ./data:/app/data
+        restart: always
         environment:
-            - NODE_ENV=production
-            - POSTGRES_HOST=postgres
-            - POSTGRES_PORT=5432
-            - REDIS_HOST=redis
-            - LOKI_HOST=http://loki:3100
+            NODE_ENV: production
+            POSTGRES_HOST: postgres
+            POSTGRES_PORT: 5432
+            REDIS_HOST: redis
+            LOKI_HOST: http://loki:3100
         ports:
             - ${PORT}:${PORT}
-        command: ['sh', '-c', 'bun i && bun run db:migration && bun run start']
         depends_on:
             - loki
             - postgres
