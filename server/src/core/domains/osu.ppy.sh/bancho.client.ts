@@ -21,7 +21,6 @@ export class BanchoClient extends BaseClient {
                 baseUrl: 'https://osu.ppy.sh',
                 abilities: [
                     ClientAbilities.GetBeatmapById,
-                    ClientAbilities.GetBeatmapBySetId,
                     ClientAbilities.GetBeatmapSetById,
                     ClientAbilities.GetBeatmapSetByBeatmapId,
                     ClientAbilities.GetBeatmaps,
@@ -31,6 +30,13 @@ export class BanchoClient extends BaseClient {
             {
                 rateLimits: [
                     {
+                        abilities: [
+                            ClientAbilities.GetBeatmapById,
+                            ClientAbilities.GetBeatmapSetById,
+                            ClientAbilities.GetBeatmapSetByBeatmapId,
+                            ClientAbilities.GetBeatmaps,
+                            ClientAbilities.DownloadOsuBeatmap,
+                        ],
                         routes: ['/'],
                         limit: 1200,
                         reset: 60,
@@ -99,7 +105,7 @@ export class BanchoClient extends BaseClient {
             },
         });
 
-        if (!result || result.status !== 200) {
+        if (!result || result.status !== 200 || !result.data) {
             return { result: null, status: result?.status ?? 500 };
         } else if (result.data.length === 0) {
             return { result: null, status: 404 };
@@ -122,7 +128,7 @@ export class BanchoClient extends BaseClient {
             },
         );
 
-        if (!result || result.status !== 200) {
+        if (!result || result.status !== 200 || !result.data) {
             return { result: null, status: result?.status ?? 500 };
         }
 
@@ -146,7 +152,7 @@ export class BanchoClient extends BaseClient {
             },
         );
 
-        if (!result || result.status !== 200) {
+        if (!result || result.status !== 200 || !result.data) {
             return { result: null, status: result?.status ?? 500 };
         }
 

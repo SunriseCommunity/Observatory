@@ -26,6 +26,11 @@ export class DirectClient extends BaseClient {
                 },
                 rateLimits: [
                     {
+                        abilities: [
+                            ClientAbilities.DownloadBeatmapSetById,
+                            ClientAbilities.DownloadBeatmapSetByIdNoVideo,
+                            ClientAbilities.DownloadOsuBeatmap,
+                        ],
                         routes: ['/'],
                         limit: 50,
                         reset: 60,
@@ -52,7 +57,7 @@ export class DirectClient extends BaseClient {
             },
         );
 
-        if (!result || result.status !== 200) {
+        if (!result || result.status !== 200 || !result.data) {
             return { result: null, status: result?.status ?? 500 };
         }
 
@@ -68,7 +73,7 @@ export class DirectClient extends BaseClient {
             },
         });
 
-        if (!result || result.status !== 200) {
+        if (!result || result.status !== 200 || !result.data) {
             return { result: null, status: result?.status ?? 500 };
         }
 

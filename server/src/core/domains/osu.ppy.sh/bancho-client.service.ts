@@ -44,7 +44,7 @@ export class BanchoService {
             },
         });
 
-        if (!result || result.status !== 200) {
+        if (!result || result.status !== 200 || !result.data) {
             throw new Error(
                 'BanchoService: Failed to fetch Bancho client token. Please check your client ID/secret',
             );

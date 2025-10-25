@@ -12,7 +12,7 @@ export type RateLimitOptions = {
 };
 
 export type RateLimit = {
-    abilities?: ClientAbilities[];
+    abilities: ClientAbilities[];
     routes: string[]; // ! Make sure this matches the "defaultUrl + route + value" logic
     limit: number;
     reset: number;

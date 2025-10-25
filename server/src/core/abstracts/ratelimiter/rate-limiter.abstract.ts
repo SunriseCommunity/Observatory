@@ -7,8 +7,12 @@ import config from '../../../config';
 import Redis from 'ioredis';
 import { RedisInstance } from '../../../plugins/redisInstance';
 import { RedisKeys } from '../../../types/redis';
+import { ClientAbilities } from '../client/base-client.types';
 
 const DEFAULT_RATE_LIMIT = {
+    abilities: Object.values(ClientAbilities).filter(
+        (item) => !isNaN(Number(item)),
+    ) as ClientAbilities[],
     routes: ['/'],
     limit: 60,
     reset: 60,
