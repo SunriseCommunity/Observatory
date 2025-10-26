@@ -2,8 +2,8 @@ name: observatory
 services:
     observatory:
         build:
-        context: .
-        dockerfile: Dockerfile
+            context: .
+            dockerfile: Dockerfile
         volumes:
             - ./data:/app/data
         restart: always
