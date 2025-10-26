@@ -11,6 +11,11 @@ services:
             POSTGRES_DB: test
         volumes:
             - postgres_data:/var/lib/postgresql/data
+        healthcheck:
+            test: ['CMD-SHELL', 'pg_isready']
+            interval: 10s
+            timeout: 5s
+            retries: 5
 
     redis:
         image: redis:latest
@@ -21,6 +26,11 @@ services:
             - redis:/data
         networks:
             - container_network
+        healthcheck:
+            test: ['CMD-SHELL', 'redis-cli ping | grep PONG']
+            interval: 10s
+            timeout: 5s
+            retries: 5
 
 volumes:
     redis:

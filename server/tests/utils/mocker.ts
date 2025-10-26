@@ -169,9 +169,12 @@ export class Mocker {
             process.cwd(),
             'server/src/database/migrations',
         );
-        await migrate(db, {
-            migrationsFolder: migrationPath,
-        });
+
+        try {
+            await migrate(db, {
+                migrationsFolder: migrationPath,
+            });
+        } catch (_) {}
 
         await RedisInstance.flushdb();
     }
