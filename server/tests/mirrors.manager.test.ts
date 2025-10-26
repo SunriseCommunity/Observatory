@@ -1257,5 +1257,48 @@ describe('MirrorsManager', () => {
 
             expect(currentRatelimit.remaining).toBe(currentRatelimit.limit - 1);
         });
+
+        test.each([502, 503, 504])(
+            `Should successfully return 502 when API request sends 5xx error and send mirror to cooldown`,
+            async (errorCode) => {
+                const minoClient = getMirrorClient(MinoClient);
+
+                const beatmapId = faker.number.int({
+                    min: 1,
+                    max: 1000000,
+                });
+
+                const mockApiGet = Mocker.mockRequest(
+                    minoClient,
+                    'baseApi',
+                    'get',
+                    {
+                        data: null,
+                        status: errorCode,
+                        headers: {},
+                    },
+                );
+
+                const request = await mirrorsManager.downloadOsuBeatmap({
+                    beatmapId,
+                });
+
+                expect(mockApiGet).toHaveBeenCalledTimes(1);
+
+                expect(request.status).toBe(502);
+                expect(request.result).toBeNull();
+
+                // Second request should send none requests due to cooldown
+
+                const request2 = await mirrorsManager.downloadOsuBeatmap({
+                    beatmapId,
+                });
+
+                expect(mockApiGet).toHaveBeenCalledTimes(1);
+
+                expect(request2.status).toBe(502);
+                expect(request2.result).toBeNull();
+            },
+        );
     });
 });

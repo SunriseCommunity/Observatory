@@ -254,9 +254,9 @@ export class ApiRateLimiter {
             this.config.onCooldownUntil = Date.now() + 60 * 60 * 1000; // 1 hour
         }
 
-        if (response?.status === 502) {
+        if (response?.status && response.status >= 502) {
             this.log(
-                `Bad gateway for ${route}. Setting cooldown of 5 minutes`,
+                `Server error (${response.status}) for ${route}. Setting cooldown of 5 minutes`,
                 'warn',
             );
             this.config.onCooldownUntil = Date.now() + 5 * 60 * 1000; // 5 minutes
