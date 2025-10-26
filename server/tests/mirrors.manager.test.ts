@@ -24,6 +24,7 @@ import { NerinyanClient } from '../src/core/domains/nerinyan.moe/nerinyan.client
 import assert from 'assert';
 import { faker } from '@faker-js/faker';
 import config from '../src/config';
+import { DirectClient } from '../src/core/domains';
 
 const mirrors: (new (...args: any[]) => BaseClient)[] = [
     MinoClient,
@@ -31,6 +32,7 @@ const mirrors: (new (...args: any[]) => BaseClient)[] = [
     GatariClient,
     NerinyanClient,
     OsulabsClient,
+    DirectClient,
 ];
 
 const getMirrorsWithAbility = (ability: ClientAbilities) => {
@@ -72,7 +74,7 @@ describe('MirrorsManager', () => {
 
         assert(
             // @ts-expect-error accessing protected property for testing
-            mirrorsManager.clients.length > 1,
+            mirrorsManager.clients.length === 1,
             'More than one client found',
         );
 
@@ -90,20 +92,10 @@ describe('MirrorsManager', () => {
         return client;
     };
 
-    const mirrorsWithGetBeatmapSetById = getMirrorsWithAbility(
-        ClientAbilities.GetBeatmapSetById,
-    );
-
-    const mirrorsWithGetBeatmapById = getMirrorsWithAbility(
-        ClientAbilities.GetBeatmapById,
-    );
-
-    const mirrorsWithGetBeatmapByHash = getMirrorsWithAbility(
-        ClientAbilities.GetBeatmapByHash,
-    );
-
     describe('GetBeatmapSetById', () => {
-        const mirrors = mirrorsWithGetBeatmapSetById;
+        const mirrors = getMirrorsWithAbility(
+            ClientAbilities.GetBeatmapSetById,
+        );
 
         test.each(mirrors)(
             `$name: Should successfully fetch a beatmapset by id`,
@@ -213,7 +205,7 @@ describe('MirrorsManager', () => {
         );
 
         test.each(mirrors)(
-            `$name: Should successfully return 501 when API request fails and no other mirrors are available`,
+            `$name: Should successfully return 502 when API request fails and no other mirrors are available`,
             async (mirror) => {
                 const client = getMirrorClient(mirror);
 
@@ -238,14 +230,14 @@ describe('MirrorsManager', () => {
 
                 expect(mockApiGet).toHaveBeenCalledTimes(1);
 
-                expect(awaitedResult.status).toBe(501);
+                expect(awaitedResult.status).toBe(502);
                 expect(awaitedResult.result).toBeNull();
             },
         );
     });
 
     describe('GetBeatmapById', () => {
-        const mirrors = mirrorsWithGetBeatmapById;
+        const mirrors = getMirrorsWithAbility(ClientAbilities.GetBeatmapById);
 
         test.each(mirrors)(
             `$name: Should successfully fetch a beatmap by id`,
@@ -351,7 +343,7 @@ describe('MirrorsManager', () => {
         );
 
         test.each(mirrors)(
-            `$name: Should successfully return 501 when API request fails and no other mirrors are available`,
+            `$name: Should successfully return 502 when API request fails and no other mirrors are available`,
             async (mirror) => {
                 const client = getMirrorClient(mirror);
 
@@ -376,14 +368,14 @@ describe('MirrorsManager', () => {
 
                 expect(mockApiGet).toHaveBeenCalledTimes(1);
 
-                expect(awaitedResult.status).toBe(501);
+                expect(awaitedResult.status).toBe(502);
                 expect(awaitedResult.result).toBeNull();
             },
         );
     });
 
     describe('GetBeatmapByHash', () => {
-        const mirrors = mirrorsWithGetBeatmapByHash;
+        const mirrors = getMirrorsWithAbility(ClientAbilities.GetBeatmapByHash);
 
         test.each(mirrors)(
             `$name: Should successfully fetch a beatmap by hash`,
@@ -493,7 +485,7 @@ describe('MirrorsManager', () => {
         );
 
         test.each(mirrors)(
-            `$name: Should successfully return 501 when API request fails and no other mirrors are available`,
+            `$name: Should successfully return 502 when API request fails and no other mirrors are available`,
             async (mirror) => {
                 const client = getMirrorClient(mirror);
 
@@ -518,7 +510,7 @@ describe('MirrorsManager', () => {
 
                 expect(mockApiGet).toHaveBeenCalledTimes(1);
 
-                expect(awaitedResult.status).toBe(501);
+                expect(awaitedResult.status).toBe(502);
                 expect(awaitedResult.result).toBeNull();
             },
         );
