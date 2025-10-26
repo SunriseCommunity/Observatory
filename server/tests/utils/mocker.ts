@@ -37,7 +37,7 @@ export class Mocker {
     static mockRequest<T>(
         baseClient: BaseClient,
         service: 'api',
-        mockedEndpointMethod: keyof BaseApi,
+        mockedEndpointMethod: keyof ApiRateLimiter,
         data: T,
     ): Mock<never>;
     static mockRequest<T>(
@@ -100,19 +100,66 @@ export class Mocker {
         throw new Error('Invalid service to mock');
     }
 
+    static mockSyncRequest<T>(
+        baseClient: BaseClient,
+        service: 'self',
+        mockedEndpointMethod: keyof BaseClient,
+        data: T,
+    ): Mock<never>;
+    static mockSyncRequest<T>(
+        baseClient: BaseClient,
+        service: 'api',
+        mockedEndpointMethod: keyof ApiRateLimiter,
+        data: T,
+    ): Mock<never>;
+    static mockSyncRequest<T>(
+        baseClient: BaseClient,
+        service: 'baseApi',
+        mockedEndpointMethod: keyof BaseApi,
+        data: T,
+    ): Mock<never>;
+    static mockSyncRequest<T>(
+        baseClient: BaseClient,
+        service: 'self' | 'api' | 'baseApi',
+        mockedEndpointMethod:
+            | keyof BaseClient
+            | keyof BaseApi
+            | keyof ApiRateLimiter,
+        data: T,
+    ) {
+        if (service === 'api') {
+            return spyOn(
+                // @ts-expect-error ignore protected property
+                baseClient.api,
+                mockedEndpointMethod as keyof ApiRateLimiter,
+            ).mockReturnValue(data as never);
+        }
+
+        if (service === 'baseApi') {
+            return spyOn(
+                // @ts-expect-error ignore protected property
+                baseClient.api.api,
+                mockedEndpointMethod as keyof BaseApi,
+            ).mockReturnValue(data as never);
+        }
+
+        if (service === 'self') {
+            return spyOn(
+                baseClient,
+                mockedEndpointMethod as keyof BaseClient,
+            ).mockReturnValue(data as never);
+        }
+
+        throw new Error('Invalid service to mock');
+    }
+
     static mockApiRequestForAllClients<T>(
         mockedEndpointMethod: keyof BaseApi,
         data: T,
     ) {
-        const clients = [
-            MinoClient,
-            BanchoClient,
-            GatariClient,
-            NerinyanClient,
-            OsulabsClient,
-        ];
-
-        spyOn(BaseApi.prototype, mockedEndpointMethod).mockResolvedValue(data);
+        return spyOn(BaseApi.prototype, mockedEndpointMethod).mockResolvedValue(
+            data,
+        );
     }
 
     // TODO: Add ability to mock database for unit tests
@@ -164,28 +211,26 @@ export class Mocker {
         }
     }
 
-    static getClientMockMethods(client: BaseClient) {
+    static getClientMockMethods<T>(client: BaseClient) {
         const generators = this.getClientGenerateMethods(client);
 
         return {
-            mockBeatmap: (options?: Partial<MockApiRequestOptions<Beatmap>>) =>
-                this.mockApiRequestForAllClients('get', {
+            mockBeatmap: (options?: Partial<MockApiRequestOptions<T>>) =>
+                this.mockRequest(client, 'baseApi', 'get', {
                     status: 200,
                     headers: {},
                     ...options,
                     data: generators.generateBeatmap(options?.data),
                 }),
-            mockBeatmapset: (
-                options?: Partial<MockApiRequestOptions<Beatmapset>>,
-            ) =>
-                this.mockApiRequestForAllClients('get', {
+            mockBeatmapset: (options?: Partial<MockApiRequestOptions<T>>) =>
+                this.mockRequest(client, 'baseApi', 'get', {
                     status: 200,
                     headers: {},
                     ...options,
                     data: generators.generateBeatmapset(options?.data),
                 }),
             mockArrayBuffer: () =>
-                this.mockApiRequestForAllClients('get', {
+                this.mockRequest(client, 'baseApi', 'get', {
                     status: 200,
                     headers: {},
                     data: generators.generateArrayBuffer(),
