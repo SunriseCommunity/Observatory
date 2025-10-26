@@ -309,7 +309,10 @@ export class MirrorsManager {
 
     private getClientWeight(client: MirrorClient, ability: ClientAbilities) {
         const { limit, remaining } = client.client.getCapacity(ability);
-        const rateLimitWeight = remaining / limit;
+
+        const percentageWeight = remaining / limit;
+        const capacityBonus = Math.log10(remaining + 1);
+        const rateLimitWeight = percentageWeight * capacityBonus;
 
         const isDownload = [
             ClientAbilities.DownloadBeatmapSetById,
@@ -321,7 +324,11 @@ export class MirrorsManager {
             ? client.weights.download
             : client.weights.API;
 
-        return rateLimitWeight * latencyWeight * (1 - client.weights.failrate);
+        return (
+            Math.max(0.00000001, rateLimitWeight) *
+            Math.max(0.00000001, latencyWeight) *
+            Math.max(0.00000001, 1 - client.weights.failrate)
+        );
     }
 
     private log(message: string, level: 'info' | 'warn' | 'error' = 'info') {
