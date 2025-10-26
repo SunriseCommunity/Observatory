@@ -266,7 +266,7 @@ export class MirrorsManager {
 
             usedClients.push(client);
         }
-        return { result: null, status: 500 };
+        return { result: null, status: 502 };
     }
 
     private getClient(
