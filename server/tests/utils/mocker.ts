@@ -26,6 +26,7 @@ import {
     OsulabsBeatmapset,
 } from '../../src/core/domains/beatmaps.download/osulabs-client.types';
 import { DeepPartial } from '../../src/types/utils';
+import { RedisInstance } from '../../src/plugins/redisInstance';
 
 export class Mocker {
     static mockRequest<T>(
@@ -171,6 +172,8 @@ export class Mocker {
         await migrate(db, {
             migrationsFolder: migrationPath,
         });
+
+        await RedisInstance.flushdb();
     }
 
     static mockMirrorsBenchmark() {
