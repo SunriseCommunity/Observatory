@@ -1256,6 +1256,8 @@ describe('MirrorsManager', () => {
             expect(requests2).toBe(1);
 
             expect(currentRatelimit.remaining).toBe(currentRatelimit.limit - 1);
+
+            setSystemTime();
         });
 
         test.each([502, 503, 504])(
