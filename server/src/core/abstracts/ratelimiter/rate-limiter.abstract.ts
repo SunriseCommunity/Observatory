@@ -352,12 +352,20 @@ export class ApiRateLimiter {
     private getRemainingRequests(limit: RateLimit) {
         const requests = this.getRequestsArray(limit.routes);
 
-        const filteredRequests = Array.from(requests).filter(
-            ([_, date]) =>
-                new Date().getTime() - date.getTime() < limit.reset * 1000,
-        );
+        this.clearOutdatedRequests(requests, limit);
 
-        return limit.limit - filteredRequests.length;
+        return limit.limit - requests.size;
+    }
+
+    private clearOutdatedRequests(
+        requests: Map<string, Date>,
+        limit: RateLimit,
+    ) {
+        requests.forEach((date, uid) => {
+            if (new Date().getTime() - date.getTime() > limit.reset * 1000) {
+                requests.delete(uid);
+            }
+        });
     }
 
     private addNewRequest(route: string, replaceUid?: string) {

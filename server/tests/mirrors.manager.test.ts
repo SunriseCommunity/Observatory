@@ -5,6 +5,7 @@ import {
     expect,
     jest,
     mock,
+    setSystemTime,
     test,
 } from 'bun:test';
 
@@ -1147,6 +1148,114 @@ describe('MirrorsManager', () => {
                 expect(result.result?.id ?? null).toBe(1);
                 expect(mockMinoBeatmap).toHaveBeenCalledTimes(i + 1);
             }
+        });
+
+        test('Should clear outdated requests in rate-limiter', async () => {
+            const minoClient = getMirrorClient(MinoClient);
+
+            const { mockBeatmap } = Mocker.getClientMockMethods(minoClient);
+
+            // @ts-expect-error skip type check due to protected property
+            Mocker.mockSyncRequest(
+                minoClient,
+                'api',
+                'getRequestsArray',
+                new Map([
+                    ['/', new Date(Date.now() - 1000 * 65)],
+                    ['/', new Date(Date.now() - 1000 * 55)],
+                ]),
+            );
+
+            const mockedBeatmap = mockBeatmap({
+                data: {
+                    id: 1,
+                },
+            });
+
+            const result = await mirrorsManager.getBeatmap({
+                beatmapId: 1,
+            });
+
+            expect(mockedBeatmap).toHaveBeenCalledTimes(1);
+
+            expect(result.status).toBe(200);
+            expect(result.result).not.toBeNull();
+            expect(result.result?.id).toBe(1);
+
+            const currentRatelimit = minoClient.getCapacity(
+                ClientAbilities.GetBeatmapById,
+            );
+
+            // Should count one not outdated request, skip the outdated and add the new request
+            expect(currentRatelimit.remaining).toBe(currentRatelimit.limit - 2);
+        });
+
+        test('Should clear outdated requests from memory', async () => {
+            const minoClient = getMirrorClient(MinoClient);
+
+            const { mockBeatmap } = Mocker.getClientMockMethods(minoClient);
+
+            let currentRatelimit = minoClient.getCapacity(
+                ClientAbilities.GetBeatmapById,
+            );
+
+            expect(currentRatelimit.remaining).toBe(currentRatelimit.limit);
+
+            mockBeatmap({
+                data: {
+                    id: 1,
+                },
+            });
+
+            const result = await mirrorsManager.getBeatmap({
+                beatmapId: 1,
+            });
+
+            expect(result.status).toBe(200);
+            expect(result.result).not.toBeNull();
+            expect(result.result?.id).toBe(1);
+
+            currentRatelimit = minoClient.getCapacity(
+                ClientAbilities.GetBeatmapById,
+            );
+
+            // @ts-expect-error skip type check due to protected property
+            const requests = Array.from(minoClient.api.requests.values())
+                .filter((v) => v instanceof Map && v.size > 0)
+                .flatMap((v) => Array.from(v.entries())).length;
+
+            expect(requests).toBe(1);
+
+            expect(currentRatelimit.remaining).toBe(currentRatelimit.limit - 1);
+
+            setSystemTime(new Date(Date.now() + 1000 * 60 * 60 * 24));
+
+            mockBeatmap({
+                data: {
+                    id: 1,
+                },
+            });
+
+            const result2 = await mirrorsManager.getBeatmap({
+                beatmapId: 1,
+            });
+
+            expect(result2.status).toBe(200);
+            expect(result2.result).not.toBeNull();
+            expect(result2.result?.id).toBe(1);
+
+            currentRatelimit = minoClient.getCapacity(
+                ClientAbilities.GetBeatmapById,
+            );
+
+            // @ts-expect-error skip type check due to protected property
+            const requests2 = Array.from(minoClient.api.requests.values())
+                .filter((v) => v instanceof Map && v.size > 0)
+                .flatMap((v) => Array.from(v.entries())).length;
+
+            expect(requests2).toBe(1);
+
+            expect(currentRatelimit.remaining).toBe(currentRatelimit.limit - 1);
         });
     });
 });
