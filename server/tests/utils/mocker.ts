@@ -142,6 +142,7 @@ export class Mocker {
                     generateBeatmapset: (
                         options?: DeepPartial<MinoBeatmapset>,
                     ) => FakerGenerator.generateMinoBeatmapset(options),
+                    generateArrayBuffer: () => new ArrayBuffer(1024),
                 };
             case OsulabsClient:
                 return {
@@ -150,6 +151,7 @@ export class Mocker {
                     generateBeatmapset: (
                         options?: DeepPartial<OsulabsBeatmapset>,
                     ) => FakerGenerator.generateOsulabsBeatmapset(options),
+                    generateArrayBuffer: () => new ArrayBuffer(1024),
                 };
             default:
                 return {
@@ -157,6 +159,7 @@ export class Mocker {
                         FakerGenerator.generateBeatmap(options),
                     generateBeatmapset: (options?: DeepPartial<Beatmapset>) =>
                         FakerGenerator.generateBeatmapset(options),
+                    generateArrayBuffer: () => new ArrayBuffer(1024),
                 };
         }
     }
@@ -180,6 +183,12 @@ export class Mocker {
                     headers: {},
                     ...options,
                     data: generators.generateBeatmapset(options?.data),
+                }),
+            mockArrayBuffer: () =>
+                this.mockApiRequestForAllClients('get', {
+                    status: 200,
+                    headers: {},
+                    data: generators.generateArrayBuffer(),
                 }),
         };
     }

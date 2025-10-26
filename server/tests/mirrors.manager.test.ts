@@ -1,10 +1,8 @@
 import {
-    afterEach,
     beforeAll,
     beforeEach,
     describe,
     expect,
-    it,
     jest,
     mock,
     test,
@@ -13,7 +11,6 @@ import {
 import { MirrorsManager } from '../src/core/managers/mirrors/mirrors.manager';
 import { StorageManager } from '../src/core/managers/storage/storage.manager';
 import { BanchoClient } from '../src/core/domains/osu.ppy.sh/bancho.client';
-import { FakerGenerator } from './utils/faker.generator';
 import { Mocker } from './utils/mocker';
 import { ClientAbilities } from '../src/core/abstracts/client/base-client.types';
 import { BaseClient } from '../src/core/abstracts/client/base-client.abstract';
@@ -504,6 +501,429 @@ describe('MirrorsManager', () => {
 
                 const request = mirrorsManager.getBeatmap({
                     beatmapHash,
+                });
+
+                const awaitedResult = await request;
+
+                expect(mockApiGet).toHaveBeenCalledTimes(1);
+
+                expect(awaitedResult.status).toBe(502);
+                expect(awaitedResult.result).toBeNull();
+            },
+        );
+    });
+
+    describe('DownloadBeatmapSetById', () => {
+        const mirrors = getMirrorsWithAbility(
+            ClientAbilities.DownloadBeatmapSetById,
+        );
+
+        test.each(mirrors)(
+            `$name: Should successfully download a beatmap set by id`,
+            async (mirror) => {
+                const client = getMirrorClient(mirror);
+
+                const beatmapSetId = faker.number.int({ min: 1, max: 1000000 });
+
+                const { mockArrayBuffer } = Mocker.getClientMockMethods(client);
+
+                mockArrayBuffer();
+
+                const result = await mirrorsManager.downloadBeatmapSet({
+                    beatmapSetId,
+                });
+
+                expect(result.status).toBe(200);
+                expect(result.result).not.toBeNull();
+                expect(result.result?.byteLength).toBe(1024);
+            },
+        );
+
+        test.each(mirrors)(
+            `$name: Should successfully update ratelimit during download beatmap set by id request`,
+            async (mirror) => {
+                const client = getMirrorClient(mirror);
+
+                const beatmapSetId = faker.number.int({ min: 1, max: 1000000 });
+
+                const { generateArrayBuffer } =
+                    Mocker.getClientGenerateMethods(client);
+
+                const mockApiGet = Mocker.mockRequest(
+                    client,
+                    'baseApi',
+                    'get',
+                    {
+                        data: generateArrayBuffer(),
+                        status: 200,
+                        headers: {},
+                    },
+                );
+
+                const request = mirrorsManager.downloadBeatmapSet({
+                    beatmapSetId,
+                });
+
+                // Skip a tick to check if is on cooldown
+                await new Promise((r) => setTimeout(r, 0));
+
+                let capacity = client.getCapacity(
+                    ClientAbilities.DownloadBeatmapSetById,
+                );
+
+                expect(capacity.remaining).toBeLessThan(capacity.limit);
+
+                const awaitedResult = await request;
+
+                expect(mockApiGet).toHaveBeenCalledTimes(1);
+
+                capacity = client.getCapacity(
+                    ClientAbilities.DownloadBeatmapSetById,
+                );
+
+                expect(awaitedResult.status).toBe(200);
+                expect(awaitedResult.result).not.toBeNull();
+
+                expect(awaitedResult.result?.byteLength).toBe(1024);
+
+                expect(capacity.remaining).toBeLessThan(capacity.limit);
+            },
+        );
+
+        test.each(mirrors)(
+            `$name: Should successfully return 404 when download beatmap set by id is not found`,
+            async (mirror) => {
+                const client = getMirrorClient(mirror);
+
+                const beatmapSetId = faker.number.int({ min: 1, max: 1000000 });
+
+                const mockApiGet = Mocker.mockRequest(
+                    client,
+                    'baseApi',
+                    'get',
+                    {
+                        data: null,
+                        status: 404,
+                        headers: {},
+                    },
+                );
+
+                const request = mirrorsManager.downloadBeatmapSet({
+                    beatmapSetId,
+                });
+
+                const awaitedResult = await request;
+
+                expect(mockApiGet).toHaveBeenCalledTimes(1);
+
+                expect(awaitedResult.status).toBe(404);
+                expect(awaitedResult.result).toBeNull();
+            },
+        );
+
+        test.each(mirrors)(
+            `$name: Should successfully return 502 when API request fails and no other mirrors are available when downloading beatmap set by id`,
+            async (mirror) => {
+                const client = getMirrorClient(mirror);
+
+                const beatmapSetId = faker.number.int({ min: 1, max: 1000000 });
+
+                const mockApiGet = Mocker.mockRequest(
+                    client,
+                    'baseApi',
+                    'get',
+                    {
+                        data: null,
+                        status: 500,
+                        headers: {},
+                    },
+                );
+
+                const request = mirrorsManager.downloadBeatmapSet({
+                    beatmapSetId,
+                });
+
+                const awaitedResult = await request;
+
+                expect(mockApiGet).toHaveBeenCalledTimes(1);
+
+                expect(awaitedResult.status).toBe(502);
+                expect(awaitedResult.result).toBeNull();
+            },
+        );
+    });
+
+    describe('DownloadBeatmapSetByIdNoVideo', () => {
+        const mirrors = getMirrorsWithAbility(
+            ClientAbilities.DownloadBeatmapSetByIdNoVideo,
+        );
+
+        test.each(mirrors)(
+            `$name: Should successfully download a beatmap set by id without video`,
+            async (mirror) => {
+                const client = getMirrorClient(mirror);
+
+                const beatmapSetId = faker.number.int({ min: 1, max: 1000000 });
+
+                const { mockArrayBuffer } = Mocker.getClientMockMethods(client);
+
+                mockArrayBuffer();
+
+                const result = await mirrorsManager.downloadBeatmapSet({
+                    beatmapSetId,
+                    noVideo: true,
+                });
+
+                expect(result.status).toBe(200);
+                expect(result.result).not.toBeNull();
+                expect(result.result?.byteLength).toBe(1024);
+            },
+        );
+
+        test.each(mirrors)(
+            `$name: Should successfully update ratelimit during download beatmap set by id without video request`,
+            async (mirror) => {
+                const client = getMirrorClient(mirror);
+
+                const beatmapSetId = faker.number.int({ min: 1, max: 1000000 });
+
+                const { generateArrayBuffer } =
+                    Mocker.getClientGenerateMethods(client);
+
+                const mockApiGet = Mocker.mockRequest(
+                    client,
+                    'baseApi',
+                    'get',
+                    {
+                        data: generateArrayBuffer(),
+                        status: 200,
+                        headers: {},
+                    },
+                );
+
+                const request = mirrorsManager.downloadBeatmapSet({
+                    beatmapSetId,
+                    noVideo: true,
+                });
+
+                // Skip a tick to check if is on cooldown
+                await new Promise((r) => setTimeout(r, 0));
+
+                let capacity = client.getCapacity(
+                    ClientAbilities.DownloadBeatmapSetByIdNoVideo,
+                );
+
+                expect(capacity.remaining).toBeLessThan(capacity.limit);
+
+                const awaitedResult = await request;
+
+                expect(mockApiGet).toHaveBeenCalledTimes(1);
+
+                capacity = client.getCapacity(
+                    ClientAbilities.DownloadBeatmapSetByIdNoVideo,
+                );
+
+                expect(awaitedResult.status).toBe(200);
+                expect(awaitedResult.result).not.toBeNull();
+
+                expect(awaitedResult.result?.byteLength).toBe(1024);
+
+                expect(capacity.remaining).toBeLessThan(capacity.limit);
+            },
+        );
+
+        test.each(mirrors)(
+            `$name: Should successfully return 404 when download beatmap set by id without video is not found`,
+            async (mirror) => {
+                const client = getMirrorClient(mirror);
+
+                const beatmapSetId = faker.number.int({ min: 1, max: 1000000 });
+
+                const mockApiGet = Mocker.mockRequest(
+                    client,
+                    'baseApi',
+                    'get',
+                    {
+                        data: null,
+                        status: 404,
+                        headers: {},
+                    },
+                );
+
+                const request = mirrorsManager.downloadBeatmapSet({
+                    beatmapSetId,
+                    noVideo: true,
+                });
+
+                const awaitedResult = await request;
+
+                expect(mockApiGet).toHaveBeenCalledTimes(1);
+
+                expect(awaitedResult.status).toBe(404);
+                expect(awaitedResult.result).toBeNull();
+            },
+        );
+
+        test.each(mirrors)(
+            `$name: Should successfully return 502 when API request fails and no other mirrors are available when downloading beatmap set by id without video`,
+            async (mirror) => {
+                const client = getMirrorClient(mirror);
+
+                const beatmapSetId = faker.number.int({ min: 1, max: 1000000 });
+
+                const mockApiGet = Mocker.mockRequest(
+                    client,
+                    'baseApi',
+                    'get',
+                    {
+                        data: null,
+                        status: 500,
+                        headers: {},
+                    },
+                );
+
+                const request = mirrorsManager.downloadBeatmapSet({
+                    beatmapSetId,
+                    noVideo: true,
+                });
+
+                const awaitedResult = await request;
+
+                expect(mockApiGet).toHaveBeenCalledTimes(1);
+
+                expect(awaitedResult.status).toBe(502);
+                expect(awaitedResult.result).toBeNull();
+            },
+        );
+    });
+
+    describe('DownloadOsuBeatmap', () => {
+        const mirrors = getMirrorsWithAbility(
+            ClientAbilities.DownloadOsuBeatmap,
+        );
+
+        test.each(mirrors)(
+            `$name: Should successfully download an osu beatmap`,
+            async (mirror) => {
+                const client = getMirrorClient(mirror);
+
+                const beatmapId = faker.number.int({ min: 1, max: 1000000 });
+
+                const { mockArrayBuffer } = Mocker.getClientMockMethods(client);
+
+                mockArrayBuffer();
+
+                const result = await mirrorsManager.downloadOsuBeatmap({
+                    beatmapId,
+                });
+
+                expect(result.status).toBe(200);
+                expect(result.result).not.toBeNull();
+                expect(result.result?.byteLength).toBe(1024);
+            },
+        );
+
+        test.each(mirrors)(
+            `$name: Should successfully update ratelimit during download osu beatmap request`,
+            async (mirror) => {
+                const client = getMirrorClient(mirror);
+
+                const beatmapId = faker.number.int({ min: 1, max: 1000000 });
+
+                const { generateArrayBuffer } =
+                    Mocker.getClientGenerateMethods(client);
+
+                const mockApiGet = Mocker.mockRequest(
+                    client,
+                    'baseApi',
+                    'get',
+                    {
+                        data: generateArrayBuffer(),
+                        status: 200,
+                        headers: {},
+                    },
+                );
+
+                const request = mirrorsManager.downloadOsuBeatmap({
+                    beatmapId,
+                });
+
+                // Skip a tick to check if is on cooldown
+                await new Promise((r) => setTimeout(r, 0));
+
+                let capacity = client.getCapacity(
+                    ClientAbilities.DownloadOsuBeatmap,
+                );
+
+                expect(capacity.remaining).toBeLessThan(capacity.limit);
+
+                const awaitedResult = await request;
+
+                expect(mockApiGet).toHaveBeenCalledTimes(1);
+
+                capacity = client.getCapacity(
+                    ClientAbilities.DownloadOsuBeatmap,
+                );
+
+                expect(awaitedResult.status).toBe(200);
+                expect(awaitedResult.result).not.toBeNull();
+                expect(awaitedResult.result?.byteLength).toBe(1024);
+
+                expect(capacity.remaining).toBeLessThan(capacity.limit);
+            },
+        );
+
+        test.each(mirrors)(
+            `$name: Should successfully return 404 when download osu beatmap is not found`,
+            async (mirror) => {
+                const client = getMirrorClient(mirror);
+
+                const beatmapId = faker.number.int({ min: 1, max: 1000000 });
+
+                const mockApiGet = Mocker.mockRequest(
+                    client,
+                    'baseApi',
+                    'get',
+                    {
+                        data: null,
+                        status: 404,
+                        headers: {},
+                    },
+                );
+
+                const request = mirrorsManager.downloadOsuBeatmap({
+                    beatmapId,
+                });
+
+                const awaitedResult = await request;
+
+                expect(mockApiGet).toHaveBeenCalledTimes(1);
+
+                expect(awaitedResult.status).toBe(404);
+                expect(awaitedResult.result).toBeNull();
+            },
+        );
+
+        test.each(mirrors)(
+            `$name: Should successfully return 502 when API request fails and no other mirrors are available when downloading osu beatmap`,
+            async (mirror) => {
+                const client = getMirrorClient(mirror);
+
+                const beatmapId = faker.number.int({ min: 1, max: 1000000 });
+
+                const mockApiGet = Mocker.mockRequest(
+                    client,
+                    'baseApi',
+                    'get',
+                    {
+                        data: null,
+                        status: 500,
+                        headers: {},
+                    },
+                );
+
+                const request = mirrorsManager.downloadOsuBeatmap({
+                    beatmapId,
                 });
 
                 const awaitedResult = await request;
