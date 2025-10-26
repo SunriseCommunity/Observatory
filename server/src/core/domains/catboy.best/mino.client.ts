@@ -36,21 +36,32 @@ export class MinoClient extends BaseClient {
                 },
                 rateLimits: [
                     {
+                        abilities: [
+                            ClientAbilities.DownloadBeatmapSetByIdNoVideo,
+                            ClientAbilities.DownloadBeatmapSetById,
+                        ],
                         routes: ['d/'],
                         limit: 120,
                         reset: 60,
                     },
                     {
+                        abilities: [ClientAbilities.DownloadOsuBeatmap],
                         routes: ['osu/'],
                         limit: 120,
                         reset: 60,
                     },
                     {
+                        abilities: [ClientAbilities.SearchBeatmapsets],
                         routes: ['api/v2/search'],
                         limit: 500,
                         reset: 60,
                     },
                     {
+                        abilities: [
+                            ClientAbilities.GetBeatmapById,
+                            ClientAbilities.GetBeatmapByHash,
+                            ClientAbilities.GetBeatmapSetById,
+                        ],
                         routes: [
                             'api/v2/s/',
                             'api/v2/b/',
@@ -81,7 +92,7 @@ export class MinoClient extends BaseClient {
             },
         );
 
-        if (!result || result.status !== 200) {
+        if (!result || result.status !== 200 || !result.data) {
             return { result: null, status: result?.status ?? 500 };
         }
 
@@ -97,7 +108,7 @@ export class MinoClient extends BaseClient {
             },
         });
 
-        if (!result || result.status !== 200) {
+        if (!result || result.status !== 200 || !result.data) {
             return { result: null, status: result?.status ?? 500 };
         }
 
@@ -131,7 +142,7 @@ export class MinoClient extends BaseClient {
             },
         });
 
-        if (!result || result.status !== 200) {
+        if (!result || result.status !== 200 || !result.data) {
             return { result: null, status: result?.status ?? 500 };
         }
 
@@ -162,7 +173,7 @@ export class MinoClient extends BaseClient {
             `api/v2/s/${beatmapSetId}`,
         );
 
-        if (!result || result.status !== 200) {
+        if (!result || result.status !== 200 || !result.data) {
             return { result: null, status: result?.status ?? 500 };
         }
 
@@ -177,7 +188,7 @@ export class MinoClient extends BaseClient {
     ): Promise<ResultWithStatus<Beatmap | null>> {
         const result = await this.api.get<Beatmap>(`api/v2/b/${beatmapId}`);
 
-        if (!result || result.status !== 200) {
+        if (!result || result.status !== 200 || !result.data) {
             return { result: null, status: result?.status ?? 500 };
         }
 
@@ -200,7 +211,7 @@ export class MinoClient extends BaseClient {
     ): Promise<ResultWithStatus<Beatmap | null>> {
         const result = await this.api.get<Beatmap>(`api/v2/md5/${beatmapHash}`);
 
-        if (!result || result.status !== 200) {
+        if (!result || result.status !== 200 || !result.data) {
             return { result: null, status: result?.status ?? 500 };
         }
 

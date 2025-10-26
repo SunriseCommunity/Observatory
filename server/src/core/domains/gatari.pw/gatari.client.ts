@@ -33,7 +33,7 @@ export class GatariClient extends BaseClient {
             },
         );
 
-        if (!result || result.status !== 200) {
+        if (!result || result.status !== 200 || !result.data) {
             return { result: null, status: result?.status ?? 500 };
         }
 

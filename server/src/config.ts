@@ -4,6 +4,14 @@ import { exit } from 'process';
 
 dotenv.config();
 
+export type Mirror =
+    | 'direct'
+    | 'bancho'
+    | 'mino'
+    | 'osulabs'
+    | 'gatari'
+    | 'nerinyan';
+
 const {
     PORT,
     POSTGRES_USER,
@@ -51,12 +59,13 @@ const config: {
     BANCHO_CLIENT_SECRET?: string;
     BANCHO_CLIENT_ID?: string;
     REDIS_HOST?: string;
-    LOKI_HOST: string;
+    LOKI_HOST?: string;
     IGNORE_RATELIMIT_KEY?: string;
     RATELIMIT_CALLS_PER_WINDOW: number;
     RATELIMIT_TIME_WINDOW: number;
     OSZ_FILES_LIFE_SPAN: number;
     IsProduction: boolean;
+    IsAutomatedTesting: boolean;
     IsDebug: boolean;
     UseBancho: boolean;
     MirrorsToIgnore: string[];
@@ -72,12 +81,13 @@ const config: {
     BANCHO_CLIENT_SECRET,
     BANCHO_CLIENT_ID,
     REDIS_HOST,
-    LOKI_HOST: LOKI_HOST || 'http://localhost:3100',
+    LOKI_HOST: LOKI_HOST,
     IGNORE_RATELIMIT_KEY: IGNORE_RATELIMIT_KEY,
     RATELIMIT_CALLS_PER_WINDOW: Number(RATELIMIT_CALLS_PER_WINDOW) || 100,
     RATELIMIT_TIME_WINDOW: Number(RATELIMIT_TIME_WINDOW) || 20 * 1000,
     OSZ_FILES_LIFE_SPAN: Number(OSZ_FILES_LIFE_SPAN) || 24,
     IsProduction: Bun.env.NODE_ENV === 'production',
+    IsAutomatedTesting: Bun.env.NODE_ENV === 'test',
     IsDebug: DEBUG_MODE === 'true',
     UseBancho: BANCHO_CLIENT_SECRET && BANCHO_CLIENT_ID ? true : false,
     MirrorsToIgnore: MIRRORS_TO_IGNORE?.split(',').map((v) => v.trim()) ?? [],

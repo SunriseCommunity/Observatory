@@ -8,13 +8,13 @@ import {
 } from 'bun:test';
 
 import * as rosu from 'rosu-pp-js';
-import { CalculatorService } from '../core/managers/calculator/calculator.service';
-import { GameModBitwise } from '../types/general/gameMod';
-import { TryConvertToGamemode } from '../utils/beatmap';
+import { CalculatorService } from '../src/core/managers/calculator/calculator.service';
+import { GameModBitwise } from '../src/types/general/gameMod';
+import { TryConvertToGamemode } from '../src/utils/beatmap';
 import {
-    Score,
     ScoreShort,
-} from '../core/managers/calculator/calculator.types';
+    Score,
+} from '../src/core/managers/calculator/calculator.types';
 
 describe('Calculator tests', () => {
     const calculatorService = new CalculatorService();

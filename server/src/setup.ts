@@ -25,23 +25,33 @@ const swaggerOptions: ElysiaSwaggerConfig<'/docs'> = {
 const loggerOptions = {
     transport: {
         targets: [
-            {
-                target: 'pino-loki',
-                options: {
-                    batching: false,
-                    labels: {
-                        app: process.env.npm_package_name,
-                        namespace: process.env.NODE_ENV || 'development',
-                    },
-                    host: config.LOKI_HOST,
-                },
-            },
-            {
-                target: 'pino-pretty',
-                options: {
-                    colorize: true,
-                },
-            },
+            ...(config.IsAutomatedTesting
+                ? []
+                : [
+                      {
+                          target: 'pino-pretty',
+                          options: {
+                              colorize: true,
+                          },
+                      },
+                  ]),
+            ...(config.LOKI_HOST
+                ? [
+                      {
+                          target: 'pino-loki',
+                          options: {
+                              batching: false,
+                              labels: {
+                                  app:
+                                      process.env.npm_package_name || 'unknown',
+                                  namespace:
+                                      process.env.NODE_ENV || 'development',
+                              },
+                              host: config.LOKI_HOST,
+                          },
+                      },
+                  ]
+                : []),
         ],
     },
 };

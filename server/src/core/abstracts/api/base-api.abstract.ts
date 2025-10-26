@@ -1,3 +1,4 @@
+import config from '../../../config';
 import { createRequest } from '../../../database/models/requests';
 import { logExternalRequest } from '../../../utils/logger';
 import { AxiosResponseLog, BaseApiOptions } from './base-api.types';
@@ -21,6 +22,14 @@ export class BaseApi {
         });
     }
 
+    private throwIfAutomatedTesting() {
+        if (config.IsAutomatedTesting) {
+            throw new Error(
+                'Please mock the API request for automated testing',
+            );
+        }
+    }
+
     public async get<
         Q,
         B extends Record<string, never> = Record<string, never>,
@@ -31,6 +40,8 @@ export class BaseApi {
             options?.body,
         );
         const formedConfig = this.formConfig(options?.config);
+
+        this.throwIfAutomatedTesting();
 
         try {
             const res = await this.axios.get<Q>(
@@ -52,6 +63,8 @@ export class BaseApi {
     ) {
         const formedUrl = this.createUrl(endpoint);
         const formedConfig = this.formConfig(options?.config);
+
+        this.throwIfAutomatedTesting();
 
         try {
             const res = await this.axios.post<Q>(
@@ -75,6 +88,8 @@ export class BaseApi {
         const formedUrl = this.createUrl(endpoint);
         const formedConfig = this.formConfig(options?.config);
 
+        this.throwIfAutomatedTesting();
+
         try {
             const res = await this.axios.put<Q>(
                 formedUrl,
@@ -97,6 +112,8 @@ export class BaseApi {
         const formedUrl = this.createUrl(endpoint);
         const formedConfig = this.formConfig(options?.config);
 
+        this.throwIfAutomatedTesting();
+
         try {
             const res = await this.axios.patch<Q>(
                 formedUrl,
@@ -118,6 +135,8 @@ export class BaseApi {
     ) {
         const formedUrl = this.createUrl(endpoint);
         const formedConfig = this.formConfig(options?.config);
+
+        this.throwIfAutomatedTesting();
 
         try {
             const res = await this.axios.delete<Q>(formedUrl, formedConfig);

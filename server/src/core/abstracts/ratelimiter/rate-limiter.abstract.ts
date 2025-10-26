@@ -7,8 +7,12 @@ import config from '../../../config';
 import Redis from 'ioredis';
 import { RedisInstance } from '../../../plugins/redisInstance';
 import { RedisKeys } from '../../../types/redis';
+import { ClientAbilities } from '../client/base-client.types';
 
 const DEFAULT_RATE_LIMIT = {
+    abilities: Object.values(ClientAbilities).filter(
+        (item) => !isNaN(Number(item)),
+    ) as ClientAbilities[],
     routes: ['/'],
     limit: 60,
     reset: 60,
@@ -250,9 +254,9 @@ export class ApiRateLimiter {
             this.config.onCooldownUntil = Date.now() + 60 * 60 * 1000; // 1 hour
         }
 
-        if (response?.status === 502) {
+        if (response?.status && response.status >= 502) {
             this.log(
-                `Bad gateway for ${route}. Setting cooldown of 5 minutes`,
+                `Server error (${response.status}) for ${route}. Setting cooldown of 5 minutes`,
                 'warn',
             );
             this.config.onCooldownUntil = Date.now() + 5 * 60 * 1000; // 5 minutes
@@ -348,12 +352,20 @@ export class ApiRateLimiter {
     private getRemainingRequests(limit: RateLimit) {
         const requests = this.getRequestsArray(limit.routes);
 
-        const filteredRequests = Array.from(requests).filter(
-            ([_, date]) =>
-                new Date().getTime() - date.getTime() < limit.reset * 1000,
-        );
+        this.clearOutdatedRequests(requests, limit);
 
-        return limit.limit - filteredRequests.length;
+        return limit.limit - requests.size;
+    }
+
+    private clearOutdatedRequests(
+        requests: Map<string, Date>,
+        limit: RateLimit,
+    ) {
+        requests.forEach((date, uid) => {
+            if (new Date().getTime() - date.getTime() > limit.reset * 1000) {
+                requests.delete(uid);
+            }
+        });
     }
 
     private addNewRequest(route: string, replaceUid?: string) {

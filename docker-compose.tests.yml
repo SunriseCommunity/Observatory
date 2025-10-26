@@ -1,0 +1,42 @@
+name: observatory-tests
+services:
+    postgres:
+        image: postgres:latest
+        restart: unless-stopped
+        ports:
+            - 5231:5432
+        environment:
+            POSTGRES_USER: test
+            POSTGRES_PASSWORD: test
+            POSTGRES_DB: test
+        volumes:
+            - postgres_data:/var/lib/postgresql/data
+        healthcheck:
+            test: ['CMD-SHELL', 'pg_isready -U postgres']
+            interval: 5s
+            timeout: 5s
+            retries: 15
+            start_period: 10s
+
+    redis:
+        image: redis:latest
+        restart: unless-stopped
+        ports:
+            - 5232:6379
+        volumes:
+            - redis:/data
+        networks:
+            - container_network
+        healthcheck:
+            test: ['CMD-SHELL', 'redis-cli ping | grep PONG']
+            interval: 10s
+            timeout: 5s
+            retries: 5
+
+volumes:
+    redis:
+    postgres_data:
+
+networks:
+    container_network:
+        driver: bridge
