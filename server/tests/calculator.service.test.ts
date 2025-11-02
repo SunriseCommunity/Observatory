@@ -125,8 +125,67 @@ describe('Calculator tests', () => {
         );
     });
 
+    it('Should convert score to another gamemode with mod convertion alteration', async () => {
+        const EXPECTED_PP = 138.709; // https://web.archive.org/web/20251102193104/https://osu.ppy.sh/scores/2248271767
+        const EXPECTED_STARS = 4.04; // https://archive.org/details/discord-7xd-xe-m-4-ofb
+
+        const score: Score = {
+            accuracy: 97.33,
+            combo: 850,
+            n300: 756,
+            nGeki: 1650,
+            n100: 3,
+            nKatu: 124,
+            n50: 2,
+            misses: 9,
+            mode: rosu.GameMode.Mania,
+            mods: GameModBitwise.DoubleTime | GameModBitwise.Key4,
+            isScoreFailed: false,
+            isLazer: false,
+        };
+
+        const result = calculatorService.CalculateScorePerfomance(
+            beatmap,
+            score,
+        );
+
+        expect(result.difficulty.isConvert).toBe(true);
+
+        expect(result.pp).toBeWithin(EXPECTED_PP - 0.001, EXPECTED_PP + 0.001);
+        expect(result.difficulty.stars).toBeWithin(
+            EXPECTED_STARS - 0.01,
+            EXPECTED_STARS + 0.01,
+        );
+    });
+
+    it('Should convert beatmap to another gamemode with mod convertion alteration', async () => {
+        const EXPECTED_STARS = 4.04; // https://archive.org/details/discord-7xd-xe-m-4-ofb
+
+        const scores: ScoreShort[] = [
+            {
+                accuracy: 100,
+                mode: rosu.GameMode.Mania,
+                mods: GameModBitwise.DoubleTime | GameModBitwise.Key4,
+                isLazer: false,
+                isScoreFailed: false,
+            },
+        ];
+
+        const result = calculatorService.CalculateBeatmapPerfomance(
+            beatmap,
+            scores,
+        );
+
+        expect(result[0].difficulty.isConvert).toBe(true);
+
+        expect(result[0].difficulty.stars).toBeWithin(
+            EXPECTED_STARS - 0.01,
+            EXPECTED_STARS + 0.01,
+        );
+    });
+
     it('Should calculate score pp: standard', async () => {
-        const EXPECTED_PP = 243.002; // https://osu.ppy.sh/scores/4502844247
+        const EXPECTED_PP = 243.002; // https://web.archive.org/web/20251102193936/https://osu.ppy.sh/scores/4502844247
 
         const score: Score = {
             accuracy: 97.13,
