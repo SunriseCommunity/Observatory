@@ -1,7 +1,7 @@
 name: observatory-tests
 services:
     postgres:
-        image: postgres:latest
+        image: postgres:17
         restart: unless-stopped
         ports:
             - 5231:5432
@@ -19,7 +19,7 @@ services:
             start_period: 10s
 
     redis:
-        image: redis:latest
+        image: redis:8.2.2
         restart: unless-stopped
         ports:
             - 5232:6379

@@ -24,7 +24,7 @@ services:
             - container_network
 
     postgres:
-        image: postgres:latest
+        image: postgres:17
         restart: unless-stopped
         environment:
             POSTGRES_USER: ${POSTGRES_USER}
@@ -63,7 +63,7 @@ services:
             - container_network
 
     redis:
-        image: redis:latest
+        image: redis:8.2.2
         restart: unless-stopped
         volumes:
             - redis:/data

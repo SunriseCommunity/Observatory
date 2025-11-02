@@ -1,7 +1,7 @@
 name: observatory-dev
 services:
     postgres:
-        image: postgres:latest
+        image: postgres:17
         restart: unless-stopped
         ports:
             - ${POSTGRES_PORT}:5432
@@ -35,7 +35,7 @@ services:
             - container_network
 
     redis:
-        image: redis:latest
+        image: redis:8.2.2
         restart: unless-stopped
         ports:
             - 6379:6379
