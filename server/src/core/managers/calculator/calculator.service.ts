@@ -12,7 +12,7 @@ export class CalculatorService {
 
         for (const score of scores) {
             if (score.mode != undefined && beatmap.mode != score.mode) {
-                beatmap.convert(score.mode);
+                beatmap.convert(score.mode, score.mods);
             }
 
             const performance = new rosu.Performance({
@@ -31,7 +31,7 @@ export class CalculatorService {
 
     public CalculateScorePerfomance(beatmap: rosu.Beatmap, score: Score) {
         if (score.mode != undefined && beatmap.mode != score.mode) {
-            beatmap.convert(score.mode);
+            beatmap.convert(score.mode, score.mods);
         }
 
         const performance = new rosu.Performance({
