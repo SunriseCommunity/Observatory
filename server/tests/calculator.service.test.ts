@@ -125,8 +125,192 @@ describe('Calculator tests', () => {
         );
     });
 
+    it('Should convert score to another gamemode with mod convertion alteration', async () => {
+        const EXPECTED_PP = 138.709; // https://web.archive.org/web/20251102193104/https://osu.ppy.sh/scores/2248271767
+        const EXPECTED_STARS = 4.04; // https://archive.org/details/discord-7xd-xe-m-4-ofb
+
+        const score: Score = {
+            accuracy: 97.33,
+            combo: 850,
+            n300: 756,
+            nGeki: 1650,
+            n100: 3,
+            nKatu: 124,
+            n50: 2,
+            misses: 9,
+            mode: rosu.GameMode.Mania,
+            mods: GameModBitwise.DoubleTime | GameModBitwise.Key4,
+            isScoreFailed: false,
+            isLazer: false,
+        };
+
+        const result = calculatorService.CalculateScorePerfomance(
+            beatmap,
+            score,
+        );
+
+        expect(result.difficulty.isConvert).toBe(true);
+
+        expect(result.pp).toBeWithin(EXPECTED_PP - 0.001, EXPECTED_PP + 0.001);
+        expect(result.difficulty.stars).toBeWithin(
+            EXPECTED_STARS - 0.01,
+            EXPECTED_STARS + 0.01,
+        );
+    });
+
+    it('Should convert beatmap to another gamemode with mod convertion alteration', async () => {
+        const EXPECTED_STARS = 4.04; // https://archive.org/details/discord-7xd-xe-m-4-ofb
+
+        const scores: ScoreShort[] = [
+            {
+                accuracy: 100,
+                mode: rosu.GameMode.Mania,
+                mods: GameModBitwise.DoubleTime | GameModBitwise.Key4,
+                isLazer: false,
+                isScoreFailed: false,
+            },
+        ];
+
+        const result = calculatorService.CalculateBeatmapPerfomance(
+            beatmap,
+            scores,
+        );
+
+        expect(result[0].difficulty.isConvert).toBe(true);
+
+        expect(result[0].difficulty.stars).toBeWithin(
+            EXPECTED_STARS - 0.01,
+            EXPECTED_STARS + 0.01,
+        );
+    });
+
+    it('Calculated score pp for with hitresults provided and only accuracy provided should be the same', async () => {
+        const EXPECTED_PP = 663.154; // https://web.archive.org/web/20251102200440/https://osu.ppy.sh/scores/1794640344
+
+        const scoreWithoutHitresults: Score = {
+            accuracy: 99.689999999999998,
+            combo: 2955,
+            isLazer: false,
+            isScoreFailed: false,
+        };
+
+        const scoreWithHitresults: Score = {
+            combo: 2955,
+            n300: 1927,
+            nGeki: 0,
+            n100: 9,
+            nKatu: 0,
+            n50: 0,
+            misses: 0,
+            mode: rosu.GameMode.Osu,
+            mods: GameModBitwise.NoMod,
+            isLazer: false,
+            isScoreFailed: false,
+        };
+
+        const resultWithHitresults = calculatorService.CalculateScorePerfomance(
+            beatmap,
+            scoreWithHitresults,
+        );
+
+        const result = calculatorService.CalculateScorePerfomance(
+            beatmap,
+            scoreWithoutHitresults,
+        );
+
+        expect(resultWithHitresults.pp).toBeWithin(
+            EXPECTED_PP - 0.001,
+            EXPECTED_PP + 0.001,
+        );
+
+        expect(resultWithHitresults.pp).toEqual(result.pp);
+    });
+
+    it('Calculated score pp for with hitresults provided and only accuracy provided should be the same with score having a miss', async () => {
+        const EXPECTED_PP = 587.555; // https://web.archive.org/web/20251102202454/https://osu.ppy.sh/scores/2529969691
+
+        const scoreWithoutHitresults: Score = {
+            accuracy: 99.43,
+            combo: 1914,
+            isLazer: false,
+            isScoreFailed: false,
+        };
+
+        const scoreWithHitresults: Score = {
+            combo: 1914,
+            n300: 1920,
+            nGeki: 0,
+            n100: 15,
+            nKatu: 0,
+            n50: 0,
+            misses: 1,
+            mode: rosu.GameMode.Osu,
+            mods: GameModBitwise.NoMod,
+            isLazer: false,
+            isScoreFailed: false,
+        };
+
+        const resultWithHitresults = calculatorService.CalculateScorePerfomance(
+            beatmap,
+            scoreWithHitresults,
+        );
+
+        const result = calculatorService.CalculateScorePerfomance(
+            beatmap,
+            scoreWithoutHitresults,
+        );
+
+        expect(resultWithHitresults.pp).toBeWithin(
+            EXPECTED_PP - 0.001,
+            EXPECTED_PP + 0.001,
+        );
+
+        expect(resultWithHitresults.pp).toEqual(result.pp);
+    });
+
+    it('Calculated score pp with hitresults and compare with beatmap calculation without hitresults', async () => {
+        const EXPECTED_PP = 663.154; // https://web.archive.org/web/20251102200440/https://osu.ppy.sh/scores/1794640344
+
+        const scoreWithoutHitresults: Score = {
+            accuracy: 99.689999999999998,
+            combo: 2955,
+            isLazer: false,
+            isScoreFailed: false,
+        };
+
+        const scoreWithHitresults: Score = {
+            combo: 2955,
+            n300: 1927,
+            nGeki: 0,
+            n100: 9,
+            nKatu: 0,
+            n50: 0,
+            misses: 0,
+            mode: rosu.GameMode.Osu,
+            mods: GameModBitwise.NoMod,
+            isLazer: false,
+            isScoreFailed: false,
+        };
+
+        const resultWithHitresults = calculatorService.CalculateScorePerfomance(
+            beatmap,
+            scoreWithHitresults,
+        );
+
+        const results = calculatorService.CalculateBeatmapPerfomance(beatmap, [
+            scoreWithoutHitresults,
+        ]);
+
+        expect(resultWithHitresults.pp).toBeWithin(
+            EXPECTED_PP - 0.001,
+            EXPECTED_PP + 0.001,
+        );
+
+        expect(resultWithHitresults.pp).toEqual(results[0].pp);
+    });
+
     it('Should calculate score pp: standard', async () => {
-        const EXPECTED_PP = 243.002; // https://osu.ppy.sh/scores/4502844247
+        const EXPECTED_PP = 243.002; // https://web.archive.org/web/20251102193936/https://osu.ppy.sh/scores/4502844247
 
         const score: Score = {
             accuracy: 97.13,
