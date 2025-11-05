@@ -25,7 +25,7 @@
         "pino-pretty": "^11.3.0",
         "postgres": "^3.4.5",
         "qs": "^6.14.0",
-        "rosu-pp-js": "^3.1.0",
+        "rosu-pp-js": "2",
       },
       "devDependencies": {
         "@types/pg": "^8.11.10",
@@ -288,7 +288,7 @@
 
     "resolve-pkg-maps": ["resolve-pkg-maps@1.0.0", "", {}, ""],
 
-    "rosu-pp-js": ["rosu-pp-js@3.1.0", "", {}, "sha512-5YR/ar+XKLvAJAEvPhfEeBunDAY/qPFoey9b9ykvbNDR1K6FO77Mj7VblPpVs9O5TFRwecVSvOLFHMaY63l3YA=="],
+    "rosu-pp-js": ["rosu-pp-js@2.0.0", "", {}, "sha512-gm5jrcuwzBy7muCBB9/WAK+olbbHsD2KARO13eh4QF3aFRLIo6O65XkRbkE7IBph+YCh5dWfWgoWVfQnz6BOGQ=="],
 
     "safe-buffer": ["safe-buffer@5.2.1", "", {}, ""],
 
