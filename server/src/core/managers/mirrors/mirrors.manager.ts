@@ -17,10 +17,18 @@ import { Beatmap, Beatmapset } from '../../../types/general/beatmap';
 import { MinoClient } from '../../domains/catboy.best/mino.client';
 import { GatariClient } from '../../domains/gatari.pw/gatari.client';
 import { NerinyanClient } from '../../domains/nerinyan.moe/nerinyan.client';
-import { getRequestsCount } from '../../../database/models/requests';
+import {
+    getMirrorsRequestsCountForStats,
+    getRequestsCount,
+} from '../../../database/models/requests';
 import { getUTCDate } from '../../../utils/date';
 import { OsulabsClient } from '../../domains/beatmaps.download/osulabs.client';
 import { StorageManager } from '../storage/storage.manager';
+import { TimeRange } from '../../../types/stats';
+import {
+    getMirrorsRequestsQueryData,
+    TIME_RANGES_FOR_MIRRORS_STATS,
+} from '../../../utils/mirrors-stats';
 
 const DEFAULT_CLIENT_PROPS = {
     weights: {
@@ -191,57 +199,71 @@ export class MirrorsManager {
     }
 
     async getMirrorsStatistics() {
-        const applicationStartTime =
-            getUTCDate().getTime() - Bun.nanoseconds() / 1000000;
+        const data = await getMirrorsRequestsCountForStats(
+            getMirrorsRequestsQueryData(this.clients),
+        );
 
-        const successfulStatusCodes = [200, 404];
-        const failedStatusCodes = [500, 502, 503, 504, 429];
+        const dataMap = new Map<string, number>();
+        for (const item of data) {
+            const statusKey =
+                item.statuscodes === null
+                    ? 'null'
+                    : item.statuscodes.includes(200)
+                      ? 'success'
+                      : item.statuscodes.includes(500)
+                        ? 'fail'
+                        : 'other';
+            const key = `${item.name}|${item.createdafter}|${statusKey}`;
+            dataMap.set(key, item.count);
+        }
 
         return {
             activeMirrors: await Promise.all(
                 this.clients.map(async (c) => {
+                    const baseUrl = c.client.clientConfig.baseUrl;
+                    const stats = Object.fromEntries(
+                        TIME_RANGES_FOR_MIRRORS_STATS.map(({ name, time }) => [
+                            name,
+                            {
+                                total: Number(
+                                    dataMap.get(`${baseUrl}|${time}|null`) || 0,
+                                ),
+                                successful: Number(
+                                    dataMap.get(`${baseUrl}|${time}|success`) ||
+                                        0,
+                                ),
+                                failed: Number(
+                                    dataMap.get(`${baseUrl}|${time}|fail`) || 0,
+                                ),
+                            },
+                        ]),
+                    );
+
                     return {
                         name: c.client.constructor.name,
-                        url: c.client.clientConfig.baseUrl,
-                        lifetime: {
-                            total: await getRequestsCount(
-                                c.client.clientConfig.baseUrl,
-                            ),
-                            successful: await getRequestsCount(
-                                c.client.clientConfig.baseUrl,
-                                undefined,
-                                successfulStatusCodes,
-                            ),
-                            failed: await getRequestsCount(
-                                c.client.clientConfig.baseUrl,
-                                undefined,
-                                failedStatusCodes,
-                            ),
-                        },
-                        session: {
-                            total: await getRequestsCount(
-                                c.client.clientConfig.baseUrl,
-                                applicationStartTime,
-                            ),
-                            succsesful: await getRequestsCount(
-                                c.client.clientConfig.baseUrl,
-                                applicationStartTime,
-                                successfulStatusCodes,
-                            ),
-                            failed: await getRequestsCount(
-                                c.client.clientConfig.baseUrl,
-                                applicationStartTime,
-                                failedStatusCodes,
-                            ),
-                        },
+                        url: baseUrl,
+                        onCooldownUntil: c.client.onCooldownUntil(),
+                        rateLimit: c.client.getCapacities(),
+                        requests: stats,
                     };
                 }),
             ),
-            activeMethods: this.clients
-                .map((client) => client.client.clientConfig.abilities)
-                .flat()
-                .filter((value, index, self) => self.indexOf(value) === index)
-                .map((a) => ClientAbilities[a]),
+            rateLimitsTotal: this.clients.reduce(
+                (acc, c) => {
+                    const clientCapacities = c.client.getCapacities();
+
+                    for (const capacity of clientCapacities) {
+                        if (!acc[capacity.ability]) {
+                            acc[capacity.ability] = { total: 0, remaining: 0 };
+                        }
+                        acc[capacity.ability].total += capacity.limit;
+                        acc[capacity.ability].remaining += capacity.remaining;
+                    }
+
+                    return acc;
+                },
+                {} as Record<string, { total: number; remaining: number }>,
+            ),
         };
     }
 

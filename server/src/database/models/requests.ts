@@ -2,6 +2,8 @@ import { and, count, eq, gte, inArray, sql } from 'drizzle-orm';
 import { db } from '../client';
 import { NewRequest, Request, requests } from '../schema';
 import { HttpStatusCode } from 'axios';
+import { unionAll } from 'drizzle-orm/pg-core';
+import { CasingCache } from 'drizzle-orm/casing';
 
 export async function getRequestsCount(
     baseUrl: string,
@@ -29,6 +31,56 @@ export async function getRequestsCount(
     }
 
     return entities[0].count;
+}
+
+export async function getMirrorsRequestsCountForStats(
+    dataRequests: {
+        baseUrl: string;
+        createdAfter: string | null;
+        statusCodes?: HttpStatusCode[];
+    }[],
+) {
+    const values = dataRequests
+        .map(
+            (_, i) =>
+                `('${dataRequests[i].baseUrl}', ${dataRequests[i].createdAfter ? `'${dataRequests[i].createdAfter}'` : null}, ${dataRequests[i].statusCodes && dataRequests[i].statusCodes.length > 0 ? `ARRAY[${dataRequests[i].statusCodes}]` : null})`,
+        )
+        .join(', ');
+
+    const entities = await db
+        .execute<{
+            name: string;
+            createdafter: string | null;
+            statuscodes: HttpStatusCode[] | null;
+            count: number;
+        }>(
+            `
+        WITH request_params (baseUrl, createdAfter, statusCodes) AS (
+            VALUES ${values}
+        )
+        SELECT
+            rp.baseUrl AS name,
+            rp.createdAfter,
+            rp.statusCodes,
+            COUNT(r.*) AS count
+        FROM request_params rp
+        LEFT JOIN requests r
+            ON r.base_url = rp.baseUrl
+            AND (
+                rp.createdAfter IS NULL
+                OR cast(r.created_at as timestamp) >= cast(rp.createdAfter as timestamp)
+            )
+            AND (
+                rp.statusCodes IS NULL
+                OR r.status = ANY(rp.statusCodes)
+            )
+        GROUP BY rp.baseUrl, rp.createdAfter, rp.statusCodes
+        ORDER BY rp.baseUrl, rp.createdAfter
+    `,
+        )
+        .then((result) => result.rows);
+
+    return entities;
 }
 
 export async function getRequestsByBaseUrl(

@@ -108,7 +108,7 @@ async function setup() {
                 },
             }),
         )
-        .use(await autoload({ dir: 'controllers' }))
+        .use(await autoload({ dir: `${__dirname}/controllers` }))
         .use(swagger(swaggerOptions))
         .get('/favicon.ico', () => Bun.file('./server/public/favicon.ico'));
 }

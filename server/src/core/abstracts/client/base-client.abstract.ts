@@ -11,7 +11,7 @@ import {
     SearchBeatmapsetsOptions,
 } from './base-client.types';
 import { BaseApi } from '../api/base-api.abstract';
-import { RateLimitOptions } from '../ratelimiter/rate-limiter.types';
+import { RateLimit, RateLimitOptions } from '../ratelimiter/rate-limiter.types';
 import { ApiRateLimiter } from '../ratelimiter/rate-limiter.abstract';
 import { Beatmap, Beatmapset } from '../../../types/general/beatmap';
 import { ConvertService } from '../../services/convert.service';
@@ -41,6 +41,7 @@ export class BaseClient {
                 Accept: 'application/json',
                 'Content-Type': 'application/json',
             },
+            timeout: 10000,
         });
 
         this.convertService = new ConvertService(this.config.baseUrl);
@@ -108,6 +109,27 @@ export class BaseClient {
         }
 
         return this.api.getCapacity(limit);
+    }
+
+    getCapacities(): {
+        ability: string;
+        limit: number;
+        remaining: number;
+    }[] {
+        const rateLimits = this.api.limiterConfig.rateLimits;
+        const capacities = rateLimits.flatMap((rateLimit) =>
+            rateLimit.abilities.map((ability) => ({
+                ability: ClientAbilities[ability],
+                limit: this.getCapacity(ability).limit,
+                remaining: this.getCapacity(ability).remaining,
+            })),
+        );
+
+        return capacities;
+    }
+
+    onCooldownUntil(): number | undefined {
+        return this.api.limiterConfig.onCooldownUntil;
     }
 
     get clientConfig(): ClientOptions {

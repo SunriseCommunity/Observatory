@@ -1098,7 +1098,18 @@ describe('MirrorsManager', () => {
                 ClientAbilities.GetBeatmapById,
             ).limit;
 
-            const shouldStopAt = Math.floor(totalRequestsLimit * 0.9);
+            const shouldStopAt = totalRequestsLimit;
+
+            expect(shouldStopAt).toBe(
+                Math.floor(
+                    // @ts-expect-error skip type check due to protected property
+                    minoClient.api._config.rateLimits.find((limit) =>
+                        limit.abilities.includes(
+                            ClientAbilities.GetBeatmapById,
+                        ),
+                    )!.limit * 0.9,
+                ),
+            );
 
             for (let i = 0; i < totalRequestsLimit; i++) {
                 const mockMinoBeatmap = mockMinoBeatmapFunc({
@@ -1121,6 +1132,28 @@ describe('MirrorsManager', () => {
             }
         });
 
+        test('DisableDailyRateLimit is set to true, daily rate limit should be undefined', async () => {
+            config.DisableDailyRateLimit = true;
+
+            const minoClient = getMirrorClient(MinoClient);
+
+            // @ts-expect-error skip type check due to protected property
+            const dailyRateLimit = minoClient.api.config.dailyRateLimit;
+
+            expect(dailyRateLimit).toBeUndefined();
+        });
+
+        test('DisableDailyRateLimit is set to false, daily rate limit should be defined', async () => {
+            config.DisableDailyRateLimit = false;
+
+            const minoClient = getMirrorClient(MinoClient);
+
+            // @ts-expect-error skip type check due to protected property
+            const dailyRateLimit = minoClient.api.config.dailyRateLimit;
+
+            expect(dailyRateLimit).toBeDefined();
+        });
+
         test('DisableSafeRatelimitMode is set to true, should complete 100% of the requests', async () => {
             config.DisableSafeRatelimitMode = true;
 
@@ -1132,6 +1165,17 @@ describe('MirrorsManager', () => {
             const totalRequestsLimit = minoClient.getCapacity(
                 ClientAbilities.GetBeatmapById,
             ).limit;
+
+            expect(totalRequestsLimit).toBe(
+                Math.floor(
+                    // @ts-expect-error skip type check due to protected property
+                    minoClient.api._config.rateLimits.find((limit) =>
+                        limit.abilities.includes(
+                            ClientAbilities.GetBeatmapById,
+                        ),
+                    )!.limit,
+                ),
+            );
 
             for (let i = 0; i < totalRequestsLimit; i++) {
                 const mockMinoBeatmap = mockMinoBeatmapFunc({
