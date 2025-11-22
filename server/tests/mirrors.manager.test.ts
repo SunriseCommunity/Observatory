@@ -1098,7 +1098,18 @@ describe('MirrorsManager', () => {
                 ClientAbilities.GetBeatmapById,
             ).limit;
 
-            const shouldStopAt = Math.floor(totalRequestsLimit * 0.9);
+            const shouldStopAt = totalRequestsLimit;
+
+            expect(shouldStopAt).toBe(
+                Math.floor(
+                    // @ts-expect-error skip type check due to protected property
+                    minoClient.api._config.rateLimits.find((limit) =>
+                        limit.abilities.includes(
+                            ClientAbilities.GetBeatmapById,
+                        ),
+                    )!.limit * 0.9,
+                ),
+            );
 
             for (let i = 0; i < totalRequestsLimit; i++) {
                 const mockMinoBeatmap = mockMinoBeatmapFunc({
@@ -1132,6 +1143,17 @@ describe('MirrorsManager', () => {
             const totalRequestsLimit = minoClient.getCapacity(
                 ClientAbilities.GetBeatmapById,
             ).limit;
+
+            expect(totalRequestsLimit).toBe(
+                Math.floor(
+                    // @ts-expect-error skip type check due to protected property
+                    minoClient.api._config.rateLimits.find((limit) =>
+                        limit.abilities.includes(
+                            ClientAbilities.GetBeatmapById,
+                        ),
+                    )!.limit,
+                ),
+            );
 
             for (let i = 0; i < totalRequestsLimit; i++) {
                 const mockMinoBeatmap = mockMinoBeatmapFunc({

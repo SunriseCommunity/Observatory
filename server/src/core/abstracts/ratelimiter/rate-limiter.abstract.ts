@@ -20,7 +20,23 @@ const DEFAULT_RATE_LIMIT = {
 
 export class ApiRateLimiter {
     protected api: BaseApi;
-    protected config: RateLimitOptions;
+    private readonly _config: RateLimitOptions;
+
+    public get config(): RateLimitOptions {
+        return {
+            ...this._config,
+            rateLimits: this._config.rateLimits.map((limit) => ({
+                ...limit,
+                limit: !config.DisableSafeRatelimitMode
+                    ? Math.floor(limit.limit * 0.9)
+                    : limit.limit,
+            })),
+            dailyRateLimit:
+                this._config.dailyRateLimit && !config.DisableSafeRatelimitMode
+                    ? Math.floor(this._config.dailyRateLimit * 0.9)
+                    : this._config.dailyRateLimit,
+        };
+    }
 
     private readonly redis: Redis = RedisInstance;
 
@@ -35,10 +51,10 @@ export class ApiRateLimiter {
 
     constructor(domainHash: string, api: BaseApi, config: RateLimitOptions) {
         this.api = api;
-        this.config = config;
+        this._config = config;
         this.redisDailyLimitsKey = `${RedisKeys.DAILY_RATE_LIMIT}${domainHash}`;
 
-        if (config.dailyRateLimit) {
+        if (this.config.dailyRateLimit) {
             this.dailyLimit = null;
         }
 
@@ -145,6 +161,9 @@ export class ApiRateLimiter {
         };
     }
 
+    /**
+     * @deprecated Use {@link config} instead
+     */
     public get limiterConfig() {
         return this.config;
     }
@@ -154,11 +173,7 @@ export class ApiRateLimiter {
         const dailyLimit = await this.getDailyRateLimitRemaining();
 
         if (dailyLimit) {
-            const daiyLimitRequestsLeft = !config.DisableSafeRatelimitMode
-                ? Math.floor(dailyLimit.requestsLeft * 0.9)
-                : dailyLimit.requestsLeft;
-
-            if (daiyLimitRequestsLeft <= 0) {
+            if (dailyLimit.requestsLeft <= 0) {
                 this.log(
                     `Tried to make request to ${route} while on daily cooldown. Ignored`,
                     'warn',
@@ -276,12 +291,7 @@ export class ApiRateLimiter {
             );
         }
 
-        return {
-            ...limit,
-            limit: !config.DisableSafeRatelimitMode
-                ? Math.floor(limit.limit * 0.9)
-                : limit.limit,
-        };
+        return limit;
     }
 
     private async getDailyRateLimitRemaining(): Promise<{
