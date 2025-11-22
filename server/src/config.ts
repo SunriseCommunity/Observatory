@@ -31,6 +31,7 @@ const {
     OSZ_FILES_LIFE_SPAN,
     MIRRORS_TO_IGNORE,
     DISABLE_SAFE_RATELIMIT_MODE,
+    DISABLE_DAILY_RATE_LIMIT,
 } = process.env;
 
 if (!POSTGRES_USER || !POSTGRES_PASSWORD) {
@@ -70,6 +71,7 @@ const config: {
     UseBancho: boolean;
     MirrorsToIgnore: string[];
     DisableSafeRatelimitMode: boolean;
+    DisableDailyRateLimit: boolean;
 } = {
     PORT: PORT || '3000',
     POSTGRES_USER: POSTGRES_USER || 'admin',
@@ -92,6 +94,7 @@ const config: {
     UseBancho: BANCHO_CLIENT_SECRET && BANCHO_CLIENT_ID ? true : false,
     MirrorsToIgnore: MIRRORS_TO_IGNORE?.split(',').map((v) => v.trim()) ?? [],
     DisableSafeRatelimitMode: DISABLE_SAFE_RATELIMIT_MODE === 'true',
+    DisableDailyRateLimit: DISABLE_DAILY_RATE_LIMIT === 'true',
 };
 
 export default config;

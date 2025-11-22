@@ -20,21 +20,23 @@ const DEFAULT_RATE_LIMIT = {
 
 export class ApiRateLimiter {
     protected api: BaseApi;
-    private readonly _config: RateLimitOptions;
+    protected _config: RateLimitOptions;
 
     public get config(): RateLimitOptions {
         return {
             ...this._config,
-            rateLimits: this._config.rateLimits.map((limit) => ({
-                ...limit,
+            rateLimits: this._config.rateLimits.map((data) => ({
+                ...data,
                 limit: !config.DisableSafeRatelimitMode
-                    ? Math.floor(limit.limit * 0.9)
-                    : limit.limit,
+                    ? Math.floor(data.limit * 0.9)
+                    : data.limit,
             })),
-            dailyRateLimit:
-                this._config.dailyRateLimit && !config.DisableSafeRatelimitMode
-                    ? Math.floor(this._config.dailyRateLimit * 0.9)
-                    : this._config.dailyRateLimit,
+            dailyRateLimit: config.DisableDailyRateLimit
+                ? undefined
+                : this._config.dailyRateLimit &&
+                    !config.DisableSafeRatelimitMode
+                  ? Math.floor(this._config.dailyRateLimit * 0.9)
+                  : this._config.dailyRateLimit,
         };
     }
 
@@ -61,7 +63,7 @@ export class ApiRateLimiter {
         if (
             !this.config.rateLimits.find((limit) => limit.routes.includes('/'))
         ) {
-            this.config.rateLimits.push(DEFAULT_RATE_LIMIT);
+            this._config.rateLimits.push(DEFAULT_RATE_LIMIT);
         }
 
         this.config.rateLimits.forEach((limit) => {
@@ -250,7 +252,7 @@ export class ApiRateLimiter {
                 `Got axios error while making request to ${route}. Setting cooldown of 5 minutes`,
                 'warn',
             );
-            this.config.onCooldownUntil = Date.now() + 5 * 60 * 1000; // 5 minutes
+            this._config.onCooldownUntil = Date.now() + 5 * 60 * 1000; // 5 minutes
         }
 
         if (response?.status === 429) {
@@ -258,7 +260,7 @@ export class ApiRateLimiter {
                 `Rate limit exceeded for ${route}. Setting cooldown`,
                 'warn',
             );
-            this.config.onCooldownUntil = Date.now() + limit.reset * 1000;
+            this._config.onCooldownUntil = Date.now() + limit.reset * 1000;
         }
 
         if (response?.status === 403) {
@@ -266,7 +268,7 @@ export class ApiRateLimiter {
                 `Got forbidden status for ${route}. Setting cooldown of 1 hour`,
                 'warn',
             );
-            this.config.onCooldownUntil = Date.now() + 60 * 60 * 1000; // 1 hour
+            this._config.onCooldownUntil = Date.now() + 60 * 60 * 1000; // 1 hour
         }
 
         if (response?.status && response.status >= 502) {
@@ -274,7 +276,7 @@ export class ApiRateLimiter {
                 `Server error (${response.status}) for ${route}. Setting cooldown of 5 minutes`,
                 'warn',
             );
-            this.config.onCooldownUntil = Date.now() + 5 * 60 * 1000; // 5 minutes
+            this._config.onCooldownUntil = Date.now() + 5 * 60 * 1000; // 5 minutes
         }
     }
 
