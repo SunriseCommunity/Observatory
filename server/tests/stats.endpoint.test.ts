@@ -187,6 +187,13 @@ describe('Stats Endpoint', () => {
 
             expect(typeof mirror.name).toBe('string');
             expect(typeof mirror.url).toBe('string');
+
+            if ('onCooldownUntil' in mirror) {
+                expect(
+                    mirror.onCooldownUntil === null ||
+                        typeof mirror.onCooldownUntil === 'number',
+                ).toBe(true);
+            }
             expect(Array.isArray(mirror.rateLimit)).toBe(true);
             expect(typeof mirror.requests).toBe('object');
 

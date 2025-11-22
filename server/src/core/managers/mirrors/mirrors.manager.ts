@@ -242,6 +242,7 @@ export class MirrorsManager {
                     return {
                         name: c.client.constructor.name,
                         url: baseUrl,
+                        onCooldownUntil: c.client.onCooldownUntil(),
                         rateLimit: c.client.getCapacities(),
                         requests: stats,
                     };

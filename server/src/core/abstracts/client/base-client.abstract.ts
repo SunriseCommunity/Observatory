@@ -128,6 +128,10 @@ export class BaseClient {
         return capacities;
     }
 
+    onCooldownUntil(): number | undefined {
+        return this.api.limiterConfig.onCooldownUntil;
+    }
+
     get clientConfig(): ClientOptions {
         return this.config;
     }
