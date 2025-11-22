@@ -97,4 +97,17 @@ const config: {
     DisableDailyRateLimit: DISABLE_DAILY_RATE_LIMIT === 'true',
 };
 
+export const observationaryConfigPublic = {
+    RATELIMIT_CALLS_PER_WINDOW: Number(RATELIMIT_CALLS_PER_WINDOW) || 100,
+    RATELIMIT_TIME_WINDOW: Number(RATELIMIT_TIME_WINDOW) || 20 * 1000,
+    OSZ_FILES_LIFE_SPAN: Number(OSZ_FILES_LIFE_SPAN) || 24,
+    IsProduction: Bun.env.NODE_ENV === 'production',
+    IsAutomatedTesting: Bun.env.NODE_ENV === 'test',
+    IsDebug: DEBUG_MODE === 'true',
+    UseBancho: BANCHO_CLIENT_SECRET && BANCHO_CLIENT_ID ? true : false,
+    MirrorsToIgnore: MIRRORS_TO_IGNORE?.split(',').map((v) => v.trim()) ?? [],
+    DisableSafeRatelimitMode: DISABLE_SAFE_RATELIMIT_MODE === 'true',
+    DisableDailyRateLimit: DISABLE_DAILY_RATE_LIMIT === 'true',
+};
+
 export default config;
