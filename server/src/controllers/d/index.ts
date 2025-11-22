@@ -5,10 +5,18 @@ import { BeatmapsManagerPlugin } from '../../plugins/beatmapManager';
 export default (app: App) => {
     app.use(BeatmapsManagerPlugin).get(
         '/:id',
-        ({ BeatmapsManagerInstance, params: { id }, query }) =>
+        async ({ BeatmapsManagerInstance, params: { id }, query, set }) =>
             BeatmapsManagerInstance.downloadBeatmapSet({
                 beatmapSetId: id,
                 noVideo: query.noVideo,
+            }).then((res) => {
+                if (res.source) {
+                    set.headers['X-Data-Source'] = res.source;
+                }
+
+                res.source = undefined;
+
+                return res?.data ?? res;
             }),
         {
             params: t.Object({

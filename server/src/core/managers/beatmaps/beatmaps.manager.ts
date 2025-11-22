@@ -19,6 +19,7 @@ const INTERNAL_ERROR_RESPONSE = {
     status: HttpStatusCode.InternalServerError,
     message:
         'An unexpected error occurred. Please check the status code for more details and try again later. >.<',
+    source: null,
 };
 
 export class BeatmapsManager {
@@ -37,6 +38,7 @@ export class BeatmapsManager {
                 data: beatmap,
                 status: beatmap ? HttpStatusCode.Ok : HttpStatusCode.NotFound,
                 message: !beatmap ? 'Beatmap not found' : undefined,
+                source: 'storage',
             };
         }
 
@@ -52,6 +54,7 @@ export class BeatmapsManager {
             data: result.result,
             status: result.status,
             message: result.status === 404 ? 'Beatmap not found' : undefined,
+            source: 'mirror',
         };
     }
 
@@ -66,6 +69,7 @@ export class BeatmapsManager {
                     ? HttpStatusCode.Ok
                     : HttpStatusCode.NotFound,
                 message: !beatmapset ? 'Beatmapset not found' : undefined,
+                source: 'storage',
             };
         }
 
@@ -81,6 +85,7 @@ export class BeatmapsManager {
             data: result.result,
             status: result.status,
             message: result.status === 404 ? 'Beatmapset not found' : undefined,
+            source: 'mirror',
         };
     }
 
@@ -94,6 +99,7 @@ export class BeatmapsManager {
                 data: searchResult,
                 status: HttpStatusCode.Ok,
                 message: undefined,
+                source: 'storage',
             };
         }
 
@@ -112,6 +118,7 @@ export class BeatmapsManager {
             status: result.status,
             message:
                 result.status === 404 ? 'Beatmapsets not found' : undefined,
+            source: 'mirror',
         };
     }
 
@@ -136,21 +143,27 @@ export class BeatmapsManager {
             data: result.result,
             status: result.status,
             message: result.status === 404 ? 'Beatmaps not found' : undefined,
+            source: 'mirror',
         };
     }
 
     async downloadBeatmapSet(
         ctx: DownloadBeatmapSetOptions,
-    ): Promise<ServerResponse<null> | ArrayBuffer> {
+    ): Promise<ServerResponse<null | ArrayBuffer>> {
         const beatmapsetFile = await this.StorageManager.getBeatmapsetFile(ctx);
 
         if (beatmapsetFile) {
-            return beatmapsetFile;
+            return {
+                data: beatmapsetFile,
+                status: HttpStatusCode.Ok,
+                source: 'storage',
+            };
         } else if (beatmapsetFile === null) {
             return {
                 data: null,
                 status: HttpStatusCode.NotFound,
                 message: 'Beatmapset not found',
+                source: null,
             };
         }
 
@@ -167,24 +180,34 @@ export class BeatmapsManager {
                 data: null,
                 status: HttpStatusCode.NotFound,
                 message: 'Beatmapset not found',
+                source: null,
             };
         }
 
-        return result.result;
+        return {
+            data: result.result,
+            status: result.status,
+            source: 'mirror',
+        };
     }
 
     async downloadOsuBeatmap(
         ctx: DownloadOsuBeatmap,
-    ): Promise<ServerResponse<null> | ArrayBuffer> {
+    ): Promise<ServerResponse<null | ArrayBuffer>> {
         const beatmapOsuFile = await this.StorageManager.getOsuBeatmapFile(ctx);
 
         if (beatmapOsuFile) {
-            return beatmapOsuFile;
+            return {
+                data: beatmapOsuFile,
+                status: HttpStatusCode.Ok,
+                source: 'storage',
+            };
         } else if (beatmapOsuFile === null) {
             return {
                 data: null,
                 status: HttpStatusCode.NotFound,
                 message: 'Osu file not found',
+                source: 'storage',
             };
         }
 
@@ -201,10 +224,15 @@ export class BeatmapsManager {
                 data: null,
                 status: HttpStatusCode.NotFound,
                 message: 'Osu file not found',
+                source: null,
             };
         }
 
-        return result.result;
+        return {
+            data: result.result,
+            status: result.status,
+            source: 'mirror',
+        };
     }
 
     public async getManagerStats() {

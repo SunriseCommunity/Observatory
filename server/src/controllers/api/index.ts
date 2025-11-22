@@ -10,10 +10,17 @@ export default (app: App) => {
                 BeatmapsManagerInstance,
                 params: { id },
                 query: { full },
+                set,
             }) => {
                 const beatmap = await BeatmapsManagerInstance.getBeatmap({
                     beatmapId: id,
                 });
+
+                if (beatmap.source) {
+                    set.headers['X-Data-Source'] = beatmap.source;
+                }
+
+                beatmap.source = undefined;
 
                 if (!beatmap.data) return beatmap;
 
@@ -23,7 +30,14 @@ export default (app: App) => {
                     beatmapSetId: beatmap.data?.beatmapset_id,
                 });
 
-                return beatmapset.data ? beatmapset.data : beatmapset;
+                if (beatmapset.source) {
+                    set.headers['X-Data-Source'] = beatmapset.source;
+                }
+
+                beatmapset.source = undefined;
+
+                if (beatmapset.data)
+                    return beatmapset.data ? beatmapset.data : beatmapset;
             },
             {
                 params: t.Object({
@@ -41,10 +55,17 @@ export default (app: App) => {
                 BeatmapsManagerInstance,
                 params: { hash },
                 query: { full },
+                set,
             }) => {
                 const beatmap = await BeatmapsManagerInstance.getBeatmap({
                     beatmapHash: hash,
                 });
+
+                if (beatmap.source) {
+                    set.headers['X-Data-Source'] = beatmap.source;
+                }
+
+                beatmap.source = undefined;
 
                 if (!beatmap.data) return beatmap;
 
@@ -68,10 +89,16 @@ export default (app: App) => {
         )
         .get(
             'v2/s/:id',
-            async ({ BeatmapsManagerInstance, params: { id } }) => {
+            async ({ BeatmapsManagerInstance, params: { id }, set }) => {
                 const data = await BeatmapsManagerInstance.getBeatmapSet({
                     beatmapSetId: id,
                 });
+
+                if (data.source) {
+                    set.headers['X-Data-Source'] = data.source;
+                }
+
+                data.source = undefined;
 
                 if (!data.data) return data;
 
@@ -86,12 +113,18 @@ export default (app: App) => {
         )
         .get(
             'v2/search',
-            async ({ BeatmapsManagerInstance, query }) => {
+            async ({ BeatmapsManagerInstance, query, set }) => {
                 // TODO: Add another search endpoint which would parse cursors instead of pages, to create compatibility with bancho api;
 
                 const data = await BeatmapsManagerInstance.searchBeatmapsets({
                     ...query,
                 });
+
+                if (data.source) {
+                    set.headers['X-Data-Source'] = data.source;
+                }
+
+                data.source = undefined;
 
                 if (!data.data) return data;
 
@@ -110,10 +143,16 @@ export default (app: App) => {
         )
         .get(
             'v2/beatmaps',
-            async ({ BeatmapsManagerInstance, query }) => {
+            async ({ BeatmapsManagerInstance, query, set }) => {
                 const data = await BeatmapsManagerInstance.getBeatmaps({
                     ids: query.ids,
                 });
+
+                if (data.source) {
+                    set.headers['X-Data-Source'] = data.source;
+                }
+
+                data.source = undefined;
 
                 if (!data.data) return data;
 
