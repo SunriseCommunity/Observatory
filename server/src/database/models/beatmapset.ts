@@ -130,7 +130,7 @@ export async function getBeatmapSetsByBeatmapIds(
         return acc;
     }, [] as BeatmapsetObject[]);
 
-    return data;
+    return data.map((set) => enrichWithBeatmaps(set, set.beatmaps ?? []));
 }
 
 export async function createBeatmapset(
@@ -175,10 +175,10 @@ export async function deleteBeatmapsets(data: Beatmapset[]) {
     );
 }
 
-async function enrichWithBeatmaps(
+function enrichWithBeatmaps(
     beatmapset: BeatmapsetObject,
     beatmaps: BeatmapObject[],
-): Promise<BeatmapsetObject> {
+): BeatmapsetObject {
     const [convertedBeatmaps, defaultBeatmaps] = splitByCondition(
         beatmaps,
         (b) => b.convert,
