@@ -32,6 +32,7 @@ const {
     MIRRORS_TO_IGNORE,
     DISABLE_SAFE_RATELIMIT_MODE,
     DISABLE_DAILY_RATE_LIMIT,
+    ENABLE_CRON_TO_CLEAR_OUTDATED_BEATMAPS,
 } = process.env;
 
 if (!POSTGRES_USER || !POSTGRES_PASSWORD) {
@@ -72,6 +73,7 @@ const config: {
     MirrorsToIgnore: string[];
     DisableSafeRatelimitMode: boolean;
     DisableDailyRateLimit: boolean;
+    EnableCronToClearOutdatedBeatmaps: boolean;
 } = {
     PORT: PORT || '3000',
     POSTGRES_USER: POSTGRES_USER || 'admin',
@@ -95,6 +97,8 @@ const config: {
     MirrorsToIgnore: MIRRORS_TO_IGNORE?.split(',').map((v) => v.trim()) ?? [],
     DisableSafeRatelimitMode: DISABLE_SAFE_RATELIMIT_MODE === 'true',
     DisableDailyRateLimit: DISABLE_DAILY_RATE_LIMIT === 'true',
+    EnableCronToClearOutdatedBeatmaps:
+        ENABLE_CRON_TO_CLEAR_OUTDATED_BEATMAPS === 'true',
 };
 
 export const observationaryConfigPublic = {
@@ -108,6 +112,8 @@ export const observationaryConfigPublic = {
     MirrorsToIgnore: MIRRORS_TO_IGNORE?.split(',').map((v) => v.trim()) ?? [],
     DisableSafeRatelimitMode: DISABLE_SAFE_RATELIMIT_MODE === 'true',
     DisableDailyRateLimit: DISABLE_DAILY_RATE_LIMIT === 'true',
+    EnableCronToClearOutdatedBeatmaps:
+        ENABLE_CRON_TO_CLEAR_OUTDATED_BEATMAPS === 'true',
 };
 
 export default config;

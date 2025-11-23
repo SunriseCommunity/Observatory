@@ -6,6 +6,7 @@ import {
     DownloadOsuBeatmap,
     GetBeatmapOptions,
     GetBeatmapSetOptions,
+    GetBeatmapsetsByBeatmapIdsOptions,
     GetBeatmapsOptions,
     ResultWithStatus,
 } from '../../abstracts/client/base-client.types';
@@ -24,6 +25,7 @@ export class BanchoClient extends BaseClient {
                     ClientAbilities.GetBeatmapSetById,
                     ClientAbilities.GetBeatmaps,
                     ClientAbilities.DownloadOsuBeatmap,
+                    ClientAbilities.GetBeatmapsetsByBeatmapIds,
                 ],
             },
             {
@@ -34,6 +36,7 @@ export class BanchoClient extends BaseClient {
                             ClientAbilities.GetBeatmapSetById,
                             ClientAbilities.GetBeatmaps,
                             ClientAbilities.DownloadOsuBeatmap,
+                            ClientAbilities.GetBeatmapsetsByBeatmapIds,
                         ],
                         routes: ['/'],
                         limit: 1200,
@@ -89,6 +92,39 @@ export class BanchoClient extends BaseClient {
         return {
             result: result.data?.beatmaps?.map((b: BanchoBeatmap) =>
                 this.convertService.convertBeatmap(b),
+            ),
+            status: result.status,
+        };
+    }
+
+    async getBeatmapsetsByBeatmapIds(
+        ctx: GetBeatmapsetsByBeatmapIdsOptions,
+    ): Promise<ResultWithStatus<Beatmapset[] | null>> {
+        const { beatmapIds } = ctx;
+
+        const result = await this.api.get<{ beatmaps: BanchoBeatmap[] }>(
+            `api/v2/beatmaps?${beatmapIds.map((id) => `ids[]=${id}`).join('&')}`,
+            {
+                config: {
+                    headers: {
+                        Authorization: `Bearer ${await this.osuApiKey}`,
+                    },
+                },
+            },
+        );
+
+        if (!result || result.status !== 200) {
+            return { result: null, status: result?.status ?? 500 };
+        }
+
+        return {
+            result: result.data?.beatmaps?.map((b: BanchoBeatmap) =>
+                this.convertService.convertBeatmapset({
+                    ...b.beatmapset,
+                    ...(b.convert
+                        ? { converts: [b.convert] }
+                        : { beatmaps: [b] }),
+                } as BanchoBeatmapset),
             ),
             status: result.status,
         };

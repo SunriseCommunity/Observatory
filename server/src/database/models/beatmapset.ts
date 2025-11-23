@@ -89,6 +89,50 @@ export async function getBeatmapSetById(
     );
 }
 
+export async function getBeatmapSetsByBeatmapIds(
+    beatmapIds: number[],
+    ignoreValidUntil: true,
+): Promise<BeatmapsetObject[] | null> {
+    const whereConditions = [
+        inArray(beatmaps.id, beatmapIds),
+        ignoreValidUntil
+            ? undefined
+            : gte(
+                  sql`cast(${beatmapsets.validUntil} as timestamp)`,
+                  sql`cast(${getUTCDate()} as timestamp)`,
+              ),
+    ].filter((condition) => condition !== undefined);
+
+    const entities = await db
+        .select()
+        .from(beatmapsets)
+        .innerJoin(beatmaps, eq(beatmapsets.id, beatmaps.beatmapset_id))
+        .where(and(...whereConditions));
+
+    if (entities.length === 0) {
+        return null;
+    }
+
+    const data = entities.reduce((acc, { beatmapsets, beatmaps }) => {
+        const setId = beatmapsets.id;
+
+        const existing = acc.find((e) => e.id === setId);
+
+        if (existing) {
+            existing.beatmaps?.push(beatmapDatabaseToObject(beatmaps));
+        } else {
+            acc.push({
+                ...databaseToObject(beatmapsets),
+                beatmaps: [beatmapDatabaseToObject(beatmaps)],
+            });
+        }
+
+        return acc;
+    }, [] as BeatmapsetObject[]);
+
+    return data;
+}
+
 export async function createBeatmapset(
     obj: BeatmapsetObject,
 ): Promise<BeatmapsetDatabase> {
