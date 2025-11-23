@@ -42,7 +42,6 @@ export class BaseClient {
                 Accept: 'application/json',
                 'Content-Type': 'application/json',
             },
-            timeout: 10000,
         });
 
         this.convertService = new ConvertService(this.config.baseUrl);
