@@ -164,6 +164,31 @@ export default (app: App) => {
                 }),
                 tags: ['v2'],
             },
+        )
+        .get(
+            'v2/beatmapsets',
+            async ({ BeatmapsManagerInstance, query, set }) => {
+                const data =
+                    await BeatmapsManagerInstance.getBeatmapsetsByBeatmapIds({
+                        beatmapIds: query.beatmapIds,
+                    });
+
+                if (data.source) {
+                    set.headers['X-Data-Source'] = data.source;
+                }
+
+                data.source = undefined;
+
+                if (!data.data) return data;
+
+                return data.data;
+            },
+            {
+                query: t.Object({
+                    beatmapIds: t.Array(t.Numeric()),
+                }),
+                tags: ['v2'],
+            },
         );
 
     return app;
