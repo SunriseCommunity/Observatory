@@ -58,13 +58,14 @@ export class CalculatorManager {
             beatmapId,
         });
 
-        if ('data' in beatmapBuffer) {
+        if (beatmapBuffer.data === null) {
             return beatmapBuffer;
         }
 
         if (beatmapHash) {
-            const fileHash =
-                this.calculatorService.GetHashOfOsuFile(beatmapBuffer);
+            const fileHash = this.calculatorService.GetHashOfOsuFile(
+                beatmapBuffer.data,
+            );
 
             if (fileHash != beatmapHash) {
                 return {
@@ -75,8 +76,9 @@ export class CalculatorManager {
             }
         }
 
-        const beatmap =
-            this.calculatorService.ConvertBufferToBeatmap(beatmapBuffer);
+        const beatmap = this.calculatorService.ConvertBufferToBeatmap(
+            beatmapBuffer.data,
+        );
 
         return beatmap;
     }
