@@ -24,6 +24,7 @@ import { StorageFilesService } from './storage-files.service';
 import { getBeatmapSetsFilesCount } from '../../../database/models/beatmapsetFile';
 import { getBeatmapOsuFileCount } from '../../../database/models/beatmapOsuFile';
 import logger from '../../../utils/logger';
+import config from '../../../config';
 
 export class StorageManager {
     private readonly cacheService: StorageCacheService;
@@ -174,6 +175,10 @@ export class StorageManager {
     }
 
     private async clearOldBeatmapsets() {
+        if (!config.EnableCronToClearOutdatedBeatmaps) {
+            return;
+        }
+
         const beatmapsetsForRemoval = await getUnvalidBeatmapSets();
 
         const forRemoval = [...beatmapsetsForRemoval];
