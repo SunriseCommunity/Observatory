@@ -119,9 +119,12 @@ export class BanchoClient extends BaseClient {
 
         return {
             result: result.data?.beatmaps?.map((b: BanchoBeatmap) =>
-                this.convertService.convertBeatmapset(
-                    b.beatmapset as BanchoBeatmapset,
-                ),
+                this.convertService.convertBeatmapset({
+                    ...b.beatmapset,
+                    ...(b.convert
+                        ? { converts: [b.convert] }
+                        : { beatmaps: [b] }),
+                } as BanchoBeatmapset),
             ),
             status: result.status,
         };

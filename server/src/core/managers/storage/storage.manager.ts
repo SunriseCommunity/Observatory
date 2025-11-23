@@ -3,6 +3,7 @@ import {
     DownloadOsuBeatmap,
     GetBeatmapOptions,
     GetBeatmapSetOptions,
+    GetBeatmapsetsByBeatmapIdsOptions,
     SearchBeatmapsetsOptions,
 } from '../../abstracts/client/base-client.types';
 import { Beatmap, Beatmapset } from '../../../types/general/beatmap';
@@ -17,6 +18,7 @@ import {
     deleteBeatmapsets,
     getBeatmapSetById,
     getBeatmapSetCount,
+    getBeatmapSetsByBeatmapIds,
     getUnvalidBeatmapSets,
 } from '../../../database/models/beatmapset';
 import { StorageCacheService } from './storage-cache.service';
@@ -84,6 +86,18 @@ export class StorageManager {
         }
 
         return entity ?? undefined;
+    }
+
+    async getBeatmapSetsByBeatmapIds(
+        ctx: GetBeatmapsetsByBeatmapIdsOptions,
+    ): Promise<Beatmapset[] | null | undefined> {
+        const entities = await getBeatmapSetsByBeatmapIds(ctx.beatmapIds, true);
+
+        if (entities === null) {
+            return null;
+        }
+
+        return entities ?? undefined;
     }
 
     async getBeatmapsetFile(

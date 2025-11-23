@@ -151,12 +151,51 @@ export class BeatmapsManager {
     async getBeatmapsetsByBeatmapIds(
         ctx: GetBeatmapsetsByBeatmapIdsOptions,
     ): Promise<ServerResponse<Beatmapset[]>> {
-        const result =
-            await this.MirrorsManager.getBeatmapsetsByBeatmapIds(ctx);
+        const beatmapsets =
+            await this.StorageManager.getBeatmapSetsByBeatmapIds(ctx);
+
+        const missingIds =
+            ctx.beatmapIds.filter(
+                (id) =>
+                    beatmapsets !== undefined &&
+                    !beatmapsets
+                        ?.flatMap(
+                            (set) => set.beatmaps?.map((map) => map.id) ?? [],
+                        )
+                        .includes(id),
+            ) ?? ctx.beatmapIds;
+
+        if (beatmapsets && missingIds.length === 0) {
+            return {
+                data: beatmapsets,
+                status: HttpStatusCode.Ok,
+                message: undefined,
+                source: 'storage',
+            };
+        }
+
+        let result = await this.MirrorsManager.getBeatmapsetsByBeatmapIds({
+            beatmapIds: missingIds,
+        });
 
         if (result.status >= 500) {
             return this.formatResultAsServerError(result);
         }
+
+        // ! NOTE: Results from getBeatmapsetsByBeatmapIds will include not all beatmaps, so we need to fetch beatmapsets again to fetch all beatmaps with them
+        result.result = await Promise.all(
+            result.result?.map(
+                async (beatmapset) =>
+                    await this.getBeatmapSet({
+                        beatmapSetId: beatmapset.id,
+                    }),
+            ) ?? [],
+        ).then(
+            (results) =>
+                results
+                    .map((result) => result.data ?? null)
+                    .filter((result) => result !== null) as Beatmapset[],
+        );
 
         if (result.result && result.result.length > 0) {
             for (const beatmapset of result.result) {
@@ -166,10 +205,21 @@ export class BeatmapsManager {
             }
         }
 
+        const missingIdsFromResult =
+            result.result?.filter(
+                (set) =>
+                    !beatmapsets
+                        ?.flatMap((set) => set.beatmaps?.map((map) => map.id))
+                        .includes(set.id),
+            ) ?? [];
+
         return {
-            data: result.result,
+            data: [...(beatmapsets ?? []), ...(result.result ?? [])],
             status: result.status,
-            message: result.status === 404 ? 'Beatmaps not found' : undefined,
+            message:
+                missingIdsFromResult.length > 0
+                    ? `Some beatmapsets not found: ${missingIdsFromResult.join(', ')}`
+                    : undefined,
             source: 'mirror',
         };
     }
