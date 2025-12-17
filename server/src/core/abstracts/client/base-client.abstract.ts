@@ -56,43 +56,43 @@ export class BaseClient {
 
     async getBeatmapSet(
         ctx: GetBeatmapSetOptions,
-    ): Promise<ResultWithStatus<Beatmapset | null>> {
+    ): Promise<ResultWithStatus<Beatmapset>> {
         throw new Error('Method not implemented.');
     }
 
     async getBeatmaps(
         ctx: GetBeatmapsOptions,
-    ): Promise<ResultWithStatus<Beatmap[] | null>> {
+    ): Promise<ResultWithStatus<Beatmap[]>> {
         throw new Error('Method not implemented.');
     }
 
     async searchBeatmapsets(
         ctx: SearchBeatmapsetsOptions,
-    ): Promise<ResultWithStatus<Beatmapset[] | null>> {
+    ): Promise<ResultWithStatus<Beatmapset[]>> {
         throw new Error('Method not implemented.');
     }
 
     async getBeatmap(
         ctx: GetBeatmapOptions,
-    ): Promise<ResultWithStatus<Beatmap | null>> {
+    ): Promise<ResultWithStatus<Beatmap>> {
         throw new Error('Method not implemented.');
     }
 
     async getBeatmapsetsByBeatmapIds(
         ctx: GetBeatmapsetsByBeatmapIdsOptions,
-    ): Promise<ResultWithStatus<Beatmapset[] | null>> {
+    ): Promise<ResultWithStatus<Beatmapset[]>> {
         throw new Error('Method not implemented.');
     }
 
     async downloadBeatmapSet(
         ctx: DownloadBeatmapSetOptions,
-    ): Promise<ResultWithStatus<ArrayBuffer | null>> {
+    ): Promise<ResultWithStatus<ArrayBuffer>> {
         throw new Error('Method not implemented.');
     }
 
     async downloadOsuBeatmap(
         ctx: DownloadOsuBeatmap,
-    ): Promise<ResultWithStatus<ArrayBuffer | null>> {
+    ): Promise<ResultWithStatus<ArrayBuffer>> {
         throw new Error('Method not implemented.');
     }
 

@@ -132,9 +132,13 @@ export class MirrorsManager {
 
         let criteria: ClientAbilities;
         if (ctx.beatmapId) {
-            criteria = ClientAbilities.GetBeatmapById;
+            criteria = ctx.allowMissingNonBeatmapValues
+                ? ClientAbilities.GetBeatmapByIdWithSomeNonBeatmapValues
+                : ClientAbilities.GetBeatmapById;
         } else {
-            criteria = ClientAbilities.GetBeatmapByHash;
+            criteria = ctx.allowMissingNonBeatmapValues
+                ? ClientAbilities.GetBeatmapByHashWithSomeNonBeatmapValues
+                : ClientAbilities.GetBeatmapByHash;
         }
 
         return await this.useMirror<Beatmap>(ctx, criteria, 'getBeatmap');
