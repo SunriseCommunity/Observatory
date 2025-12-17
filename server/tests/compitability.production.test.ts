@@ -73,7 +73,6 @@ describe.skipIf(!config.IsProduction)(
             });
 
             it('Bancho: should download osu beatmap', async () => {
-                console.log(hasClientToken);
                 if (!hasClientToken) {
                     return it.skip('Bancho: should download osu beatmap', () => {});
                 }
@@ -283,6 +282,19 @@ describe.skipIf(!config.IsProduction)(
                     expected.byteLength + 1000,
                 );
             }, 30000);
+
+            it('Direct: should return converted beatmap', async () => {
+                const randomTest = getRandomTest('getBeatmapById');
+                const { beatmapId } = randomTest;
+
+                const beatmap = await directClient.getBeatmap({
+                    beatmapId,
+                });
+
+                expect(beatmap.result).toContainAllKeys(
+                    Object.keys(randomTest.data),
+                );
+            });
         });
 
         describe('Gatari tests', () => {

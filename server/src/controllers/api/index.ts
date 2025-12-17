@@ -9,11 +9,13 @@ export default (app: App) => {
             async ({
                 BeatmapsManagerInstance,
                 params: { id },
-                query: { full },
+                query: { full, allowMissingNonBeatmapValues },
                 set,
             }) => {
                 const beatmap = await BeatmapsManagerInstance.getBeatmap({
                     beatmapId: id,
+                    allowMissingNonBeatmapValues:
+                        full || allowMissingNonBeatmapValues,
                 });
 
                 if (beatmap.source) {
@@ -42,6 +44,7 @@ export default (app: App) => {
                 }),
                 query: t.Object({
                     full: t.Optional(t.Boolean()),
+                    allowMissingNonBeatmapValues: t.Optional(t.Boolean()), // TODO: Ideally, we should have shortBeatmap endpoint which would return only beatmap values.
                 }),
                 tags: ['v2'],
             },
@@ -51,11 +54,13 @@ export default (app: App) => {
             async ({
                 BeatmapsManagerInstance,
                 params: { hash },
-                query: { full },
+                query: { full, allowMissingNonBeatmapValues },
                 set,
             }) => {
                 const beatmap = await BeatmapsManagerInstance.getBeatmap({
                     beatmapHash: hash,
+                    allowMissingNonBeatmapValues:
+                        full || allowMissingNonBeatmapValues,
                 });
 
                 if (beatmap.source) {
@@ -82,6 +87,7 @@ export default (app: App) => {
                 }),
                 query: t.Object({
                     full: t.Optional(t.BooleanString()),
+                    allowMissingNonBeatmapValues: t.Optional(t.Boolean()), // TODO: Ideally, we should have shortBeatmap endpoint which would return only beatmap values.
                 }),
                 tags: ['v2'],
             },
