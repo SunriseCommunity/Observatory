@@ -26,7 +26,7 @@ export class NerinyanClient extends BaseClient {
 
     async downloadBeatmapSet(
         ctx: DownloadBeatmapSetOptions,
-    ): Promise<ResultWithStatus<ArrayBuffer | null>> {
+    ): Promise<ResultWithStatus<ArrayBuffer>> {
         const result = await this.api.get<ArrayBuffer>(
             `d/${ctx.beatmapSetId}`,
             {

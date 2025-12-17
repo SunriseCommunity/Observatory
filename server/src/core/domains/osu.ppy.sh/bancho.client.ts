@@ -51,7 +51,7 @@ export class BanchoClient extends BaseClient {
 
     async getBeatmapSet(
         ctx: GetBeatmapSetOptions,
-    ): Promise<ResultWithStatus<Beatmapset | null>> {
+    ): Promise<ResultWithStatus<Beatmapset>> {
         if (ctx.beatmapSetId) {
             return await this.getBeatmapSetById(ctx.beatmapSetId);
         }
@@ -61,7 +61,7 @@ export class BanchoClient extends BaseClient {
 
     async getBeatmap(
         ctx: GetBeatmapOptions,
-    ): Promise<ResultWithStatus<Beatmap | null>> {
+    ): Promise<ResultWithStatus<Beatmap>> {
         if (ctx.beatmapId) {
             return await this.getBeatmapById(ctx.beatmapId);
         }
@@ -71,7 +71,7 @@ export class BanchoClient extends BaseClient {
 
     async getBeatmaps(
         ctx: GetBeatmapsOptions,
-    ): Promise<ResultWithStatus<Beatmap[] | null>> {
+    ): Promise<ResultWithStatus<Beatmap[]>> {
         const { ids } = ctx;
 
         const result = await this.api.get<{ beatmaps: BanchoBeatmap[] }>(
@@ -99,7 +99,7 @@ export class BanchoClient extends BaseClient {
 
     async getBeatmapsetsByBeatmapIds(
         ctx: GetBeatmapsetsByBeatmapIdsOptions,
-    ): Promise<ResultWithStatus<Beatmapset[] | null>> {
+    ): Promise<ResultWithStatus<Beatmapset[]>> {
         const { beatmapIds } = ctx;
 
         const result = await this.api.get<{ beatmaps: BanchoBeatmap[] }>(
@@ -132,7 +132,7 @@ export class BanchoClient extends BaseClient {
 
     async downloadOsuBeatmap(
         ctx: DownloadOsuBeatmap,
-    ): Promise<ResultWithStatus<ArrayBuffer | null>> {
+    ): Promise<ResultWithStatus<ArrayBuffer>> {
         const result = await this.api.get<ArrayBuffer>(`osu/${ctx.beatmapId}`, {
             config: {
                 responseType: 'arraybuffer',
@@ -141,7 +141,7 @@ export class BanchoClient extends BaseClient {
 
         if (!result || result.status !== 200 || !result.data) {
             return { result: null, status: result?.status ?? 500 };
-        } else if (result.data.length === 0) {
+        } else if (result.data.byteLength === 0) {
             return { result: null, status: 404 };
         }
 
@@ -150,7 +150,7 @@ export class BanchoClient extends BaseClient {
 
     private async getBeatmapSetById(
         beatmapSetId: number,
-    ): Promise<ResultWithStatus<Beatmapset | null>> {
+    ): Promise<ResultWithStatus<Beatmapset>> {
         const result = await this.api.get<BanchoBeatmapset>(
             `api/v2/beatmapsets/${beatmapSetId}`,
             {
@@ -174,7 +174,7 @@ export class BanchoClient extends BaseClient {
 
     private async getBeatmapById(
         beatmapId: number,
-    ): Promise<ResultWithStatus<Beatmap | null>> {
+    ): Promise<ResultWithStatus<Beatmap>> {
         const result = await this.api.get<BanchoBeatmap>(
             `api/v2/beatmaps/${beatmapId}`,
             {

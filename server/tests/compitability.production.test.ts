@@ -71,6 +71,27 @@ describe.skipIf(!config.IsProduction)(
                     Object.keys(randomTest.data),
                 );
             });
+
+            it('Bancho: should download osu beatmap', async () => {
+                if (!hasClientToken) {
+                    return it.skip('Bancho: should download osu beatmap', () => {});
+                }
+                const randomTest = getRandomTest('downloadOsuBeatmap');
+                const { beatmapId } = randomTest;
+
+                const beatmap = await banchoClient.downloadOsuBeatmap({
+                    beatmapId,
+                });
+
+                const expected = await Bun.file(
+                    `${import.meta.dir}/data/${beatmapId}.osu.test`,
+                ).arrayBuffer();
+
+                expect(beatmap.result?.byteLength).toBeWithin(
+                    expected.byteLength - 1000,
+                    expected.byteLength + 1000,
+                );
+            }, 30000);
         });
 
         describe('Mino tests', () => {
@@ -137,6 +158,24 @@ describe.skipIf(!config.IsProduction)(
                     expected.byteLength + 1000,
                 );
             }, 30000);
+
+            it('Mino: should download osu beatmap', async () => {
+                const randomTest = getRandomTest('downloadOsuBeatmap');
+                const { beatmapId } = randomTest;
+
+                const beatmap = await minoClient.downloadOsuBeatmap({
+                    beatmapId,
+                });
+
+                const expected = await Bun.file(
+                    `${import.meta.dir}/data/${beatmapId}.osu.test`,
+                ).arrayBuffer();
+
+                expect(beatmap.result?.byteLength).toBeWithin(
+                    expected.byteLength - 1000,
+                    expected.byteLength + 1000,
+                );
+            });
         });
 
         describe('Osulabs tests', () => {
@@ -243,6 +282,19 @@ describe.skipIf(!config.IsProduction)(
                     expected.byteLength + 1000,
                 );
             }, 30000);
+
+            it('Direct: should return converted beatmap', async () => {
+                const randomTest = getRandomTest('getBeatmapById');
+                const { beatmapId } = randomTest;
+
+                const beatmap = await directClient.getBeatmap({
+                    beatmapId,
+                });
+
+                expect(beatmap.result).toContainAllKeys(
+                    Object.keys(randomTest.data),
+                );
+            });
         });
 
         describe('Gatari tests', () => {

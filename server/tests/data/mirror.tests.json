@@ -5,6 +5,11 @@
                 "beatmapSetId": 2069845
             }
         ],
+        "downloadOsuBeatmap": [
+            {
+                "beatmapId": 2809623
+            }
+        ],
         "getBeatmapById": [
             {
                 "beatmapId": 4342177,

@@ -82,7 +82,7 @@ export class MinoClient extends BaseClient {
 
     async downloadBeatmapSet(
         ctx: DownloadBeatmapSetOptions,
-    ): Promise<ResultWithStatus<ArrayBuffer | null>> {
+    ): Promise<ResultWithStatus<ArrayBuffer>> {
         const result = await this.api.get<ArrayBuffer>(
             `d/${ctx.beatmapSetId}${ctx.noVideo ? 'n' : ''}`,
             {
@@ -101,7 +101,7 @@ export class MinoClient extends BaseClient {
 
     async downloadOsuBeatmap(
         ctx: DownloadOsuBeatmap,
-    ): Promise<ResultWithStatus<ArrayBuffer | null>> {
+    ): Promise<ResultWithStatus<ArrayBuffer>> {
         const result = await this.api.get<ArrayBuffer>(`osu/${ctx.beatmapId}`, {
             config: {
                 responseType: 'arraybuffer',
@@ -117,7 +117,7 @@ export class MinoClient extends BaseClient {
 
     async getBeatmapSet(
         ctx: GetBeatmapSetOptions,
-    ): Promise<ResultWithStatus<Beatmapset | null>> {
+    ): Promise<ResultWithStatus<Beatmapset>> {
         if (ctx.beatmapSetId) {
             return await this.getBeatmapSetById(ctx.beatmapSetId);
         }
@@ -127,7 +127,7 @@ export class MinoClient extends BaseClient {
 
     async searchBeatmapsets(
         ctx: SearchBeatmapsetsOptions,
-    ): Promise<ResultWithStatus<Beatmapset[] | null>> {
+    ): Promise<ResultWithStatus<Beatmapset[]>> {
         const result = await this.api.get<Beatmapset[]>(`api/v2/search`, {
             config: {
                 params: {
@@ -156,7 +156,7 @@ export class MinoClient extends BaseClient {
 
     async getBeatmap(
         ctx: GetBeatmapOptions,
-    ): Promise<ResultWithStatus<Beatmap | null>> {
+    ): Promise<ResultWithStatus<Beatmap>> {
         if (ctx.beatmapId) {
             return await this.getBeatmapById(ctx.beatmapId);
         } else if (ctx.beatmapHash) {
@@ -168,7 +168,7 @@ export class MinoClient extends BaseClient {
 
     private async getBeatmapSetById(
         beatmapSetId: number,
-    ): Promise<ResultWithStatus<Beatmapset | null>> {
+    ): Promise<ResultWithStatus<Beatmapset>> {
         const result = await this.api.get<Beatmapset>(
             `api/v2/s/${beatmapSetId}`,
         );
@@ -185,7 +185,7 @@ export class MinoClient extends BaseClient {
 
     private async getBeatmapById(
         beatmapId: number,
-    ): Promise<ResultWithStatus<Beatmap | null>> {
+    ): Promise<ResultWithStatus<Beatmap>> {
         const result = await this.api.get<Beatmap>(`api/v2/b/${beatmapId}`);
 
         if (!result || result.status !== 200 || !result.data) {
@@ -208,7 +208,7 @@ export class MinoClient extends BaseClient {
 
     private async getBeatmapByHash(
         beatmapHash: string,
-    ): Promise<ResultWithStatus<Beatmap | null>> {
+    ): Promise<ResultWithStatus<Beatmap>> {
         const result = await this.api.get<Beatmap>(`api/v2/md5/${beatmapHash}`);
 
         if (!result || result.status !== 200 || !result.data) {

@@ -19,7 +19,7 @@ export class CalculatorManager {
         scores: ScoreShort[],
     ) {
         const beatmap = await this.GetBeatmapHash(beatmapId);
-        if (beatmap instanceof Beatmap === false) {
+        if (!(beatmap instanceof Beatmap)) {
             return beatmap;
         }
 
@@ -39,7 +39,7 @@ export class CalculatorManager {
         beatmapHash?: string,
     ) {
         const beatmap = await this.GetBeatmapHash(beatmapId, beatmapHash);
-        if (beatmap instanceof Beatmap === false) {
+        if (!(beatmap instanceof Beatmap)) {
             return beatmap;
         }
 

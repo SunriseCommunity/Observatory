@@ -1,9 +1,8 @@
-import { spyOn } from 'bun:test';
+import { spyOn, Mock } from 'bun:test';
 import { BanchoClient } from '../../src/core/domains';
 import { ApiRateLimiter } from '../../src/core/abstracts/ratelimiter/rate-limiter.abstract';
 import { BaseApi } from '../../src/core/abstracts/api/base-api.abstract';
 import { BaseClient } from '../../src/core/abstracts/client/base-client.abstract';
-import { Mock } from 'test';
 import { BanchoService } from '../../src/core/domains/osu.ppy.sh/bancho-client.service';
 
 import path from 'path';
@@ -27,25 +26,32 @@ import {
 } from '../../src/core/domains/beatmaps.download/osulabs-client.types';
 import { DeepPartial } from '../../src/types/utils';
 import { RedisInstance } from '../../src/plugins/redisInstance';
+import { AxiosResponse } from 'axios';
+
+type MockAxiosResponse<T> = Partial<AxiosResponse<T>> & {
+    data: T;
+    status: number;
+    headers?: Record<string, string>;
+};
 
 export class Mocker {
     static mockRequest<T>(
         baseClient: BaseClient,
         service: 'self',
         mockedEndpointMethod: keyof BaseClient,
-        data: T,
+        data: MockAxiosResponse<T>,
     ): Mock<never>;
     static mockRequest<T>(
         baseClient: BaseClient,
         service: 'api',
         mockedEndpointMethod: keyof ApiRateLimiter,
-        data: T,
+        data: MockAxiosResponse<T>,
     ): Mock<never>;
     static mockRequest<T>(
         baseClient: BaseClient,
         service: 'baseApi',
         mockedEndpointMethod: keyof BaseApi,
-        data: T,
+        data: MockAxiosResponse<T>,
     ): Mock<never>;
     static mockRequest<T>(
         baseClient: BaseClient,
@@ -61,14 +67,14 @@ export class Mocker {
             | keyof BaseApi
             | keyof ApiRateLimiter
             | keyof BanchoService,
-        data: T,
+        data: MockAxiosResponse<T> | string,
     ) {
         if (service === 'api') {
             return spyOn(
                 // @ts-expect-error ignore protected property
                 baseClient.api,
                 mockedEndpointMethod as keyof ApiRateLimiter,
-            ).mockResolvedValue(data);
+            ).mockResolvedValue(data as never);
         }
 
         if (service === 'baseApi') {
@@ -76,26 +82,22 @@ export class Mocker {
                 // @ts-expect-error ignore protected property
                 baseClient.api.api,
                 mockedEndpointMethod as keyof BaseApi,
-            ).mockResolvedValue(data);
+            ).mockResolvedValue(data as never);
         }
 
         if (service === 'self') {
             return spyOn(
                 baseClient,
                 mockedEndpointMethod as keyof BaseClient,
-            ).mockResolvedValue(data);
+            ).mockResolvedValue(data as never);
         }
 
-        if (
-            service === 'banchoService' &&
-            baseClient instanceof BanchoClient &&
-            typeof data === 'string'
-        ) {
+        if (service === 'banchoService' && baseClient instanceof BanchoClient) {
             return spyOn(
                 // @ts-expect-error ignore protected property
                 baseClient.banchoService,
                 mockedEndpointMethod as keyof BanchoService,
-            ).mockResolvedValue(data);
+            ).mockResolvedValue(data as never);
         }
 
         throw new Error('Invalid service to mock');
@@ -156,7 +158,7 @@ export class Mocker {
 
     static mockApiRequestForAllClients<T>(
         mockedEndpointMethod: keyof BaseApi,
-        data: T,
+        data: AxiosResponse<T>,
     ) {
         return spyOn(BaseApi.prototype, mockedEndpointMethod).mockResolvedValue(
             data,

@@ -2,7 +2,7 @@ import config from '../../../config';
 import { createRequest } from '../../../database/models/requests';
 import { logExternalRequest } from '../../../utils/logger';
 import { AxiosResponseLog, BaseApiOptions } from './base-api.types';
-import { Axios, AxiosError, AxiosRequestConfig } from 'axios';
+import { Axios, AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
 
 export class BaseApi {
     constructor(
@@ -51,9 +51,13 @@ export class BaseApi {
 
             this.handleResponse(res);
             return res;
-        } catch (e: any) {
-            this.handleResponse(e.response || e);
-            return e.response || e;
+        } catch (e: unknown) {
+            if (e instanceof AxiosError && e.response) {
+                this.handleResponse(e.response);
+                return e.response as AxiosResponse<Q>;
+            }
+            this.handleResponse(e);
+            return null;
         }
     }
 
@@ -75,9 +79,13 @@ export class BaseApi {
 
             this.handleResponse(res);
             return res;
-        } catch (e: any) {
-            this.handleResponse(e.response || e);
-            return e.response || e;
+        } catch (e: unknown) {
+            if (e instanceof AxiosError && e.response) {
+                this.handleResponse(e.response);
+                return e.response as AxiosResponse<Q>;
+            }
+            this.handleResponse(e);
+            return null;
         }
     }
 
@@ -99,9 +107,13 @@ export class BaseApi {
 
             this.handleResponse(res);
             return res;
-        } catch (e: any) {
-            this.handleResponse(e.response || e);
-            return e.response || e;
+        } catch (e: unknown) {
+            if (e instanceof AxiosError && e.response) {
+                this.handleResponse(e.response);
+                return e.response as AxiosResponse<Q>;
+            }
+            this.handleResponse(e);
+            return null;
         }
     }
 
@@ -123,9 +135,13 @@ export class BaseApi {
 
             this.handleResponse(res);
             return res;
-        } catch (e: any) {
-            this.handleResponse(e.response || e);
-            return e.response || e;
+        } catch (e: unknown) {
+            if (e instanceof AxiosError && e.response) {
+                this.handleResponse(e.response);
+                return e.response as AxiosResponse<Q>;
+            }
+            this.handleResponse(e);
+            return null;
         }
     }
 
@@ -143,9 +159,13 @@ export class BaseApi {
 
             this.handleResponse(res);
             return res;
-        } catch (e: any) {
-            this.handleResponse(e.response || e);
-            return e.response || e;
+        } catch (e: unknown) {
+            if (e instanceof AxiosError && e.response) {
+                this.handleResponse(e.response);
+                return e.response as AxiosResponse<Q>;
+            }
+            this.handleResponse(e);
+            return null;
         }
     }
 
@@ -175,8 +195,10 @@ export class BaseApi {
         };
 
         if (!isAxiosError && res.config.responseType === 'arraybuffer') {
+            const downloadFileLength = res?.data?.byteLength || 0;
+
             data.downloadSpeed = Math.round(
-                (res.data.byteLength || 0) / 1024 / (data.latency / 1000),
+                (downloadFileLength || 0) / 1024 / (data.latency / 1000),
             ); // KB/s
         }
 

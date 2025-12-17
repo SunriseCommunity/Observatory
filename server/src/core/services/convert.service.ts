@@ -7,6 +7,7 @@ import {
     MinoBeatmap,
     MinoBeatmapset,
 } from '../domains/catboy.best/mino-client.types';
+import { DirectBeatmap } from '../domains/osu.direct/direct-client.types';
 import {
     BanchoBeatmap,
     BanchoBeatmapset,
@@ -71,6 +72,8 @@ export class ConvertService {
                 return this.convertMinoBeatmap(beatmap as MinoBeatmap);
             case 'osulabs':
                 return this.convertOsulabsBeatmap(beatmap as OsulabsBeatmap);
+            case 'direct':
+                return this.convertDirectBeatmap(beatmap as DirectBeatmap);
             default:
                 throw new Error('ConvertService: Cannot convert beatmap');
         }
@@ -101,6 +104,16 @@ export class ConvertService {
         return {
             ...beatmap,
         } as Beatmap;
+    }
+
+    private convertDirectBeatmap(beatmap: DirectBeatmap): Beatmap {
+        return {
+            ...beatmap,
+            failtimes: {
+                fail: Array(100).fill(0),
+                exit: Array(100).fill(0),
+            },
+        };
     }
 
     private convertMinoBeatmap(beatmap: MinoBeatmap): Beatmap {
