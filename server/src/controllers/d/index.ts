@@ -14,9 +14,8 @@ export default (app: App) => {
                     set.headers['X-Data-Source'] = res.source;
                 }
 
-                res.source = undefined;
-
-                return res?.data ?? res;
+                const { source, ...response } = res;
+                return response?.data ?? response;
             }),
         {
             params: t.Object({

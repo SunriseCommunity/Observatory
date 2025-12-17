@@ -15,7 +15,7 @@ describe('Stats Endpoint', () => {
         jest.restoreAllMocks();
         Mocker.mockMirrorsBenchmark();
 
-        app = await setup();
+        app = (await setup()) as unknown as Elysia;
     });
 
     test('Should return 200 status code', async () => {

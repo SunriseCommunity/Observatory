@@ -20,24 +20,21 @@ export default (app: App) => {
                     set.headers['X-Data-Source'] = beatmap.source;
                 }
 
-                beatmap.source = undefined;
+                const { source: _, ...responseBeatmap } = beatmap;
 
-                if (!beatmap.data) return beatmap;
-
-                if (!full) return beatmap.data;
+                if (!full) return responseBeatmap?.data ?? responseBeatmap;
 
                 const beatmapset = await BeatmapsManagerInstance.getBeatmapSet({
-                    beatmapSetId: beatmap.data?.beatmapset_id,
+                    beatmapSetId: responseBeatmap.data?.beatmapset_id,
                 });
 
                 if (beatmapset.source) {
                     set.headers['X-Data-Source'] = beatmapset.source;
                 }
 
-                beatmapset.source = undefined;
+                const { source: __, ...responseBeatmapset } = beatmapset;
 
-                if (beatmapset.data)
-                    return beatmapset.data ? beatmapset.data : beatmapset;
+                return responseBeatmapset?.data ?? responseBeatmapset;
             },
             {
                 params: t.Object({
@@ -65,17 +62,19 @@ export default (app: App) => {
                     set.headers['X-Data-Source'] = beatmap.source;
                 }
 
-                beatmap.source = undefined;
-
-                if (!beatmap.data) return beatmap;
-
-                if (!full) return beatmap.data;
+                const { source: _, ...responseBeatmap } = beatmap;
+                if (!full) return responseBeatmap?.data ?? responseBeatmap;
 
                 const beatmapset = await BeatmapsManagerInstance.getBeatmapSet({
                     beatmapSetId: beatmap.data?.beatmapset_id,
                 });
 
-                return beatmapset.data ? beatmapset.data : beatmapset;
+                if (beatmapset.source) {
+                    set.headers['X-Data-Source'] = beatmapset.source;
+                }
+
+                const { source: __, ...responseBeatmapset } = beatmapset;
+                return responseBeatmapset?.data ?? responseBeatmapset;
             },
             {
                 params: t.Object({
@@ -98,11 +97,8 @@ export default (app: App) => {
                     set.headers['X-Data-Source'] = data.source;
                 }
 
-                data.source = undefined;
-
-                if (!data.data) return data;
-
-                return data.data;
+                const { source: _, ...response } = data;
+                return response?.data ?? response;
             },
             {
                 params: t.Object({
@@ -124,11 +120,8 @@ export default (app: App) => {
                     set.headers['X-Data-Source'] = data.source;
                 }
 
-                data.source = undefined;
-
-                if (!data.data) return data;
-
-                return data.data;
+                const { source: _, ...response } = data;
+                return response?.data ?? response;
             },
             {
                 query: t.Object({
@@ -152,11 +145,8 @@ export default (app: App) => {
                     set.headers['X-Data-Source'] = data.source;
                 }
 
-                data.source = undefined;
-
-                if (!data.data) return data;
-
-                return data.data;
+                const { source: _, ...response } = data;
+                return response?.data ?? response;
             },
             {
                 query: t.Object({
@@ -177,11 +167,8 @@ export default (app: App) => {
                     set.headers['X-Data-Source'] = data.source;
                 }
 
-                data.source = undefined;
-
-                if (!data.data) return data;
-
-                return data.data;
+                const { source: _, ...response } = data;
+                return response?.data ?? response;
             },
             {
                 query: t.Object({

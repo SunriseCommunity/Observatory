@@ -43,7 +43,7 @@ export async function getMirrorsRequestsCountForStats(
     const values = dataRequests
         .map(
             (_, i) =>
-                `('${dataRequests[i].baseUrl}', ${dataRequests[i].createdAfter ? `'${dataRequests[i].createdAfter}'` : null}, ${dataRequests[i].statusCodes && dataRequests[i].statusCodes.length > 0 ? `ARRAY[${dataRequests[i].statusCodes}]` : null})`,
+                `('${dataRequests[i].baseUrl}', ${dataRequests[i].createdAfter ? `'${dataRequests[i].createdAfter}'` : null}, ${dataRequests[i].statusCodes && (dataRequests[i].statusCodes?.length ?? 0) > 0 ? `ARRAY[${dataRequests[i].statusCodes}]` : null})`,
         )
         .join(', ');
 

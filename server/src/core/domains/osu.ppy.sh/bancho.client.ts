@@ -141,7 +141,7 @@ export class BanchoClient extends BaseClient {
 
         if (!result || result.status !== 200 || !result.data) {
             return { result: null, status: result?.status ?? 500 };
-        } else if (result.data.length === 0) {
+        } else if (result.data.byteLength === 0) {
             return { result: null, status: 404 };
         }
 
