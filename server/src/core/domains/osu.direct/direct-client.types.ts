@@ -1,4 +1,3 @@
-import { Beatmap, Beatmapset } from '../../../types/general/beatmap';
-import { UserCompact } from '../../../types/general/user';
+import type { Beatmap } from "../../../types/general/beatmap";
 
-export interface DirectBeatmap extends Omit<Beatmap, 'failtimes'> {}
+export interface DirectBeatmap extends Omit<Beatmap, "failtimes"> {}

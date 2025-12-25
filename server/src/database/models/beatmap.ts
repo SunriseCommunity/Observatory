@@ -1,167 +1,168 @@
-import { and, count, eq, gte, sql } from 'drizzle-orm';
-import { db } from '../client';
-import { beatmaps, NewBeatmap } from '../schema';
-import { Beatmap as BeatmapObject } from '../../types/general/beatmap';
-import { Beatmap as BeatmapDatabase } from '../schema';
-import { RankStatus } from '../../types/general/rankStatus';
-import { getUTCDate } from '../../utils/date';
-import { GameMode } from '../../types/general/gameMode';
+import { and, count, eq, gte, sql } from "drizzle-orm";
+
+import type { Beatmap as BeatmapObject } from "../../types/general/beatmap";
+import type { GameMode } from "../../types/general/gameMode";
+import { RankStatus } from "../../types/general/rankStatus";
+import { getUTCDate } from "../../utils/date";
+import { db } from "../client";
+import type { Beatmap as BeatmapDatabase, NewBeatmap } from "../schema";
+import { beatmaps } from "../schema";
 
 const ONE_DAY = 1000 * 60 * 60 * 24;
 
 export async function getBeatmapCount() {
-    const entities = await db
-        .select({ count: count() })
-        .from(beatmaps)
-        .where(
-            gte(
-                sql`cast(${beatmaps.validUntil} as timestamp)`,
-                sql`cast(${getUTCDate()} as timestamp)`,
-            ),
-        );
+  const entities = await db
+    .select({ count: count() })
+    .from(beatmaps)
+    .where(
+      gte(
+        sql`cast(${beatmaps.validUntil} as timestamp)`,
+        sql`cast(${getUTCDate()} as timestamp)`,
+      ),
+    );
 
-    if (entities.length <= 0) {
-        return 0;
-    }
+  if (entities.length <= 0) {
+    return 0;
+  }
 
-    return entities[0].count;
+  return entities[0].count;
 }
 
 export async function getBeatmapById(
-    beatmapId: number,
+  beatmapId: number,
 ): Promise<BeatmapObject | null> {
-    const entities = await db
-        .select()
-        .from(beatmaps)
-        .where(
-            and(
-                eq(beatmaps.id, beatmapId),
-                eq(beatmaps.convert, false),
-                gte(
-                    sql`cast(${beatmaps.validUntil} as timestamp)`,
-                    sql`cast(${getUTCDate()} as timestamp)`,
-                ),
-            ),
-        );
+  const entities = await db
+    .select()
+    .from(beatmaps)
+    .where(
+      and(
+        eq(beatmaps.id, beatmapId),
+        eq(beatmaps.convert, false),
+        gte(
+          sql`cast(${beatmaps.validUntil} as timestamp)`,
+          sql`cast(${getUTCDate()} as timestamp)`,
+        ),
+      ),
+    );
 
-    if (entities.length === 0) {
-        return null;
-    }
+  if (entities.length === 0) {
+    return null;
+  }
 
-    return databaseToObject(entities[0]);
+  return databaseToObject(entities[0]);
 }
 
 export async function getBeatmapByHash(
-    beatmapHash: string,
+  beatmapHash: string,
 ): Promise<BeatmapObject | null> {
-    const entities = await db
-        .select()
-        .from(beatmaps)
-        .where(
-            and(
-                eq(beatmaps.checksum, beatmapHash),
-                eq(beatmaps.convert, false),
-                gte(
-                    sql`cast(${beatmaps.validUntil} as timestamp)`,
-                    sql`cast(${getUTCDate()} as timestamp)`,
-                ),
-            ),
-        );
+  const entities = await db
+    .select()
+    .from(beatmaps)
+    .where(
+      and(
+        eq(beatmaps.checksum, beatmapHash),
+        eq(beatmaps.convert, false),
+        gte(
+          sql`cast(${beatmaps.validUntil} as timestamp)`,
+          sql`cast(${getUTCDate()} as timestamp)`,
+        ),
+      ),
+    );
 
-    if (entities.length === 0) {
-        return null;
-    }
+  if (entities.length === 0) {
+    return null;
+  }
 
-    return databaseToObject(entities[0]);
+  return databaseToObject(entities[0]);
 }
 
 export async function getBeatmapsBySetId(
-    beatmapSetId: number,
-    convert: boolean = false,
+  beatmapSetId: number,
+  convert = false,
 ): Promise<BeatmapObject[] | null> {
-    const entities = await db
-        .select()
-        .from(beatmaps)
-        .where(
-            and(
-                eq(beatmaps.beatmapset_id, beatmapSetId),
-                eq(beatmaps.convert, convert),
-                gte(
-                    sql`cast(${beatmaps.validUntil} as timestamp)`,
-                    sql`cast(${getUTCDate()} as timestamp)`,
-                ),
-            ),
-        );
+  const entities = await db
+    .select()
+    .from(beatmaps)
+    .where(
+      and(
+        eq(beatmaps.beatmapset_id, beatmapSetId),
+        eq(beatmaps.convert, convert),
+        gte(
+          sql`cast(${beatmaps.validUntil} as timestamp)`,
+          sql`cast(${getUTCDate()} as timestamp)`,
+        ),
+      ),
+    );
 
-    if (entities.length === 0) {
-        return null;
-    }
+  if (entities.length === 0) {
+    return null;
+  }
 
-    return entities.map((e) => databaseToObject(e));
+  return entities.map(e => databaseToObject(e));
 }
 
 export async function createBeatmap(
-    obj: BeatmapObject,
+  obj: BeatmapObject,
 ): Promise<BeatmapDatabase> {
-    const data: NewBeatmap = objectToDatabase(obj);
+  const data: NewBeatmap = objectToDatabase(obj);
 
-    const entities = await db
-        .insert(beatmaps)
-        .values(data)
-        .onConflictDoUpdate({
-            target: [beatmaps.id, beatmaps.mode],
-            set: data,
-        })
-        .returning();
-    return entities[0];
+  const entities = await db
+    .insert(beatmaps)
+    .values(data)
+    .onConflictDoUpdate({
+      target: [beatmaps.id, beatmaps.mode],
+      set: data,
+    })
+    .returning();
+  return entities[0];
 }
 
 function objectToDatabase(obj: BeatmapObject): BeatmapDatabase {
-    const data: BeatmapDatabase = {
-        ...obj,
-        status: obj.status,
-        ranked: obj.ranked,
-        failtimes: JSON.stringify(obj.failtimes),
-        bpm: obj.bpm ?? null,
-        deleted_at: obj.deleted_at ?? null,
-        checksum: obj.checksum ?? null,
-        max_combo: obj.max_combo ?? null,
-        validUntil: new Date(
-            getUTCDate().getTime() + getTTLBasedOnStatus(obj.status),
-        ).toISOString(),
-    };
+  const data: BeatmapDatabase = {
+    ...obj,
+    status: obj.status,
+    ranked: obj.ranked,
+    failtimes: JSON.stringify(obj.failtimes),
+    bpm: obj.bpm ?? null,
+    deleted_at: obj.deleted_at ?? null,
+    checksum: obj.checksum ?? null,
+    max_combo: obj.max_combo ?? null,
+    validUntil: new Date(
+      getUTCDate().getTime() + getTTLBasedOnStatus(obj.status),
+    ).toISOString(),
+  };
 
-    return data;
+  return data;
 }
 
 export function databaseToObject(obj: BeatmapDatabase): BeatmapObject {
-    return {
-        ...obj,
-        mode: obj.mode as GameMode,
-        bpm: obj.bpm ?? 0,
-        checksum: obj.checksum ?? undefined,
-        max_combo: obj.max_combo ?? undefined,
-        status: obj.status as RankStatus,
-        ranked: obj.ranked,
-        failtimes: JSON.parse(obj.failtimes ?? '{}'),
-        // @ts-ignore
-        validUntil: undefined,
-    };
+  return {
+    ...obj,
+    mode: obj.mode as GameMode,
+    bpm: obj.bpm ?? 0,
+    checksum: obj.checksum ?? undefined,
+    max_combo: obj.max_combo ?? undefined,
+    status: obj.status as RankStatus,
+    ranked: obj.ranked,
+    failtimes: JSON.parse(obj.failtimes ?? "{}"),
+    // @ts-expect-error -- Will be set when enriching
+    validUntil: undefined,
+  };
 }
 
 function getTTLBasedOnStatus(status: RankStatus): number {
-    switch (status) {
-        case RankStatus.GRAVEYARD:
-            return ONE_DAY * 7; // 7 days
-        case RankStatus.PENDING:
-        case RankStatus.QUALIFIED:
-        case RankStatus.WIP:
-            return 1000 * 60 * 5; // 5 minutes
-        case RankStatus.APPROVED:
-        case RankStatus.LOVED:
-        case RankStatus.RANKED:
-            return ONE_DAY * 30; // 30 days
-        default:
-            return -1;
-    }
+  switch (status) {
+    case RankStatus.GRAVEYARD:
+      return ONE_DAY * 7; // 7 days
+    case RankStatus.PENDING:
+    case RankStatus.QUALIFIED:
+    case RankStatus.WIP:
+      return 1000 * 60 * 5; // 5 minutes
+    case RankStatus.APPROVED:
+    case RankStatus.LOVED:
+    case RankStatus.RANKED:
+      return ONE_DAY * 30; // 30 days
+    default:
+      return -1;
+  }
 }
