@@ -1,5 +1,5 @@
 on: [push]
-name: Run Tests
+name: Run Tests & Lint
 concurrency:
     group: ${{ github.workflow }}-${{ github.ref }}
     cancel-in-progress: true
@@ -14,4 +14,5 @@ jobs:
 
             - run: docker compose -f docker-compose.tests.yml up --detach
             - run: bun install --frozen-lockfile
+            - run: bun lint
             - run: bun test
