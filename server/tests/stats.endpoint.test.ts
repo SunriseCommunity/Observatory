@@ -1,312 +1,313 @@
-import { beforeAll, beforeEach, describe, expect, jest, test } from 'bun:test';
-import { Elysia } from 'elysia';
-import { HttpStatusCode } from 'axios';
-import { Mocker } from './utils/mocker';
-import setup from '../src/setup';
+import { HttpStatusCode } from "axios";
+import { beforeAll, beforeEach, describe, expect, jest, test } from "bun:test";
+import type { Elysia } from "elysia";
 
-describe('Stats Endpoint', () => {
-    let app: Elysia;
+import setup from "../src/setup";
+import { Mocker } from "./utils/mocker";
 
-    beforeAll(async () => {
-        await Mocker.ensureDatabaseInitialized();
-    });
+describe("Stats Endpoint", () => {
+  let app: Elysia;
 
-    beforeEach(async () => {
-        jest.restoreAllMocks();
-        Mocker.mockMirrorsBenchmark();
+  beforeAll(async () => {
+    await Mocker.ensureDatabaseInitialized();
+  });
 
-        app = (await setup()) as unknown as Elysia;
-    });
+  beforeEach(async () => {
+    jest.restoreAllMocks();
+    Mocker.mockMirrorsBenchmark();
 
-    test('Should return 200 status code', async () => {
-        const response = await app.handle(
-            new Request('http://localhost/stats', {
-                method: 'GET',
-            }),
-        );
+    app = (await setup()) as unknown as Elysia;
+  });
 
-        expect(response.status).toBe(HttpStatusCode.Ok);
-    });
+  test("Should return 200 status code", async () => {
+    const response = await app.handle(
+      new Request("http://localhost/stats", {
+        method: "GET",
+      }),
+    );
 
-    test('Should return JSON response with server and manager stats', async () => {
-        const response = await app.handle(
-            new Request('http://localhost/stats', {
-                method: 'GET',
-            }),
-        );
+    expect(response.status).toBe(HttpStatusCode.Ok);
+  });
 
-        expect(response.status).toBe(HttpStatusCode.Ok);
+  test("Should return JSON response with server and manager stats", async () => {
+    const response = await app.handle(
+      new Request("http://localhost/stats", {
+        method: "GET",
+      }),
+    );
 
-        const data = await response.json();
+    expect(response.status).toBe(HttpStatusCode.Ok);
 
-        expect(data).toHaveProperty('data');
-        expect(data.data).toHaveProperty('server');
-        expect(data.data).toHaveProperty('manager');
-    });
+    const data = await response.json();
 
-    test('Should include server statistics with correct structure', async () => {
-        const response = await app.handle(
-            new Request('http://localhost/stats', {
-                method: 'GET',
-            }),
-        );
+    expect(data).toHaveProperty("data");
+    expect(data.data).toHaveProperty("server");
+    expect(data.data).toHaveProperty("manager");
+  });
 
-        const data = await response.json();
-        const serverStats = data.data.server;
+  test("Should include server statistics with correct structure", async () => {
+    const response = await app.handle(
+      new Request("http://localhost/stats", {
+        method: "GET",
+      }),
+    );
 
-        expect(serverStats).toHaveProperty('uptime');
-        expect(serverStats.uptime).toHaveProperty('nanoseconds');
-        expect(serverStats.uptime).toHaveProperty('pretty');
-        expect(typeof serverStats.uptime.nanoseconds).toBe('number');
-        expect(typeof serverStats.uptime.pretty).toBe('string');
+    const data = await response.json();
+    const serverStats = data.data.server;
 
-        expect(serverStats).toHaveProperty('memory');
-        expect(serverStats.memory).toHaveProperty('rss');
-        expect(serverStats.memory).toHaveProperty('heapTotal');
-        expect(serverStats.memory).toHaveProperty('heapUsed');
-        expect(serverStats.memory).toHaveProperty('external');
-        expect(serverStats.memory).toHaveProperty('arrayBuffers');
+    expect(serverStats).toHaveProperty("uptime");
+    expect(serverStats.uptime).toHaveProperty("nanoseconds");
+    expect(serverStats.uptime).toHaveProperty("pretty");
+    expect(typeof serverStats.uptime.nanoseconds).toBe("number");
+    expect(typeof serverStats.uptime.pretty).toBe("string");
 
-        expect(serverStats).toHaveProperty('pid');
-        expect(typeof serverStats.pid).toBe('number');
+    expect(serverStats).toHaveProperty("memory");
+    expect(serverStats.memory).toHaveProperty("rss");
+    expect(serverStats.memory).toHaveProperty("heapTotal");
+    expect(serverStats.memory).toHaveProperty("heapUsed");
+    expect(serverStats.memory).toHaveProperty("external");
+    expect(serverStats.memory).toHaveProperty("arrayBuffers");
 
-        expect(serverStats).toHaveProperty('version');
-        expect(typeof serverStats.version).toBe('string');
+    expect(serverStats).toHaveProperty("pid");
+    expect(typeof serverStats.pid).toBe("number");
 
-        expect(serverStats).toHaveProperty('revision');
-        expect(typeof serverStats.revision).toBe('string');
-    });
+    expect(serverStats).toHaveProperty("version");
+    expect(typeof serverStats.version).toBe("string");
 
-    test('Should include manager statistics with correct structure', async () => {
-        const response = await app.handle(
-            new Request('http://localhost/stats', {
-                method: 'GET',
-            }),
-        );
+    expect(serverStats).toHaveProperty("revision");
+    expect(typeof serverStats.revision).toBe("string");
+  });
 
-        const data = await response.json();
-        const managerStats = data.data.manager;
+  test("Should include manager statistics with correct structure", async () => {
+    const response = await app.handle(
+      new Request("http://localhost/stats", {
+        method: "GET",
+      }),
+    );
 
-        expect(managerStats).toHaveProperty('storage');
-        expect(managerStats).toHaveProperty('mirrors');
-    });
+    const data = await response.json();
+    const managerStats = data.data.manager;
 
-    test('Should include storage statistics with correct structure', async () => {
-        const response = await app.handle(
-            new Request('http://localhost/stats', {
-                method: 'GET',
-            }),
-        );
+    expect(managerStats).toHaveProperty("storage");
+    expect(managerStats).toHaveProperty("mirrors");
+  });
 
-        const data = await response.json();
-        const storageStats = data.data.manager.storage;
+  test("Should include storage statistics with correct structure", async () => {
+    const response = await app.handle(
+      new Request("http://localhost/stats", {
+        method: "GET",
+      }),
+    );
 
-        expect(storageStats).toHaveProperty('database');
-        expect(storageStats.database).toHaveProperty('beatmaps');
-        expect(storageStats.database).toHaveProperty('beatmapSets');
-        expect(storageStats.database).toHaveProperty('beatmapSetFile');
-        expect(storageStats.database).toHaveProperty('beatmapOsuFile');
-        expect(typeof storageStats.database.beatmaps).toBe('number');
-        expect(typeof storageStats.database.beatmapSets).toBe('number');
-        expect(typeof storageStats.database.beatmapSetFile).toBe('number');
-        expect(typeof storageStats.database.beatmapOsuFile).toBe('number');
+    const data = await response.json();
+    const storageStats = data.data.manager.storage;
 
-        expect(storageStats).toHaveProperty('files');
-        expect(storageStats.files).toHaveProperty('totalFiles');
-        expect(storageStats.files).toHaveProperty('totalBytes');
-        expect(typeof storageStats.files.totalFiles).toBe('number');
-        expect(typeof storageStats.files.totalBytes).toBe('string');
+    expect(storageStats).toHaveProperty("database");
+    expect(storageStats.database).toHaveProperty("beatmaps");
+    expect(storageStats.database).toHaveProperty("beatmapSets");
+    expect(storageStats.database).toHaveProperty("beatmapSetFile");
+    expect(storageStats.database).toHaveProperty("beatmapOsuFile");
+    expect(typeof storageStats.database.beatmaps).toBe("number");
+    expect(typeof storageStats.database.beatmapSets).toBe("number");
+    expect(typeof storageStats.database.beatmapSetFile).toBe("number");
+    expect(typeof storageStats.database.beatmapOsuFile).toBe("number");
 
-        expect(storageStats).toHaveProperty('cache');
-        expect(storageStats.cache).toHaveProperty('beatmaps');
-        expect(storageStats.cache).toHaveProperty('beatmapsets');
-        expect(storageStats.cache).toHaveProperty('beatmapsetFiles');
-        expect(storageStats.cache).toHaveProperty('beatmapOsuFiles');
-    });
+    expect(storageStats).toHaveProperty("files");
+    expect(storageStats.files).toHaveProperty("totalFiles");
+    expect(storageStats.files).toHaveProperty("totalBytes");
+    expect(typeof storageStats.files.totalFiles).toBe("number");
+    expect(typeof storageStats.files.totalBytes).toBe("string");
 
-    test('Should include cache statistics with correct structure', async () => {
-        const response = await app.handle(
-            new Request('http://localhost/stats', {
-                method: 'GET',
-            }),
-        );
+    expect(storageStats).toHaveProperty("cache");
+    expect(storageStats.cache).toHaveProperty("beatmaps");
+    expect(storageStats.cache).toHaveProperty("beatmapsets");
+    expect(storageStats.cache).toHaveProperty("beatmapsetFiles");
+    expect(storageStats.cache).toHaveProperty("beatmapOsuFiles");
+  });
 
-        const data = await response.json();
-        const cacheStats = data.data.manager.storage.cache;
+  test("Should include cache statistics with correct structure", async () => {
+    const response = await app.handle(
+      new Request("http://localhost/stats", {
+        method: "GET",
+      }),
+    );
 
-        expect(cacheStats.beatmaps).toHaveProperty('byId');
-        expect(cacheStats.beatmaps).toHaveProperty('ids');
-        expect(cacheStats.beatmaps.ids).toHaveProperty('byHash');
-        expect(typeof cacheStats.beatmaps.byId).toBe('number');
-        expect(typeof cacheStats.beatmaps.ids.byHash).toBe('number');
+    const data = await response.json();
+    const cacheStats = data.data.manager.storage.cache;
 
-        expect(cacheStats.beatmapsets).toHaveProperty('byId');
-        expect(typeof cacheStats.beatmapsets.byId).toBe('number');
+    expect(cacheStats.beatmaps).toHaveProperty("byId");
+    expect(cacheStats.beatmaps).toHaveProperty("ids");
+    expect(cacheStats.beatmaps.ids).toHaveProperty("byHash");
+    expect(typeof cacheStats.beatmaps.byId).toBe("number");
+    expect(typeof cacheStats.beatmaps.ids.byHash).toBe("number");
 
-        expect(cacheStats.beatmapsetFiles).toHaveProperty('byId');
-        expect(typeof cacheStats.beatmapsetFiles.byId).toBe('number');
+    expect(cacheStats.beatmapsets).toHaveProperty("byId");
+    expect(typeof cacheStats.beatmapsets.byId).toBe("number");
 
-        expect(cacheStats.beatmapOsuFiles).toHaveProperty('byId');
-        expect(typeof cacheStats.beatmapOsuFiles.byId).toBe('number');
-    });
+    expect(cacheStats.beatmapsetFiles).toHaveProperty("byId");
+    expect(typeof cacheStats.beatmapsetFiles.byId).toBe("number");
 
-    test('Should include mirrors statistics with correct structure', async () => {
-        const response = await app.handle(
-            new Request('http://localhost/stats', {
-                method: 'GET',
-            }),
-        );
+    expect(cacheStats.beatmapOsuFiles).toHaveProperty("byId");
+    expect(typeof cacheStats.beatmapOsuFiles.byId).toBe("number");
+  });
 
-        const data = await response.json();
-        const mirrorsStats = data.data.manager.mirrors;
+  test("Should include mirrors statistics with correct structure", async () => {
+    const response = await app.handle(
+      new Request("http://localhost/stats", {
+        method: "GET",
+      }),
+    );
 
-        expect(mirrorsStats).toHaveProperty('activeMirrors');
-        expect(Array.isArray(mirrorsStats.activeMirrors)).toBe(true);
+    const data = await response.json();
+    const mirrorsStats = data.data.manager.mirrors;
 
-        expect(mirrorsStats).toHaveProperty('rateLimitsTotal');
-        expect(typeof mirrorsStats.rateLimitsTotal).toBe('object');
-    });
+    expect(mirrorsStats).toHaveProperty("activeMirrors");
+    expect(Array.isArray(mirrorsStats.activeMirrors)).toBe(true);
 
-    test('Should include active mirrors with correct structure', async () => {
-        const response = await app.handle(
-            new Request('http://localhost/stats', {
-                method: 'GET',
-            }),
-        );
+    expect(mirrorsStats).toHaveProperty("rateLimitsTotal");
+    expect(typeof mirrorsStats.rateLimitsTotal).toBe("object");
+  });
 
-        const data = await response.json();
-        const activeMirrors = data.data.manager.mirrors.activeMirrors;
+  test("Should include active mirrors with correct structure", async () => {
+    const response = await app.handle(
+      new Request("http://localhost/stats", {
+        method: "GET",
+      }),
+    );
 
-        if (activeMirrors.length > 0) {
-            const mirror = activeMirrors[0];
+    const data = await response.json();
+    const { activeMirrors } = data.data.manager.mirrors;
 
-            expect(mirror).toHaveProperty('name');
-            expect(mirror).toHaveProperty('url');
-            expect(mirror).toHaveProperty('rateLimit');
-            expect(mirror).toHaveProperty('requests');
+    if (activeMirrors.length > 0) {
+      const mirror = activeMirrors[0];
 
-            expect(typeof mirror.name).toBe('string');
-            expect(typeof mirror.url).toBe('string');
+      expect(mirror).toHaveProperty("name");
+      expect(mirror).toHaveProperty("url");
+      expect(mirror).toHaveProperty("rateLimit");
+      expect(mirror).toHaveProperty("requests");
 
-            if ('onCooldownUntil' in mirror) {
-                expect(
-                    mirror.onCooldownUntil === null ||
-                        typeof mirror.onCooldownUntil === 'number',
-                ).toBe(true);
-            }
-            expect(Array.isArray(mirror.rateLimit)).toBe(true);
-            expect(typeof mirror.requests).toBe('object');
+      expect(typeof mirror.name).toBe("string");
+      expect(typeof mirror.url).toBe("string");
 
-            expect(mirror.requests).toHaveProperty('lifetime');
-            expect(mirror.requests).toHaveProperty('session');
-            expect(mirror.requests).toHaveProperty('hour');
-            expect(mirror.requests).toHaveProperty('day');
-            expect(mirror.requests).toHaveProperty('week');
-            expect(mirror.requests).toHaveProperty('month');
+      if ("onCooldownUntil" in mirror) {
+        expect(
+          mirror.onCooldownUntil === null
+          || typeof mirror.onCooldownUntil === "number",
+        ).toBe(true);
+      }
+      expect(Array.isArray(mirror.rateLimit)).toBe(true);
+      expect(typeof mirror.requests).toBe("object");
 
-            const timeRange = mirror.requests.lifetime;
-            expect(timeRange).toHaveProperty('total');
-            expect(timeRange).toHaveProperty('successful');
-            expect(timeRange).toHaveProperty('failed');
-            expect(typeof timeRange.total).toBe('number');
-            expect(typeof timeRange.successful).toBe('number');
-            expect(typeof timeRange.failed).toBe('number');
-        }
-    });
+      expect(mirror.requests).toHaveProperty("lifetime");
+      expect(mirror.requests).toHaveProperty("session");
+      expect(mirror.requests).toHaveProperty("hour");
+      expect(mirror.requests).toHaveProperty("day");
+      expect(mirror.requests).toHaveProperty("week");
+      expect(mirror.requests).toHaveProperty("month");
 
-    test('Should include rate limit information in active mirrors', async () => {
-        const response = await app.handle(
-            new Request('http://localhost/stats', {
-                method: 'GET',
-            }),
-        );
+      const timeRange = mirror.requests.lifetime;
+      expect(timeRange).toHaveProperty("total");
+      expect(timeRange).toHaveProperty("successful");
+      expect(timeRange).toHaveProperty("failed");
+      expect(typeof timeRange.total).toBe("number");
+      expect(typeof timeRange.successful).toBe("number");
+      expect(typeof timeRange.failed).toBe("number");
+    }
+  });
 
-        const data = await response.json();
-        const activeMirrors = data.data.manager.mirrors.activeMirrors;
+  test("Should include rate limit information in active mirrors", async () => {
+    const response = await app.handle(
+      new Request("http://localhost/stats", {
+        method: "GET",
+      }),
+    );
 
-        if (activeMirrors.length > 0) {
-            const mirror = activeMirrors[0];
-            const rateLimit = mirror.rateLimit;
+    const data = await response.json();
+    const { activeMirrors } = data.data.manager.mirrors;
 
-            if (rateLimit.length > 0) {
-                const capacity = rateLimit[0];
-                expect(capacity).toHaveProperty('ability');
-                expect(capacity).toHaveProperty('limit');
-                expect(capacity).toHaveProperty('remaining');
-                expect(typeof capacity.ability).toBe('string');
-                expect(typeof capacity.limit).toBe('number');
-                expect(typeof capacity.remaining).toBe('number');
-            }
-        }
-    });
+    if (activeMirrors.length > 0) {
+      const mirror = activeMirrors[0];
+      const { rateLimit } = mirror;
 
-    test('Should return consistent response structure on multiple requests', async () => {
-        const response1 = await app.handle(
-            new Request('http://localhost/stats', {
-                method: 'GET',
-            }),
-        );
-        const data1 = await response1.json();
+      if (rateLimit.length > 0) {
+        const capacity = rateLimit[0];
+        expect(capacity).toHaveProperty("ability");
+        expect(capacity).toHaveProperty("limit");
+        expect(capacity).toHaveProperty("remaining");
+        expect(typeof capacity.ability).toBe("string");
+        expect(typeof capacity.limit).toBe("number");
+        expect(typeof capacity.remaining).toBe("number");
+      }
+    }
+  });
 
-        const response2 = await app.handle(
-            new Request('http://localhost/stats', {
-                method: 'GET',
-            }),
-        );
-        const data2 = await response2.json();
+  test("Should return consistent response structure on multiple requests", async () => {
+    const response1 = await app.handle(
+      new Request("http://localhost/stats", {
+        method: "GET",
+      }),
+    );
+    const data1 = await response1.json();
 
-        // Both should have the same structure
-        expect(data1).toHaveProperty('data');
-        expect(data2).toHaveProperty('data');
-        expect(data1.data).toHaveProperty('server');
-        expect(data2.data).toHaveProperty('server');
-        expect(data1.data).toHaveProperty('manager');
-        expect(data2.data).toHaveProperty('manager');
+    const response2 = await app.handle(
+      new Request("http://localhost/stats", {
+        method: "GET",
+      }),
+    );
+    const data2 = await response2.json();
 
-        // Server stats should have same structure (values may differ)
-        expect(Object.keys(data1.data.server)).toEqual(
-            Object.keys(data2.data.server),
-        );
-        expect(Object.keys(data1.data.manager)).toEqual(
-            Object.keys(data2.data.manager),
-        );
-    });
+    // Both should have the same structure
+    expect(data1).toHaveProperty("data");
+    expect(data2).toHaveProperty("data");
+    expect(data1.data).toHaveProperty("server");
+    expect(data2.data).toHaveProperty("server");
+    expect(data1.data).toHaveProperty("manager");
+    expect(data2.data).toHaveProperty("manager");
 
-    test('Should have valid uptime format', async () => {
-        const response = await app.handle(
-            new Request('http://localhost/stats', {
-                method: 'GET',
-            }),
-        );
+    // Server stats should have same structure (values may differ)
+    expect(Object.keys(data1.data.server)).toEqual(
+      Object.keys(data2.data.server),
+    );
+    expect(Object.keys(data1.data.manager)).toEqual(
+      Object.keys(data2.data.manager),
+    );
+  });
 
-        const data = await response.json();
-        const uptime = data.data.server.uptime;
+  test("Should have valid uptime format", async () => {
+    const response = await app.handle(
+      new Request("http://localhost/stats", {
+        method: "GET",
+      }),
+    );
 
-        // Uptime nanoseconds should be a positive number
-        expect(uptime.nanoseconds).toBeGreaterThan(0);
+    const data = await response.json();
+    const { uptime } = data.data.server;
 
-        // Uptime pretty should match format like "0d 0h 0m 0s"
-        expect(uptime.pretty).toMatch(/^\d+d \d+h \d+m \d+s$/);
-    });
+    // Uptime nanoseconds should be a positive number
+    expect(uptime.nanoseconds).toBeGreaterThan(0);
 
-    test('Should have valid memory values', async () => {
-        const response = await app.handle(
-            new Request('http://localhost/stats', {
-                method: 'GET',
-            }),
-        );
+    // Uptime pretty should match format like "0d 0h 0m 0s"
+    expect(uptime.pretty).toMatch(/^\d+d \d+h \d+m \d+s$/);
+  });
 
-        const data = await response.json();
-        const memory = data.data.server.memory;
+  test("Should have valid memory values", async () => {
+    const response = await app.handle(
+      new Request("http://localhost/stats", {
+        method: "GET",
+      }),
+    );
 
-        // Memory values should be strings (human-readable format)
-        expect(typeof memory.rss).toBe('string');
-        expect(typeof memory.heapTotal).toBe('string');
-        expect(typeof memory.heapUsed).toBe('string');
-        expect(typeof memory.external).toBe('string');
-        expect(typeof memory.arrayBuffers).toBe('string');
+    const data = await response.json();
+    const { memory } = data.data.server;
 
-        // Memory values should end with "MB" or similar
-        expect(memory.rss).toMatch(/MB$/);
-    });
+    // Memory values should be strings (human-readable format)
+    expect(typeof memory.rss).toBe("string");
+    expect(typeof memory.heapTotal).toBe("string");
+    expect(typeof memory.heapUsed).toBe("string");
+    expect(typeof memory.external).toBe("string");
+    expect(typeof memory.arrayBuffers).toBe("string");
+
+    // Memory values should end with "MB" or similar
+    expect(memory.rss).toMatch(/MB$/);
+  });
 });

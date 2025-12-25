@@ -1,59 +1,59 @@
-import { and, count, eq, gte, inArray, sql } from 'drizzle-orm';
-import { db } from '../client';
-import { NewRequest, Request, requests } from '../schema';
-import { HttpStatusCode } from 'axios';
-import { unionAll } from 'drizzle-orm/pg-core';
-import { CasingCache } from 'drizzle-orm/casing';
+import type { HttpStatusCode } from "axios";
+import { and, count, eq, gte, inArray, sql } from "drizzle-orm";
+
+import { db } from "../client";
+import type { NewRequest, Request } from "../schema";
+import { requests } from "../schema";
 
 export async function getRequestsCount(
-    baseUrl: string,
-    createdAfter?: number,
-    statusCodes?: HttpStatusCode[],
+  baseUrl: string,
+  createdAfter?: number,
+  statusCodes?: HttpStatusCode[],
 ) {
-    const entities = await db
-        .select({ count: count() })
-        .from(requests)
-        .where(
-            and(
-                eq(requests.baseUrl, baseUrl),
-                createdAfter
-                    ? gte(
-                          sql`cast(${requests.createdAt} as timestamp)`,
-                          sql`cast(${new Date(createdAfter)} as timestamp)`,
-                      )
-                    : undefined,
-                statusCodes ? inArray(requests.status, statusCodes) : undefined,
-            ),
-        );
+  const entities = await db
+    .select({ count: count() })
+    .from(requests)
+    .where(
+      and(
+        eq(requests.baseUrl, baseUrl),
+        createdAfter
+          ? gte(
+              sql`cast(${requests.createdAt} as timestamp)`,
+              sql`cast(${new Date(createdAfter)} as timestamp)`,
+            )
+          : undefined,
+        statusCodes ? inArray(requests.status, statusCodes) : undefined,
+      ),
+    );
 
-    if (entities.length <= 0) {
-        return 0;
-    }
+  if (entities.length <= 0) {
+    return 0;
+  }
 
-    return entities[0].count;
+  return entities[0].count;
 }
 
 export async function getMirrorsRequestsCountForStats(
-    dataRequests: {
-        baseUrl: string;
-        createdAfter: string | null;
-        statusCodes?: HttpStatusCode[];
-    }[],
+  dataRequests: Array<{
+    baseUrl: string;
+    createdAfter: string | null;
+    statusCodes?: HttpStatusCode[];
+  }>,
 ) {
-    const values = dataRequests
-        .map(
-            (_, i) =>
+  const values = dataRequests
+    .map(
+      (_, i) =>
                 `('${dataRequests[i].baseUrl}', ${dataRequests[i].createdAfter ? `'${dataRequests[i].createdAfter}'` : null}, ${dataRequests[i].statusCodes && (dataRequests[i].statusCodes?.length ?? 0) > 0 ? `ARRAY[${dataRequests[i].statusCodes}]` : null})`,
-        )
-        .join(', ');
+    )
+    .join(", ");
 
-    const entities = await db
-        .execute<{
-            name: string;
-            createdafter: string | null;
-            statuscodes: HttpStatusCode[] | null;
-            count: number;
-        }>(
+  const entities = await db
+    .execute<{
+      name: string;
+      createdafter: string | null;
+      statuscodes: HttpStatusCode[] | null;
+      count: number;
+    }>(
             `
         WITH request_params (baseUrl, createdAfter, statusCodes) AS (
             VALUES ${values}
@@ -77,34 +77,34 @@ export async function getMirrorsRequestsCountForStats(
         GROUP BY rp.baseUrl, rp.createdAfter, rp.statusCodes
         ORDER BY rp.baseUrl, rp.createdAfter
     `,
-        )
-        .then((result) => result.rows);
+    )
+    .then(result => result.rows);
 
-    return entities;
+  return entities;
 }
 
 export async function getRequestsByBaseUrl(
-    baseUrl: string,
-    createdAfter: number,
+  baseUrl: string,
+  createdAfter: number,
 ): Promise<Request[]> {
-    const entities = await db
-        .select()
-        .from(requests)
-        .where(
-            and(
-                eq(requests.baseUrl, baseUrl),
-                createdAfter
-                    ? gte(
-                          sql`cast(${requests.createdAt} as timestamp)`,
-                          sql`cast(${new Date(createdAfter)} as timestamp)`,
-                      )
-                    : undefined,
-            ),
-        );
-    return entities ?? [];
+  const entities = await db
+    .select()
+    .from(requests)
+    .where(
+      and(
+        eq(requests.baseUrl, baseUrl),
+        createdAfter
+          ? gte(
+              sql`cast(${requests.createdAt} as timestamp)`,
+              sql`cast(${new Date(createdAfter)} as timestamp)`,
+            )
+          : undefined,
+      ),
+    );
+  return entities ?? [];
 }
 
 export async function createRequest(data: NewRequest): Promise<Request> {
-    const entities = await db.insert(requests).values(data).returning();
-    return entities[0];
+  const entities = await db.insert(requests).values(data).returning();
+  return entities[0];
 }
