@@ -52,7 +52,7 @@
     "bun-types": "latest",
     "drizzle-kit": "^0.26.2",
     "eslint": "^9.39.2",
-    "jiji": "^0.1.7",
+    "jiti": "^2.6.1",
     "lint-staged": "^16.2.7",
     "prettier": "^3.3.3",
     "simple-git-hooks": "^2.13.1",
