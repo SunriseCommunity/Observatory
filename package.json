@@ -1,18 +1,24 @@
 {
   "name": "observatory",
+  "type": "module",
   "version": "1.0.0",
+  "private": true,
   "description": "Observatory API",
+  "module": "server/src/app.js",
   "scripts": {
-    "start": "NODE_ENV=production bun run server/src/app.ts",
-    "dev": "NODE_ENV=development bun run --watch server/src/app.ts",
-    "lint": "bunx prettier -w ./server/src --config .prettierrc.json",
-    "test": "docker-compose -f docker-compose.tests.yml up -d && bun test --env-file=.env.test",
-    "setup": "bun run docker:dev && bun run db:update",
-    "db:update": "bun run db:generate && bun run db:push",
     "db:generate": "bun --bun drizzle-kit generate --config server/src/database/config.ts",
-    "db:push": "bun --bun drizzle-kit push --config server/src/database/config.ts",
     "db:migration": "bun run server/src/database/migrate.ts",
-    "docker:dev": "docker-compose -f docker-compose.dev.yml up -d"
+    "db:push": "bun --bun drizzle-kit push --config server/src/database/config.ts",
+    "db:update": "bun run db:generate && bun run db:push",
+    "dev": "NODE_ENV=development bun run --watch server/src/app.ts",
+    "docker:dev": "docker-compose -f docker-compose.dev.yml up -d",
+    "lint": "eslint --fix",
+    "setup": "bun run docker:dev && bun run db:update",
+    "start": "NODE_ENV=production bun run server/src/app.ts",
+    "test": "docker-compose -f docker-compose.tests.yml up -d && bun test --env-file=.env.test"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
   },
   "dependencies": {
     "@bogeychan/elysia-logger": "^0.1.4",
@@ -39,18 +45,24 @@
     "rosu-pp-js": "^3.1.0"
   },
   "devDependencies": {
+    "@richardscull/eslint-config": "^1.0.5",
     "@types/bun": "^1.3.4",
     "@types/pg": "^8.11.10",
     "@types/qs": "^6.9.18",
     "bun-types": "latest",
     "drizzle-kit": "^0.26.2",
+    "eslint": "^9.39.2",
+    "jiji": "^0.1.7",
+    "lint-staged": "^16.2.7",
     "prettier": "^3.3.3",
-    "tsx": "^4.19.2"
-  },
-  "module": "server/src/app.js",
-  "type": "module",
-  "private": true,
-  "peerDependencies": {
+    "simple-git-hooks": "^2.13.1",
+    "tsx": "^4.19.2",
     "typescript": "^5"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "npx lint-staged"
+  },
+  "lint-staged": {
+    "*": "eslint --fix"
   }
 }
