@@ -46,6 +46,9 @@ export class ApiRateLimiter {
 
   private readonly requests = new Map<string[], Map<string, Date>>();
 
+  private timeoutIndefiniteMultiplier = 1;
+  private latestTimeoutDate = new Date();
+
   private readonly redisDailyLimitsKey: string;
 
   private dailyLimit?: {
@@ -259,7 +262,7 @@ export class ApiRateLimiter {
                 `Got axios error while making request to ${route}. Setting cooldown of 5 minutes`,
                 "warn",
       );
-      this._config.onCooldownUntil = Date.now() + 5 * 60 * 1000; // 5 minutes
+      this.setOnCooldownForDuration(5 * 60 * 1000); // 5 minutes
     }
 
     if (response?.status === 429) {
@@ -267,7 +270,7 @@ export class ApiRateLimiter {
                 `Rate limit exceeded for ${route}. Setting cooldown`,
                 "warn",
       );
-      this._config.onCooldownUntil = Date.now() + limit.reset * 1000;
+      this.setOnCooldownForDuration(limit.reset * 1000); // Set cooldown to rate limit reset time
     }
 
     if (response?.status === 403) {
@@ -275,7 +278,7 @@ export class ApiRateLimiter {
                 `Got forbidden status for ${route}. Setting cooldown of 1 hour`,
                 "warn",
       );
-      this._config.onCooldownUntil = Date.now() + 60 * 60 * 1000; // 1 hour
+      this.setOnCooldownForDuration(60 * 60 * 1000); // 1 hour
     }
 
     if (response?.status && response.status >= 502) {
@@ -283,8 +286,27 @@ export class ApiRateLimiter {
                 `Server error (${response.status}) for ${route}. Setting cooldown of 5 minutes`,
                 "warn",
       );
-      this._config.onCooldownUntil = Date.now() + 5 * 60 * 1000; // 5 minutes
+      this.setOnCooldownForDuration(5 * 60 * 1000); // 5 minutes
     }
+
+    if (!response) {
+      this.log(
+                `No response received for ${route}. Setting cooldown of 5 minutes`,
+                "warn",
+      );
+      this.setOnCooldownForDuration(5 * 60 * 1000); // 5 minutes
+    }
+  }
+
+  private async setOnCooldownForDuration(durationMs: number) {
+    if (Date.now() - this.latestTimeoutDate.getTime() < 6 * 60 * 60 * 1000) {
+      this.timeoutIndefiniteMultiplier += 1;
+    }
+
+    this.latestTimeoutDate = new Date();
+
+    this._config.onCooldownUntil = Date.now()
+      + durationMs * this.timeoutIndefiniteMultiplier;
   }
 
   private getRateLimit(route: string) {
