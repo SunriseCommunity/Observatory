@@ -25,11 +25,11 @@ export default (app: App) => {
 
         const { source: _, ...responseBeatmap } = beatmap;
 
-        if (!full)
+        if (!full || !beatmap.data)
           return responseBeatmap?.data ?? responseBeatmap;
 
         const beatmapset = await BeatmapsManagerInstance.getBeatmapSet({
-          beatmapSetId: responseBeatmap.data?.beatmapset_id,
+          beatmapSetId: beatmap.data.beatmapset_id,
         });
 
         if (beatmapset.source) {
@@ -70,11 +70,11 @@ export default (app: App) => {
         }
 
         const { source: _, ...responseBeatmap } = beatmap;
-        if (!full)
+        if (!full || !beatmap.data)
           return responseBeatmap?.data ?? responseBeatmap;
 
         const beatmapset = await BeatmapsManagerInstance.getBeatmapSet({
-          beatmapSetId: beatmap.data?.beatmapset_id,
+          beatmapSetId: beatmap.data.beatmapset_id,
         });
 
         if (beatmapset.source) {
