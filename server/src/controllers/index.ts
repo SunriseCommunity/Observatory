@@ -1,7 +1,7 @@
 import { HttpStatusCode } from "axios";
 
 import type { App } from "../app";
-import { observationaryConfigPublic } from "../config";
+import config, { observatoryConfigPublic } from "../config";
 import { BeatmapsManagerPlugin } from "../plugins/beatmapManager";
 import { StatsServicePlugin } from "../plugins/statsService";
 
@@ -17,13 +17,14 @@ export default (app: App) => {
       async ({ StatsServiceInstance, BeatmapsManagerInstance }) => {
         const serverStats = StatsServiceInstance.getServerStatistics();
         const managerStats
-          = await BeatmapsManagerInstance.getManagerStats();
-        const serverConfig = observationaryConfigPublic;
+          = await BeatmapsManagerInstance.getManagerStats(config.ShowInternalValuesInPublicStatsEndpoint);
+        const serverConfig = observatoryConfigPublic;
 
         return {
           status: HttpStatusCode.Ok,
           data: {
-            config: serverConfig,
+
+            config: config.ShowInternalValuesInPublicStatsEndpoint ? serverConfig : undefined,
             server: serverStats,
             manager: managerStats,
           },

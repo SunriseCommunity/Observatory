@@ -314,10 +314,10 @@ export class BeatmapsManager {
     };
   }
 
-  public async getManagerStats() {
+  public async getManagerStats(shouldIncludeMirrorStats = true) {
     return {
       storage: await this.StorageManager.getStorageStatistics(),
-      mirrors: await this.MirrorsManager.getMirrorsStatistics(),
+      mirrors: shouldIncludeMirrorStats ? await this.MirrorsManager.getMirrorsStatistics() : undefined,
     };
   }
 

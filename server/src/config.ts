@@ -34,6 +34,7 @@ const {
   DISABLE_SAFE_RATELIMIT_MODE,
   DISABLE_DAILY_RATE_LIMIT,
   ENABLE_CRON_TO_CLEAR_OUTDATED_BEATMAPS,
+  SHOW_INTERNAL_VALUES_IN_PUBLIC_STATS_ENDPOINT,
 } = process.env;
 
 if (!POSTGRES_USER || !POSTGRES_PASSWORD) {
@@ -75,6 +76,7 @@ const config: {
   DisableSafeRatelimitMode: boolean;
   DisableDailyRateLimit: boolean;
   EnableCronToClearOutdatedBeatmaps: boolean;
+  ShowInternalValuesInPublicStatsEndpoint: boolean;
 } = {
   PORT: PORT || "3000",
   POSTGRES_USER: POSTGRES_USER || "admin",
@@ -100,9 +102,11 @@ const config: {
   DisableDailyRateLimit: DISABLE_DAILY_RATE_LIMIT === "true",
   EnableCronToClearOutdatedBeatmaps:
         ENABLE_CRON_TO_CLEAR_OUTDATED_BEATMAPS === "true",
+  ShowInternalValuesInPublicStatsEndpoint:
+        SHOW_INTERNAL_VALUES_IN_PUBLIC_STATS_ENDPOINT === "true",
 };
 
-export const observationaryConfigPublic = {
+export const observatoryConfigPublic = {
   RATELIMIT_CALLS_PER_WINDOW: Number(RATELIMIT_CALLS_PER_WINDOW) || 100,
   RATELIMIT_TIME_WINDOW: Number(RATELIMIT_TIME_WINDOW) || 20 * 1000,
   OSZ_FILES_LIFE_SPAN: Number(OSZ_FILES_LIFE_SPAN) || 24,
