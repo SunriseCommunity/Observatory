@@ -1,12 +1,22 @@
 import { HttpStatusCode } from "axios";
-import { beforeAll, beforeEach, describe, expect, jest, test } from "bun:test";
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  jest,
+  test,
+} from "bun:test";
 import type { Elysia } from "elysia";
 
+import config from "../src/config";
 import setup from "../src/setup";
 import { Mocker } from "./utils/mocker";
 
 describe("Stats Endpoint", () => {
   let app: Elysia;
+  const originalEnv = config.ShowInternalValuesInPublicStatsEndpoint;
 
   beforeAll(async () => {
     await Mocker.ensureDatabaseInitialized();
@@ -17,6 +27,10 @@ describe("Stats Endpoint", () => {
     Mocker.mockMirrorsBenchmark();
 
     app = (await setup()) as unknown as Elysia;
+  });
+
+  afterEach(() => {
+    config.ShowInternalValuesInPublicStatsEndpoint = originalEnv;
   });
 
   test("Should return 200 status code", async () => {
@@ -89,7 +103,13 @@ describe("Stats Endpoint", () => {
     const managerStats = data.data.manager;
 
     expect(managerStats).toHaveProperty("storage");
-    expect(managerStats).toHaveProperty("mirrors");
+    const showInternal = config.ShowInternalValuesInPublicStatsEndpoint;
+    if (showInternal) {
+      expect(managerStats).toHaveProperty("mirrors");
+    }
+    else {
+      expect(managerStats.mirrors).toBeUndefined();
+    }
   });
 
   test("Should include storage statistics with correct structure", async () => {
@@ -151,7 +171,10 @@ describe("Stats Endpoint", () => {
     expect(typeof cacheStats.beatmapOsuFiles.byId).toBe("number");
   });
 
-  test("Should include mirrors statistics with correct structure", async () => {
+  test("Should include mirrors statistics with correct structure when SHOW_INTERNAL_VALUES_IN_PUBLIC_STATS_ENDPOINT is true", async () => {
+    config.ShowInternalValuesInPublicStatsEndpoint = true;
+    app = (await setup()) as unknown as Elysia;
+
     const response = await app.handle(
       new Request("http://localhost/stats", {
         method: "GET",
@@ -161,6 +184,7 @@ describe("Stats Endpoint", () => {
     const data = await response.json();
     const mirrorsStats = data.data.manager.mirrors;
 
+    expect(mirrorsStats).toBeDefined();
     expect(mirrorsStats).toHaveProperty("activeMirrors");
     expect(Array.isArray(mirrorsStats.activeMirrors)).toBe(true);
 
@@ -168,7 +192,10 @@ describe("Stats Endpoint", () => {
     expect(typeof mirrorsStats.rateLimitsTotal).toBe("object");
   });
 
-  test("Should include active mirrors with correct structure", async () => {
+  test("Should include active mirrors with correct structure when SHOW_INTERNAL_VALUES_IN_PUBLIC_STATS_ENDPOINT is true", async () => {
+    config.ShowInternalValuesInPublicStatsEndpoint = true;
+    app = (await setup()) as unknown as Elysia;
+
     const response = await app.handle(
       new Request("http://localhost/stats", {
         method: "GET",
@@ -215,7 +242,10 @@ describe("Stats Endpoint", () => {
     }
   });
 
-  test("Should include rate limit information in active mirrors", async () => {
+  test("Should include rate limit information in active mirrors when SHOW_INTERNAL_VALUES_IN_PUBLIC_STATS_ENDPOINT is true", async () => {
+    config.ShowInternalValuesInPublicStatsEndpoint = true;
+    app = (await setup()) as unknown as Elysia;
+
     const response = await app.handle(
       new Request("http://localhost/stats", {
         method: "GET",
@@ -271,6 +301,108 @@ describe("Stats Endpoint", () => {
     expect(Object.keys(data1.data.manager)).toEqual(
       Object.keys(data2.data.manager),
     );
+  });
+
+  describe("When SHOW_INTERNAL_VALUES_IN_PUBLIC_STATS_ENDPOINT is false", () => {
+    beforeEach(async () => {
+      config.ShowInternalValuesInPublicStatsEndpoint = false;
+      jest.restoreAllMocks();
+      Mocker.mockMirrorsBenchmark();
+      app = (await setup()) as unknown as Elysia;
+    });
+
+    test("Should not include config in response", async () => {
+      const response = await app.handle(
+        new Request("http://localhost/stats", {
+          method: "GET",
+        }),
+      );
+
+      const data = await response.json();
+
+      expect(data.data.config).toBeUndefined();
+    });
+
+    test("Should not include mirrors in manager stats", async () => {
+      const response = await app.handle(
+        new Request("http://localhost/stats", {
+          method: "GET",
+        }),
+      );
+
+      const data = await response.json();
+      const managerStats = data.data.manager;
+
+      expect(managerStats).toHaveProperty("storage");
+      expect(managerStats.mirrors).toBeUndefined();
+    });
+
+    test("Should still include server and storage stats", async () => {
+      const response = await app.handle(
+        new Request("http://localhost/stats", {
+          method: "GET",
+        }),
+      );
+
+      const data = await response.json();
+
+      expect(data.data).toHaveProperty("server");
+      expect(data.data).toHaveProperty("manager");
+      expect(data.data.manager).toHaveProperty("storage");
+    });
+  });
+
+  describe("When SHOW_INTERNAL_VALUES_IN_PUBLIC_STATS_ENDPOINT is true", () => {
+    beforeEach(async () => {
+      config.ShowInternalValuesInPublicStatsEndpoint = true;
+      jest.restoreAllMocks();
+      Mocker.mockMirrorsBenchmark();
+      app = (await setup()) as unknown as Elysia;
+    });
+
+    test("Should include config in response", async () => {
+      const response = await app.handle(
+        new Request("http://localhost/stats", {
+          method: "GET",
+        }),
+      );
+
+      const data = await response.json();
+
+      expect(data.data.config).toBeDefined();
+      expect(typeof data.data.config).toBe("object");
+    });
+
+    test("Should include mirrors in manager stats", async () => {
+      const response = await app.handle(
+        new Request("http://localhost/stats", {
+          method: "GET",
+        }),
+      );
+
+      const data = await response.json();
+      const managerStats = data.data.manager;
+
+      expect(managerStats).toHaveProperty("storage");
+      expect(managerStats).toHaveProperty("mirrors");
+      expect(managerStats.mirrors).toBeDefined();
+    });
+
+    test("Should include all internal values", async () => {
+      const response = await app.handle(
+        new Request("http://localhost/stats", {
+          method: "GET",
+        }),
+      );
+
+      const data = await response.json();
+
+      expect(data.data).toHaveProperty("config");
+      expect(data.data).toHaveProperty("server");
+      expect(data.data).toHaveProperty("manager");
+      expect(data.data.manager).toHaveProperty("storage");
+      expect(data.data.manager).toHaveProperty("mirrors");
+    });
   });
 
   test("Should have valid uptime format", async () => {
