@@ -5,7 +5,7 @@ services:
             context: .
             dockerfile: Dockerfile
         volumes:
-            - ./data:/app/data
+            - ./data:/usr/src/app/data
         restart: always
         environment:
             NODE_ENV: production
