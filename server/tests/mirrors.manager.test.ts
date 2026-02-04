@@ -1634,26 +1634,27 @@ describe("MirrorsManager", () => {
       }
     });
 
-    test("DisableDailyRateLimit is set to true, daily rate limit should be undefined", async () => {
+    test("DisableDailyRateLimit is set to true, daily rate limits should be undefined", async () => {
       config.DisableDailyRateLimit = true;
 
       const minoClient = getMirrorClient(MinoClient);
 
       // @ts-expect-error skip type check due to protected property
-      const { dailyRateLimit } = minoClient.api.config;
+      const { dailyRateLimits } = minoClient.api.config;
 
-      expect(dailyRateLimit).toBeUndefined();
+      expect(dailyRateLimits).toBeUndefined();
     });
 
-    test("DisableDailyRateLimit is set to false, daily rate limit should be defined", async () => {
+    test("DisableDailyRateLimit is set to false, daily rate limits should be defined", async () => {
       config.DisableDailyRateLimit = false;
 
       const minoClient = getMirrorClient(MinoClient);
 
       // @ts-expect-error skip type check due to protected property
-      const { dailyRateLimit } = minoClient.api.config;
+      const { dailyRateLimits } = minoClient.api.config;
 
-      expect(dailyRateLimit).toBeDefined();
+      expect(dailyRateLimits).toBeDefined();
+      expect(dailyRateLimits?.length).toBeGreaterThan(0);
     });
 
     test("DisableSafeRatelimitMode is set to true, should complete 100% of the requests", async () => {
@@ -1850,5 +1851,372 @@ describe("MirrorsManager", () => {
               expect(request2.result).toBeNull();
             },
     );
+  });
+
+  describe("Daily rate limits with abilities", () => {
+    test("Global daily rate limit (no abilities) should apply to all abilities", async () => {
+      config.DisableDailyRateLimit = false;
+
+      const minoClient = getMirrorClient(MinoClient);
+
+      // @ts-expect-error skip type check due to protected property
+      const { dailyRateLimits } = minoClient.api.config;
+
+      expect(dailyRateLimits).toBeDefined();
+      expect(dailyRateLimits?.length).toBeGreaterThanOrEqual(1);
+
+      // Check that at least one limit is a global limit (no abilities)
+      const globalLimit = dailyRateLimits?.find(
+        (limit: any) => !limit.abilities?.length,
+      );
+      expect(globalLimit).toBeDefined();
+    });
+
+    test("Multiple daily rate limits with different abilities should be tracked separately", async () => {
+      config.DisableDailyRateLimit = false;
+      config.DisableSafeRatelimitMode = true;
+
+      // Create a custom client configuration with ability-specific daily limits
+      const TestableMinoClient = class extends MinoClient {
+        constructor(storageManager: any) {
+          super(storageManager);
+          // @ts-expect-error accessing protected property for testing
+          this.api._config.dailyRateLimits = [
+            { limit: 100, abilities: [ClientAbilities.DownloadBeatmapSetById, ClientAbilities.DownloadBeatmapSetByIdNoVideo] },
+            { limit: 200, abilities: [ClientAbilities.GetBeatmapById, ClientAbilities.GetBeatmapByHash] },
+            { limit: 50 }, // Global fallback for other abilities
+          ];
+        }
+      };
+
+      config.MirrorsToIgnore = mirrors
+        .filter(m => m !== MinoClient)
+        .map(m => m.name.slice(0, -6).toLowerCase());
+
+      mirrorsManager = new MirrorsManager(mockStorageManager);
+
+      // Override the client with our testable version
+      // @ts-expect-error accessing protected property for testing
+      mirrorsManager.clients[0].client = new TestableMinoClient(mockStorageManager);
+
+      // @ts-expect-error accessing protected property for testing
+      const testClient = mirrorsManager.clients[0].client;
+
+      // @ts-expect-error skip type check due to protected property
+      const { dailyRateLimits } = testClient.api.config;
+
+      expect(dailyRateLimits).toBeDefined();
+      expect(dailyRateLimits?.length).toBe(3);
+
+      // Check that the first limit applies to download abilities
+      const downloadLimit = dailyRateLimits?.find(
+        (limit: any) => limit.abilities?.includes(ClientAbilities.DownloadBeatmapSetById),
+      );
+      expect(downloadLimit).toBeDefined();
+      expect(downloadLimit?.limit).toBe(100);
+
+      // Check that the second limit applies to get beatmap abilities
+      const getBeatmapLimit = dailyRateLimits?.find(
+        (limit: any) => limit.abilities?.includes(ClientAbilities.GetBeatmapById),
+      );
+      expect(getBeatmapLimit).toBeDefined();
+      expect(getBeatmapLimit?.limit).toBe(200);
+
+      // Check that the global limit exists (no abilities)
+      const globalLimit = dailyRateLimits?.find(
+        (limit: any) => !limit.abilities?.length,
+      );
+      expect(globalLimit).toBeDefined();
+      expect(globalLimit?.limit).toBe(50);
+    });
+
+    test("Ability-specific daily limit should block only that ability when exhausted", async () => {
+      config.DisableDailyRateLimit = false;
+      config.DisableSafeRatelimitMode = true;
+
+      // Create a custom client with very low limit for download
+      const TestableMinoClient = class extends MinoClient {
+        constructor(storageManager: any) {
+          super(storageManager);
+          // @ts-expect-error accessing protected property for testing
+          this.api._config.dailyRateLimits = [
+            { limit: 1, abilities: [ClientAbilities.DownloadOsuBeatmap] },
+            { limit: 1000 }, // High global limit for other abilities
+          ];
+        }
+      };
+
+      config.MirrorsToIgnore = mirrors
+        .filter(m => m !== MinoClient)
+        .map(m => m.name.slice(0, -6).toLowerCase());
+
+      mirrorsManager = new MirrorsManager(mockStorageManager);
+
+      // @ts-expect-error accessing protected property for testing
+      mirrorsManager.clients[0].client = new TestableMinoClient(mockStorageManager);
+
+      // @ts-expect-error accessing protected property for testing
+      const testClient = mirrorsManager.clients[0].client;
+
+      const { mockArrayBuffer } = Mocker.getClientMockMethods(testClient);
+      const { generateBeatmap } = Mocker.getClientGenerateMethods(testClient);
+
+      // First download should succeed
+      mockArrayBuffer();
+      const downloadResult1 = await mirrorsManager.downloadOsuBeatmap({
+        beatmapId: 1,
+      });
+      expect(downloadResult1.status).toBe(200);
+
+      // Second download should fail due to daily limit
+      mockArrayBuffer();
+      const downloadResult2 = await mirrorsManager.downloadOsuBeatmap({
+        beatmapId: 2,
+      });
+      expect(downloadResult2.status).toBe(502);
+
+      // But getBeatmap should still work (different daily limit)
+      // Use generateBeatmap with set: null to avoid nested beatmapset conversion issues
+      Mocker.mockRequest(testClient, "baseApi", "get", {
+        data: generateBeatmap({ id: 100, set: null }),
+        status: 200,
+        headers: {},
+      });
+      const beatmapResult = await mirrorsManager.getBeatmap({
+        beatmapId: 100,
+      });
+      expect(beatmapResult.status).toBe(200);
+    });
+
+    test("Global daily limit should apply when no ability-specific limit matches", async () => {
+      config.DisableDailyRateLimit = false;
+      config.DisableSafeRatelimitMode = true;
+
+      // Create a custom client with only ability-specific limits (no global)
+      const TestableMinoClient = class extends MinoClient {
+        constructor(storageManager: any) {
+          super(storageManager);
+          // @ts-expect-error accessing protected property for testing
+          this.api._config.dailyRateLimits = [
+            { limit: 1, abilities: [ClientAbilities.DownloadOsuBeatmap] },
+            { limit: 1000 }, // Global fallback
+          ];
+        }
+      };
+
+      config.MirrorsToIgnore = mirrors
+        .filter(m => m !== MinoClient)
+        .map(m => m.name.slice(0, -6).toLowerCase());
+
+      mirrorsManager = new MirrorsManager(mockStorageManager);
+
+      // @ts-expect-error accessing protected property for testing
+      mirrorsManager.clients[0].client = new TestableMinoClient(mockStorageManager);
+
+      // @ts-expect-error accessing protected property for testing
+      const testClient = mirrorsManager.clients[0].client;
+
+      const { generateBeatmap } = Mocker.getClientGenerateMethods(testClient);
+
+      // GetBeatmap uses global limit (1000), should work many times
+      // Start from 1 to avoid falsy beatmapId
+      // Use set: null to avoid nested beatmapset conversion issues
+      for (let i = 1; i <= 5; i++) {
+        Mocker.mockRequest(testClient, "baseApi", "get", {
+          data: generateBeatmap({ id: i, set: null }),
+          status: 200,
+          headers: {},
+        });
+        const result = await mirrorsManager.getBeatmap({
+          beatmapId: i,
+        });
+        expect(result.status).toBe(200);
+      }
+    });
+
+    test("Both specific AND global limits should be decremented when ability has both", async () => {
+      config.DisableDailyRateLimit = false;
+      config.DisableSafeRatelimitMode = true;
+
+      // Create a client with BOTH a specific limit for DownloadOsuBeatmap AND a global limit
+      // Both should be decremented when using DownloadOsuBeatmap
+      const TestableMinoClient = class extends MinoClient {
+        constructor(storageManager: any) {
+          super(storageManager);
+          // @ts-expect-error accessing protected property for testing
+          this.api._config.dailyRateLimits = [
+            { limit: 5, abilities: [ClientAbilities.DownloadOsuBeatmap] }, // Specific: 5 requests
+            { limit: 3 }, // Global: 3 requests - this is the bottleneck
+          ];
+          // Pre-initialize the in-memory cache to avoid Redis state pollution from other tests
+          // @ts-expect-error accessing private property for testing
+          this.api.dailyLimits.set(`${ClientAbilities.DownloadOsuBeatmap}`, {
+            requestsLeft: 5,
+            expiresAt: Date.now() + 86400000,
+          });
+          // @ts-expect-error accessing private property for testing
+          this.api.dailyLimits.set("global", {
+            requestsLeft: 3,
+            expiresAt: Date.now() + 86400000,
+          });
+        }
+      };
+
+      config.MirrorsToIgnore = mirrors
+        .filter(m => m !== MinoClient)
+        .map(m => m.name.slice(0, -6).toLowerCase());
+
+      mirrorsManager = new MirrorsManager(mockStorageManager);
+
+      // @ts-expect-error accessing protected property for testing
+      mirrorsManager.clients[0].client = new TestableMinoClient(mockStorageManager);
+
+      // @ts-expect-error accessing protected property for testing
+      const testClient = mirrorsManager.clients[0].client;
+
+      const { mockArrayBuffer } = Mocker.getClientMockMethods(testClient);
+
+      // Should be able to do 3 requests (limited by global limit of 3)
+      for (let i = 1; i <= 3; i++) {
+        mockArrayBuffer();
+        const result = await mirrorsManager.downloadOsuBeatmap({
+          beatmapId: i,
+        });
+        expect(result.status).toBe(200);
+      }
+
+      // 4th request should fail because global limit (3) is exhausted
+      // even though specific limit (5) still has capacity
+      mockArrayBuffer();
+      const result4 = await mirrorsManager.downloadOsuBeatmap({
+        beatmapId: 4,
+      });
+      expect(result4.status).toBe(502);
+    });
+
+    test("Either global OR specific limit exhaustion should block the ability", async () => {
+      config.DisableDailyRateLimit = false;
+      config.DisableSafeRatelimitMode = true;
+
+      // Create a client where specific limit is lower than global
+      const TestableMinoClient = class extends MinoClient {
+        constructor(storageManager: any) {
+          super(storageManager);
+          // @ts-expect-error accessing protected property for testing
+          this.api._config.dailyRateLimits = [
+            { limit: 2, abilities: [ClientAbilities.DownloadOsuBeatmap] }, // Specific: 2 requests - bottleneck
+            { limit: 100 }, // Global: plenty of capacity
+          ];
+          // Pre-initialize the in-memory cache to avoid Redis state pollution from other tests
+          // @ts-expect-error accessing private property for testing
+          this.api.dailyLimits.set(`${ClientAbilities.DownloadOsuBeatmap}`, {
+            requestsLeft: 2,
+            expiresAt: Date.now() + 86400000,
+          });
+          // @ts-expect-error accessing private property for testing
+          this.api.dailyLimits.set("global", {
+            requestsLeft: 100,
+            expiresAt: Date.now() + 86400000,
+          });
+        }
+      };
+
+      config.MirrorsToIgnore = mirrors
+        .filter(m => m !== MinoClient)
+        .map(m => m.name.slice(0, -6).toLowerCase());
+
+      mirrorsManager = new MirrorsManager(mockStorageManager);
+
+      // @ts-expect-error accessing protected property for testing
+      mirrorsManager.clients[0].client = new TestableMinoClient(mockStorageManager);
+
+      // @ts-expect-error accessing protected property for testing
+      const testClient = mirrorsManager.clients[0].client;
+
+      const { mockArrayBuffer } = Mocker.getClientMockMethods(testClient);
+
+      // Should be able to do 2 requests (limited by specific limit of 2)
+      for (let i = 1; i <= 2; i++) {
+        mockArrayBuffer();
+        const result = await mirrorsManager.downloadOsuBeatmap({
+          beatmapId: i,
+        });
+        expect(result.status).toBe(200);
+      }
+
+      // 3rd request should fail because specific limit (2) is exhausted
+      // even though global limit (100) still has capacity
+      mockArrayBuffer();
+      const result3 = await mirrorsManager.downloadOsuBeatmap({
+        beatmapId: 3,
+      });
+      expect(result3.status).toBe(502);
+    });
+
+    test("Non-applicable daily limits should NOT be decremented for unrelated abilities", async () => {
+      config.DisableDailyRateLimit = false;
+      config.DisableSafeRatelimitMode = true;
+
+      // Create a client with a specific limit for download abilities AND a global limit
+      const TestableMinoClient = class extends MinoClient {
+        constructor(storageManager: any) {
+          super(storageManager);
+          // @ts-expect-error accessing protected property for testing
+          this.api._config.dailyRateLimits = [
+            { limit: 100, abilities: [ClientAbilities.DownloadOsuBeatmap, ClientAbilities.DownloadBeatmapSetById] }, // Download-specific
+            { limit: 1000 }, // Global
+          ];
+          // Pre-initialize the in-memory cache
+          // @ts-expect-error accessing private property for testing
+          this.api.dailyLimits.set(`${ClientAbilities.DownloadOsuBeatmap},${ClientAbilities.DownloadBeatmapSetById}`.split(",").sort((a, b) => Number(a) - Number(b)).join(","), {
+            requestsLeft: 100,
+            expiresAt: Date.now() + 86400000,
+          });
+          // @ts-expect-error accessing private property for testing
+          this.api.dailyLimits.set("global", {
+            requestsLeft: 1000,
+            expiresAt: Date.now() + 86400000,
+          });
+        }
+      };
+
+      config.MirrorsToIgnore = mirrors
+        .filter(m => m !== MinoClient)
+        .map(m => m.name.slice(0, -6).toLowerCase());
+
+      mirrorsManager = new MirrorsManager(mockStorageManager);
+
+      // @ts-expect-error accessing protected property for testing
+      mirrorsManager.clients[0].client = new TestableMinoClient(mockStorageManager);
+
+      // @ts-expect-error accessing protected property for testing
+      const testClient = mirrorsManager.clients[0].client;
+
+      const { generateBeatmap } = Mocker.getClientGenerateMethods(testClient);
+
+      // Make GetBeatmap requests (non-download ability)
+      for (let i = 1; i <= 5; i++) {
+        Mocker.mockRequest(testClient, "baseApi", "get", {
+          data: generateBeatmap({ id: i, set: null }),
+          status: 200,
+          headers: {},
+        });
+        const result = await mirrorsManager.getBeatmap({
+          beatmapId: i,
+        });
+        expect(result.status).toBe(200);
+      }
+
+      // Verify the download-specific limit was NOT decremented (should still be 100)
+      const downloadLimitKey = `${ClientAbilities.DownloadOsuBeatmap},${ClientAbilities.DownloadBeatmapSetById}`.split(",").sort((a, b) => Number(a) - Number(b)).join(",");
+      // @ts-expect-error accessing private property for testing
+      const downloadLimit = testClient.api.dailyLimits.get(downloadLimitKey);
+      expect(downloadLimit?.requestsLeft).toBe(100); // Unchanged!
+
+      // Verify the global limit WAS decremented (should be 1000 - 5 = 995)
+      // @ts-expect-error accessing private property for testing
+      const globalLimit = testClient.api.dailyLimits.get("global");
+      expect(globalLimit?.requestsLeft).toBe(995); // Decremented by 5
+    });
   });
 });
