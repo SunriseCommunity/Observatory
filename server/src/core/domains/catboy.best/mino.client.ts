@@ -33,7 +33,18 @@ export class MinoClient extends BaseClient {
         ],
       },
       {
-        dailyRateLimit: 10000,
+        dailyRateLimits: [
+          { limit: 10000 },
+          {
+            limit: 2000,
+            // Mino has nested daily rate limits for downloads
+            abilities: [
+              ClientAbilities.DownloadBeatmapSetById,
+              ClientAbilities.DownloadBeatmapSetByIdNoVideo,
+              ClientAbilities.DownloadOsuBeatmap,
+            ],
+          },
+        ],
         headers: {
           remaining: "x-ratelimit-remaining",
         },

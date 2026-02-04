@@ -28,7 +28,7 @@ export class OsulabsClient extends BaseClient {
         ],
       },
       {
-        dailyRateLimit: 10000,
+        dailyRateLimits: [{ limit: 10000 }],
         headers: {
           remaining: "x-ratelimit-remaining",
         },

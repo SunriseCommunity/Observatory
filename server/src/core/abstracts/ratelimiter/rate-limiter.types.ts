@@ -6,9 +6,14 @@ export type RateLimitOptions = {
     limit?: string;
     reset?: string;
   };
-  dailyRateLimit?: number;
+  dailyRateLimits?: DailyRateLimit[];
   rateLimits: RateLimit[];
   onCooldownUntil?: number; // Active only if we got 429 status code before
+};
+
+export type DailyRateLimit = {
+  limit: number;
+  abilities?: ClientAbilities[]; // If undefined, applies to all abilities
 };
 
 export type RateLimit = {

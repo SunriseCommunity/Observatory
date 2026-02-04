@@ -9,7 +9,7 @@ import logger from "../../../utils/logger";
 import type { BaseApi } from "../api/base-api.abstract";
 import type { BaseApiOptions } from "../api/base-api.types";
 import { ClientAbilities } from "../client/base-client.types";
-import type { RateLimit, RateLimitOptions } from "./rate-limiter.types";
+import type { DailyRateLimit, RateLimit, RateLimitOptions } from "./rate-limiter.types";
 
 const DEFAULT_RATE_LIMIT = {
   abilities: Object.values(ClientAbilities).filter(
@@ -33,12 +33,14 @@ export class ApiRateLimiter {
           ? Math.floor(data.limit * 0.9)
           : data.limit,
       })),
-      dailyRateLimit: config.DisableDailyRateLimit
+      dailyRateLimits: config.DisableDailyRateLimit
         ? undefined
-        : this._config.dailyRateLimit
-          && !config.DisableSafeRatelimitMode
-          ? Math.floor(this._config.dailyRateLimit * 0.9)
-          : this._config.dailyRateLimit,
+        : this._config.dailyRateLimits?.map(dailyLimit => ({
+            ...dailyLimit,
+            limit: !config.DisableSafeRatelimitMode
+              ? Math.floor(dailyLimit.limit * 0.9)
+              : dailyLimit.limit,
+          })),
     };
   }
 
@@ -49,21 +51,17 @@ export class ApiRateLimiter {
   private timeoutIndefiniteMultiplier = 1;
   private latestTimeoutDate = new Date();
 
-  private readonly redisDailyLimitsKey: string;
+  private readonly redisDailyLimitsKeyPrefix: string;
 
-  private dailyLimit?: {
+  private dailyLimits = new Map<string, {
     requestsLeft: number;
     expiresAt: number;
-  } | null;
+  }>();
 
   constructor(domainHash: string, api: BaseApi, config: RateLimitOptions) {
     this.api = api;
     this._config = config;
-    this.redisDailyLimitsKey = `${RedisKeys.DAILY_RATE_LIMIT}${domainHash}`;
-
-    if (this.config.dailyRateLimit) {
-      this.dailyLimit = null;
-    }
+    this.redisDailyLimitsKeyPrefix = `${RedisKeys.DAILY_RATE_LIMIT}${domainHash}`;
 
     if (
       !this.config.rateLimits.some(limit => limit.routes.includes("/"))
@@ -184,14 +182,32 @@ export class ApiRateLimiter {
 
   private async isOnCooldown(route: string) {
     const limit = this.getRateLimit(route);
-    const dailyLimit = await this.getDailyRateLimitRemaining();
 
-    if (dailyLimit && dailyLimit.requestsLeft <= 0) {
-      this.log(
-                    `Tried to make request to ${route} while on daily cooldown. Ignored`,
-                    "warn",
-      );
-      return true;
+    const checkedLimitKeys = new Set<string>();
+
+    for (const ability of limit.abilities) {
+      const applicableLimits = this.findDailyLimitsForAbility(ability);
+
+      for (const dailyLimit of applicableLimits) {
+        const key = this.getDailyLimitKey(dailyLimit);
+
+        if (checkedLimitKeys.has(key))
+          continue;
+
+        checkedLimitKeys.add(key);
+
+        const remaining = await this.getDailyRateLimitRemainingForLimit(dailyLimit);
+        if (remaining.requestsLeft <= 0) {
+          const label = dailyLimit.abilities?.length
+            ? `[${dailyLimit.abilities.map(a => ClientAbilities[a]).join(", ")}]`
+            : "[global]";
+          this.log(
+            `Tried to make request to ${route} while on daily cooldown ${label}. Ignored`,
+            "warn",
+          );
+          return true;
+        }
+      }
     }
 
     if (
@@ -245,11 +261,37 @@ export class ApiRateLimiter {
       remaining = this.getRemainingRequests(limit);
     }
 
+    let dailyLimitsLog = "";
+    if (this.config.dailyRateLimits?.length) {
+      const dailyLimitEntries: string[] = [];
+      const loggedKeys = new Set<string>();
+
+      for (const ability of limit.abilities) {
+        const applicableLimits = this.findDailyLimitsForAbility(ability);
+        for (const dailyLimit of applicableLimits) {
+          const key = this.getDailyLimitKey(dailyLimit);
+          if (loggedKeys.has(key))
+            continue;
+          loggedKeys.add(key);
+
+          const cached = this.dailyLimits.get(key);
+          if (cached) {
+            const label = dailyLimit.abilities?.length
+              ? `[${dailyLimit.abilities.map(a => ClientAbilities[a]).join(", ")}]`
+              : "[global]";
+            dailyLimitEntries.push(
+              `${label}: ${cached.requestsLeft}/${dailyLimit.limit}, refresh at ${new Date(cached.expiresAt).toLocaleString()}`,
+            );
+          }
+        }
+      }
+      if (dailyLimitEntries.length > 0) {
+        dailyLimitsLog = ` | Daily limits: ${dailyLimitEntries.join("; ")}`;
+      }
+    }
+
     const logMessage
-      = `${this.api.axiosConfig.baseURL}/${route} | Routes: [${limit.routes.join(", ")}] | Remaining requests: ${remaining}/${limit.limit}${
-             this.dailyLimit && this.config.dailyRateLimit
-              ? ` | Remaining daily requests: ${this.dailyLimit.requestsLeft}/${this.config.dailyRateLimit}, refresh at ${new Date(this.dailyLimit.expiresAt).toLocaleString()}`
-              : ""}`;
+      = `${this.api.axiosConfig.baseURL}/${route} | Routes: [${limit.routes.join(", ")}] | Remaining requests: ${remaining}/${limit.limit}${dailyLimitsLog}`;
 
     this.log(logMessage);
 
@@ -325,26 +367,72 @@ export class ApiRateLimiter {
     return limit;
   }
 
-  private async getDailyRateLimitRemaining(): Promise<{
+  private getDailyLimitKey(dailyLimit: DailyRateLimit): string {
+    if (!dailyLimit.abilities?.length) {
+      return "global";
+    }
+
+    return dailyLimit.abilities.slice().sort((a, b) => a - b).join(",");
+  }
+
+  private findDailyLimitsForAbility(ability: ClientAbilities): DailyRateLimit[] {
+    const dailyLimits = this.config.dailyRateLimits;
+    if (!dailyLimits?.length)
+      return [];
+
+    const applicableLimits: DailyRateLimit[] = [];
+
+    for (const limit of dailyLimits) {
+      if (!limit.abilities?.length) {
+        applicableLimits.push(limit);
+      }
+      else if (limit.abilities.includes(ability)) {
+        applicableLimits.push(limit);
+      }
+    }
+
+    return applicableLimits;
+  }
+
+  private async getDailyRateLimitRemainingForLimit(
+    dailyLimit: DailyRateLimit,
+    retryCount = 0,
+  ): Promise<{
     requestsLeft: number;
     expiresAt: number;
-  } | null> {
-    const isDailyLimitExists = this.config.dailyRateLimit;
-    if (!isDailyLimitExists)
-      return null;
+  }> {
+    const key = this.getDailyLimitKey(dailyLimit);
+    const cached = this.dailyLimits.get(key);
 
-    if (this.dailyLimit && this.dailyLimit.expiresAt > Date.now())
-      return this.dailyLimit;
+    if (cached && cached.expiresAt > Date.now())
+      return cached;
 
+    if (cached) {
+      this.dailyLimits.delete(key);
+    }
+
+    const redisKey = `${this.redisDailyLimitsKeyPrefix}:${key}`;
     const result = await this.redis
       .multi()
-      .hget(this.redisDailyLimitsKey, "value")
-      .ttl(this.redisDailyLimitsKey)
+      .hget(redisKey, "value")
+      .ttl(redisKey)
       .exec();
 
     if (!result || result.some(([_, v]) => v === null)) {
-      await this.updateDailyRateLimitRemaining(0, true);
-      return await this.getDailyRateLimitRemaining();
+      if (retryCount >= 3) {
+        this.log(
+          `Failed to initialize daily rate limit for ${key} after ${retryCount} retries. Returning full limit.`,
+          "error",
+        );
+        const fallbackState = {
+          requestsLeft: dailyLimit.limit,
+          expiresAt: Date.now() + 60000, // Cache for 1 minute before retry
+        };
+        this.dailyLimits.set(key, fallbackState);
+        return fallbackState;
+      }
+      await this.updateDailyRateLimitRemainingForLimit(dailyLimit, 0, true);
+      return await this.getDailyRateLimitRemainingForLimit(dailyLimit, retryCount + 1);
     }
 
     const [[, rawValue], [, ttlSeconds]] = result;
@@ -354,41 +442,47 @@ export class ApiRateLimiter {
       ? 0
       : Number(ttlSeconds) * 1000;
 
-    this.dailyLimit = {
+    const limitState = {
       requestsLeft: value,
       expiresAt: Date.now() + expiresAt,
     };
 
-    return this.dailyLimit;
+    this.dailyLimits.set(key, limitState);
+
+    return limitState;
   }
 
-  private async updateDailyRateLimitRemaining(
+  private async updateDailyRateLimitRemainingForLimit(
+    dailyLimit: DailyRateLimit,
     limitSpent: number,
-        resetTTL = false,
+    resetTTL = false,
   ) {
-    const dailyLimit = this.config.dailyRateLimit;
-    if (!dailyLimit)
-      return null;
+    const key = this.getDailyLimitKey(dailyLimit);
+    const redisKey = `${this.redisDailyLimitsKeyPrefix}:${key}`;
+    const cached = this.dailyLimits.get(key);
 
-    let currentDailyLimit = dailyLimit;
+    let currentDailyLimit = dailyLimit.limit;
 
-    if (this.dailyLimit && this.dailyLimit.expiresAt > Date.now()) {
-      currentDailyLimit = this.dailyLimit.requestsLeft - limitSpent;
+    if (cached && cached.expiresAt > Date.now()) {
+      currentDailyLimit = cached.requestsLeft - limitSpent;
 
-      this.dailyLimit = {
-        ...this.dailyLimit,
+      this.dailyLimits.set(key, {
+        ...cached,
         requestsLeft: currentDailyLimit,
-      };
+      });
+    }
+    else if (cached) {
+      this.dailyLimits.delete(key);
     }
 
     await this.redis.hset(
-      this.redisDailyLimitsKey,
+      redisKey,
       "value",
       currentDailyLimit,
     );
 
     if (resetTTL)
-      await this.redis.expire(this.redisDailyLimitsKey, 86400); // 24 hours
+      await this.redis.expire(redisKey, 86400); // 24 hours
   }
 
   private getRemainingRequests(limit: RateLimit) {
@@ -422,8 +516,20 @@ export class ApiRateLimiter {
     if (replaceUid)
       requests.delete(replaceUid);
 
-    if (this.config.dailyRateLimit && replaceUid == null) {
-      this.updateDailyRateLimitRemaining(1);
+    if (this.config.dailyRateLimits?.length && replaceUid == null) {
+      const decrementedKeys = new Set<string>();
+
+      for (const ability of limit.abilities) {
+        const applicableLimits = this.findDailyLimitsForAbility(ability);
+
+        for (const dailyLimit of applicableLimits) {
+          const key = this.getDailyLimitKey(dailyLimit);
+          if (!decrementedKeys.has(key)) {
+            decrementedKeys.add(key);
+            this.updateDailyRateLimitRemainingForLimit(dailyLimit, 1);
+          }
+        }
+      }
     }
 
     const uid = crypto.randomUUID();
