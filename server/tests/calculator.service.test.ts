@@ -185,7 +185,7 @@ describe("Calculator tests", () => {
   });
 
   it("Calculated score pp for with hitresults provided and only accuracy provided should be the same", async () => {
-    const EXPECTED_PP = 663.154; // https://web.archive.org/web/20251102200440/https://osu.ppy.sh/scores/1794640344
+    const EXPECTED_PP = 644.803; // "rosu-pp-js": "2",
 
     const scoreWithoutHitresults: Score = {
       accuracy: 99.689999999999998,
@@ -227,7 +227,7 @@ describe("Calculator tests", () => {
   });
 
   it("Calculated score pp for with hitresults provided and only accuracy provided should be the same with score having a miss", async () => {
-    const EXPECTED_PP = 587.555; // https://web.archive.org/web/20251102202454/https://osu.ppy.sh/scores/2529969691
+    const EXPECTED_PP = 571.682; // "rosu-pp-js": "2",
 
     const scoreWithoutHitresults: Score = {
       accuracy: 99.43,
@@ -269,7 +269,7 @@ describe("Calculator tests", () => {
   });
 
   it("Calculated score pp with hitresults and compare with beatmap calculation without hitresults", async () => {
-    const EXPECTED_PP = 663.154; // https://web.archive.org/web/20251102200440/https://osu.ppy.sh/scores/1794640344
+    const EXPECTED_PP = 644.803; // "rosu-pp-js": "2",
 
     const scoreWithoutHitresults: Score = {
       accuracy: 99.689999999999998,
@@ -310,7 +310,7 @@ describe("Calculator tests", () => {
   });
 
   it("Should calculate score pp: standard", async () => {
-    const EXPECTED_PP = 243.002; // https://web.archive.org/web/20251102193936/https://osu.ppy.sh/scores/4502844247
+    const EXPECTED_PP = 238.115; // "rosu-pp-js": "2",
 
     const score: Score = {
       accuracy: 97.13,
@@ -333,7 +333,7 @@ describe("Calculator tests", () => {
   });
 
   it("Should calculate score pp: taiko", async () => {
-    const EXPECTED_PP = 97.975; // https://osu.ppy.sh/scores/1867539282
+    const EXPECTED_PP = 88.362; // "rosu-pp-js": "2",
 
     const score: Score = {
       accuracy: 91.64,
