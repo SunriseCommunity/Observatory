@@ -5,7 +5,7 @@ services:
             context: .
             dockerfile: Dockerfile
         volumes:
-            - ./data:/app/data
+            - ./data:/usr/src/app/data
         restart: always
         environment:
             NODE_ENV: production
@@ -37,7 +37,7 @@ services:
         networks:
             - container_network
         healthcheck:
-            test: ['CMD-SHELL', 'pg_isready']
+            test: "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"
             interval: 10s
             timeout: 5s
             retries: 5

@@ -1,131 +1,239 @@
-import { t } from 'elysia';
-import { App } from '../../app';
-import { BeatmapsManagerPlugin } from '../../plugins/beatmapManager';
+import { t } from "elysia";
+
+import type { App } from "../../app";
+import { BeatmapsManagerPlugin } from "../../plugins/beatmapManager";
+import { BEATMAPS_SEARCH_MAX_RESULTS_LIMIT } from "../../types/general/api";
 
 export default (app: App) => {
-    app.use(BeatmapsManagerPlugin)
-        .get(
-            'v2/b/:id',
-            async ({
-                BeatmapsManagerInstance,
-                params: { id },
-                query: { full },
-            }) => {
-                const beatmap = await BeatmapsManagerInstance.getBeatmap({
-                    beatmapId: id,
-                });
+  app.use(BeatmapsManagerPlugin)
+    .get(
+      "v2/b/:id",
+      async ({
+        BeatmapsManagerInstance,
+        params: { id },
+        query: { full, allowMissingNonBeatmapValues },
+        set,
+      }) => {
+        const beatmap = await BeatmapsManagerInstance.getBeatmap({
+          beatmapId: id,
+          allowMissingNonBeatmapValues:
+                        full || allowMissingNonBeatmapValues,
+        });
 
-                if (!beatmap.data) return beatmap;
+        if (beatmap.source) {
+          set.headers["X-Data-Source"] = beatmap.source;
+        }
 
-                if (!full) return beatmap.data;
+        const { source: _, ...responseBeatmap } = beatmap;
 
-                const beatmapset = await BeatmapsManagerInstance.getBeatmapSet({
-                    beatmapSetId: beatmap.data?.beatmapset_id,
-                });
+        if (!full || !beatmap.data)
+          return responseBeatmap?.data ?? responseBeatmap;
 
-                return beatmapset.data ? beatmapset.data : beatmapset;
-            },
-            {
-                params: t.Object({
-                    id: t.Numeric(),
-                }),
-                query: t.Object({
-                    full: t.Optional(t.Boolean()),
-                }),
-                tags: ['v2'],
-            },
-        )
-        .get(
-            'v2/md5/:hash',
-            async ({
-                BeatmapsManagerInstance,
-                params: { hash },
-                query: { full },
-            }) => {
-                const beatmap = await BeatmapsManagerInstance.getBeatmap({
-                    beatmapHash: hash,
-                });
+        const beatmapset = await BeatmapsManagerInstance.getBeatmapSet({
+          beatmapSetId: beatmap.data.beatmapset_id,
+        });
 
-                if (!beatmap.data) return beatmap;
+        if (beatmapset.source) {
+          set.headers["X-Data-Source"] = beatmapset.source;
+        }
 
-                if (!full) return beatmap.data;
+        const { source: __, ...responseBeatmapset } = beatmapset;
 
-                const beatmapset = await BeatmapsManagerInstance.getBeatmapSet({
-                    beatmapSetId: beatmap.data?.beatmapset_id,
-                });
+        return responseBeatmapset?.data ?? responseBeatmapset;
+      },
+      {
+        params: t.Object({
+          id: t.Numeric(),
+        }),
+        query: t.Object({
+          full: t.Optional(t.Boolean()),
+          allowMissingNonBeatmapValues: t.Optional(t.Boolean()), // TODO: Ideally, we should have shortBeatmap endpoint which would return only beatmap values.
+        }),
+        tags: ["v2"],
+      },
+    )
+    .get(
+      "v2/filename/:filename",
+      async ({
+        BeatmapsManagerInstance,
+        params: { filename },
+        query: { full },
+        set,
+      }) => {
+        const beatmap = await BeatmapsManagerInstance.getBeatmap({
+          beatmapFilename: filename,
+          allowMissingNonBeatmapValues: full,
+        });
 
-                return beatmapset.data ? beatmapset.data : beatmapset;
-            },
-            {
-                params: t.Object({
-                    hash: t.String(),
-                }),
-                query: t.Object({
-                    full: t.Optional(t.BooleanString()),
-                }),
-                tags: ['v2'],
-            },
-        )
-        .get(
-            'v2/s/:id',
-            async ({ BeatmapsManagerInstance, params: { id } }) => {
-                const data = await BeatmapsManagerInstance.getBeatmapSet({
-                    beatmapSetId: id,
-                });
+        if (beatmap.source) {
+          set.headers["X-Data-Source"] = beatmap.source;
+        }
 
-                if (!data.data) return data;
+        const { source: _, ...responseBeatmap } = beatmap;
+        if (!full || !beatmap.data)
+          return responseBeatmap?.data ?? responseBeatmap;
 
-                return data.data;
-            },
-            {
-                params: t.Object({
-                    id: t.Numeric(),
-                }),
-                tags: ['v2'],
-            },
-        )
-        .get(
-            'v2/search',
-            async ({ BeatmapsManagerInstance, query }) => {
-                // TODO: Add another search endpoint which would parse cursors instead of pages, to create compatibility with bancho api;
+        const beatmapset = await BeatmapsManagerInstance.getBeatmapSet({
+          beatmapSetId: beatmap.data.beatmapset_id,
+        });
 
-                const data = await BeatmapsManagerInstance.searchBeatmapsets({
-                    ...query,
-                });
+        if (beatmapset.source) {
+          set.headers["X-Data-Source"] = beatmapset.source;
+        }
 
-                if (!data.data) return data;
+        const { source: __, ...responseBeatmapset } = beatmapset;
+        return responseBeatmapset?.data ?? responseBeatmapset;
+      },
+      {
+        params: t.Object({
+          filename: t.String(),
+        }),
+        query: t.Object({
+          full: t.Optional(t.BooleanString()),
+        }),
+        tags: ["v2"],
+      },
+    )
+    .get(
+      "v2/md5/:hash",
+      async ({
+        BeatmapsManagerInstance,
+        params: { hash },
+        query: { full, allowMissingNonBeatmapValues },
+        set,
+      }) => {
+        const beatmap = await BeatmapsManagerInstance.getBeatmap({
+          beatmapHash: hash,
+          allowMissingNonBeatmapValues:
+                        full || allowMissingNonBeatmapValues,
+        });
 
-                return data.data;
-            },
-            {
-                query: t.Object({
-                    query: t.Optional(t.String()),
-                    limit: t.Optional(t.Numeric()),
-                    offset: t.Optional(t.Numeric()),
-                    status: t.Optional(t.Array(t.Numeric())),
-                    mode: t.Optional(t.Numeric()),
-                }),
-                tags: ['v2'],
-            },
-        )
-        .get(
-            'v2/beatmaps',
-            async ({ BeatmapsManagerInstance, query }) => {
-                const data = await BeatmapsManagerInstance.getBeatmaps({
-                    ids: query.ids,
-                });
+        if (beatmap.source) {
+          set.headers["X-Data-Source"] = beatmap.source;
+        }
 
-                if (!data.data) return data;
+        const { source: _, ...responseBeatmap } = beatmap;
+        if (!full || !beatmap.data)
+          return responseBeatmap?.data ?? responseBeatmap;
 
-                return data.data;
-            },
-            {
-                query: t.Object({
-                    ids: t.Array(t.Numeric()),
-                }),
-                tags: ['v2'],
-            },
-        );
+        const beatmapset = await BeatmapsManagerInstance.getBeatmapSet({
+          beatmapSetId: beatmap.data.beatmapset_id,
+        });
 
-    return app;
+        if (beatmapset.source) {
+          set.headers["X-Data-Source"] = beatmapset.source;
+        }
+
+        const { source: __, ...responseBeatmapset } = beatmapset;
+        return responseBeatmapset?.data ?? responseBeatmapset;
+      },
+      {
+        params: t.Object({
+          hash: t.String(),
+        }),
+        query: t.Object({
+          full: t.Optional(t.BooleanString()),
+          allowMissingNonBeatmapValues: t.Optional(t.Boolean()), // TODO: Ideally, we should have shortBeatmap endpoint which would return only beatmap values.
+        }),
+        tags: ["v2"],
+      },
+    )
+    .get(
+      "v2/s/:id",
+      async ({ BeatmapsManagerInstance, params: { id }, set }) => {
+        const data = await BeatmapsManagerInstance.getBeatmapSet({
+          beatmapSetId: id,
+        });
+
+        if (data.source) {
+          set.headers["X-Data-Source"] = data.source;
+        }
+
+        const { source: _, ...response } = data;
+        return response?.data ?? response;
+      },
+      {
+        params: t.Object({
+          id: t.Numeric(),
+        }),
+        tags: ["v2"],
+      },
+    )
+    .get(
+      "v2/search",
+      async ({ BeatmapsManagerInstance, query, set }) => {
+        // TODO: Add another search endpoint which would parse cursors instead of pages, to create compatibility with bancho api;
+
+        if (query.limit && (query.limit > BEATMAPS_SEARCH_MAX_RESULTS_LIMIT || query.limit < 1)) {
+          throw new Error(`Limit is too high. Maximum limit is ${BEATMAPS_SEARCH_MAX_RESULTS_LIMIT}`);
+        }
+
+        const data = await BeatmapsManagerInstance.searchBeatmapsets({
+          limit: query.limit ?? 50,
+          ...query,
+        });
+
+        if (data.source) {
+          set.headers["X-Data-Source"] = data.source;
+        }
+
+        const { source: _, ...response } = data;
+        return response?.data ?? response;
+      },
+      {
+        query: t.Object({
+          query: t.Optional(t.String()),
+          limit: t.Optional(t.Numeric({ min: 1, max: BEATMAPS_SEARCH_MAX_RESULTS_LIMIT })),
+          offset: t.Optional(t.Numeric()),
+          status: t.Optional(t.Array(t.Numeric())),
+          mode: t.Optional(t.Numeric()),
+        }),
+        tags: ["v2"],
+      },
+    )
+    .get(
+      "v2/beatmaps",
+      async ({ BeatmapsManagerInstance, query, set }) => {
+        const data = await BeatmapsManagerInstance.getBeatmaps({
+          ids: query.ids,
+        });
+
+        if (data.source) {
+          set.headers["X-Data-Source"] = data.source;
+        }
+
+        const { source: _, ...response } = data;
+        return response?.data ?? response;
+      },
+      {
+        query: t.Object({
+          ids: t.Array(t.Numeric()),
+        }),
+        tags: ["v2"],
+      },
+    )
+    .get(
+      "v2/beatmapsets",
+      async ({ BeatmapsManagerInstance, query, set }) => {
+        const data
+          = await BeatmapsManagerInstance.getBeatmapsetsByBeatmapIds({
+            beatmapIds: query.beatmapIds,
+          });
+
+        if (data.source) {
+          set.headers["X-Data-Source"] = data.source;
+        }
+
+        const { source: _, ...response } = data;
+        return response?.data ?? response;
+      },
+      {
+        query: t.Object({
+          beatmapIds: t.Array(t.Numeric()),
+        }),
+        tags: ["v2"],
+      },
+    );
+
+  return app;
 };

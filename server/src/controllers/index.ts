@@ -1,34 +1,39 @@
-import type { App } from '../app';
-import { StatsServicePlugin } from '../plugins/statsService';
-import { HttpStatusCode } from 'axios';
-import { BeatmapsManagerPlugin } from '../plugins/beatmapManager';
+import { HttpStatusCode } from "axios";
+
+import type { App } from "../app";
+import config, { observatoryConfigPublic } from "../config";
+import { BeatmapsManagerPlugin } from "../plugins/beatmapManager";
+import { StatsServicePlugin } from "../plugins/statsService";
 
 export default (app: App) => {
-    app.get('/', ({ redirect }) => {
-        return redirect('/docs');
-    });
+  app.get("/", ({ redirect }) => {
+    return redirect("/docs");
+  });
 
-    app.use(StatsServicePlugin)
-        .use(BeatmapsManagerPlugin)
-        .get(
-            '/stats',
-            async ({ StatsServiceInstance, BeatmapsManagerInstance }) => {
-                const serverStats = StatsServiceInstance.getServerStatistics();
-                const managerStats =
-                    await BeatmapsManagerInstance.getManagerStats();
+  app.use(StatsServicePlugin)
+    .use(BeatmapsManagerPlugin)
+    .get(
+      "/stats",
+      async ({ StatsServiceInstance, BeatmapsManagerInstance }) => {
+        const serverStats = StatsServiceInstance.getServerStatistics();
+        const managerStats
+          = await BeatmapsManagerInstance.getManagerStats(config.ShowInternalValuesInPublicStatsEndpoint);
+        const serverConfig = observatoryConfigPublic;
 
-                return {
-                    status: HttpStatusCode.Ok,
-                    data: {
-                        server: serverStats,
-                        manager: managerStats,
-                    },
-                };
-            },
-            {
-                tags: ['Statistics'],
-            },
-        );
+        return {
+          status: HttpStatusCode.Ok,
+          data: {
 
-    return app;
+            config: config.ShowInternalValuesInPublicStatsEndpoint ? serverConfig : undefined,
+            server: serverStats,
+            manager: managerStats,
+          },
+        };
+      },
+      {
+        tags: ["Statistics"],
+      },
+    );
+
+  return app;
 };

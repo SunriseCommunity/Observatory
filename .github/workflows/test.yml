@@ -1,5 +1,5 @@
 on: [push]
-name: Run Tests
+name: Run Tests & Lint
 concurrency:
     group: ${{ github.workflow }}-${{ github.ref }}
     cancel-in-progress: true
@@ -12,6 +12,7 @@ jobs:
             - uses: actions/checkout@v4
             - uses: oven-sh/setup-bun@v2
 
-            - run: docker compose -f docker-compose.tests.yml up --detach
+            - run: docker compose -f docker-compose.tests.yml up --detach --wait
             - run: bun install --frozen-lockfile
+            - run: bun lint
             - run: bun test
