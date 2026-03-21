@@ -185,6 +185,25 @@ export class BanchoClient extends BaseClient {
       return { result: null, status: 500 }; // Bancho API has a limit of 200 pages
     }
 
+    let sort_by = undefined;
+
+    // TODO: This is expected behaviour of catboy, so sunrise just went with it, but maybe we should consider adding a separate parameter for sorting instead of overloading the query parameter?
+    if (ctx.query && ["Newest", "Top Rated", "Most Played"].includes(ctx.query)) {
+      switch (ctx.query) {
+        case "Newest":
+          // Default one
+          break;
+        case "Top Rated":
+          sort_by = "rating_desc";
+          break;
+        case "Most Played":
+          sort_by = "plays_desc";
+          break;
+      }
+
+      ctx.query = undefined;
+    }
+
     const result = await this.api.get<BanchoBeatmapsetSearchResult>(`api/v2/beatmapsets/search`, {
       config: {
         headers: {
@@ -192,6 +211,7 @@ export class BanchoClient extends BaseClient {
         },
         params: {
           q: ctx.query,
+          sort: sort_by,
           page,
           s: ctx.status ? ctx.status.map(status => this.mapStatusToRankStatus(status).toString()) : undefined,
           m: ctx.mode,
@@ -207,7 +227,6 @@ export class BanchoClient extends BaseClient {
     }
 
     let { beatmapsets } = result.data;
-    let additionalBeatmapsets: BanchoBeatmapset[] = [];
 
     if (ctx.limit && ctx.limit <= BEATMAPS_SEARCH_MAX_RESULTS_LIMIT) {
       if (ctx.limit < BANCHO_SEARCH_PAGE_SIZE) {
@@ -215,18 +234,33 @@ export class BanchoClient extends BaseClient {
       }
 
       if (ctx.limit > BANCHO_SEARCH_PAGE_SIZE && page < BANCHO_SEARCH_PAGES_LIMIT) {
-        additionalBeatmapsets = await this.searchBeatmapsets({
-          ...ctx,
-          limit: ctx.limit - beatmapsets.length,
-          offset: (ctx.offset ?? 0) + beatmapsets.length,
-        }).then(result => result.result ?? []);
+        const resultForAdditionalBeatmaps = await this.api.get<BanchoBeatmapsetSearchResult>(`api/v2/beatmapsets/search`, {
+          config: {
+            headers: {
+              Authorization: `Bearer ${await this.osuApiKey}`,
+            },
+            params: {
+              q: ctx.query,
+              page: page + 1,
+              s: ctx.status ? ctx.status.map(status => this.mapStatusToRankStatus(status).toString()) : undefined,
+              m: ctx.mode,
+              nsfw: true, // TODO: Maybe make this configurable?
+            },
+            paramsSerializer: params =>
+              qs.stringify(params, { indices: false }),
+          },
+        });
+
+        if (resultForAdditionalBeatmaps && resultForAdditionalBeatmaps.status === 200 && resultForAdditionalBeatmaps.data) {
+          beatmapsets.push(...resultForAdditionalBeatmaps.data.beatmapsets.slice(0, ctx.limit - BANCHO_SEARCH_PAGE_SIZE));
+        }
       }
     }
 
     return {
-      result: [...additionalBeatmapsets, ...(beatmapsets.map((b: BanchoBeatmapset) =>
+      result: beatmapsets.map((b: BanchoBeatmapset) =>
         this.convertService.convertBeatmapset(b),
-      ))],
+      ),
       status: result.status,
     };
   }
@@ -245,9 +279,11 @@ export class BanchoClient extends BaseClient {
         return RankStatus.WIP;
       case RankStatusInt.APPROVED:
         return RankStatus.APPROVED;
+      case RankStatusInt.RANKED:
+        return RankStatus.RANKED;
+      default:
+        return status satisfies never;
     }
-
-    return RankStatus.PENDING;
   }
 
   private async getBeatmapSetById(
