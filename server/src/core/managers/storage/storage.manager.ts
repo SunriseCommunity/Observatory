@@ -128,11 +128,12 @@ export class StorageManager {
     ctx: SearchBeatmapsetsOptions,
     result: Beatmapset[],
   ): Promise<void> {
-    for (const beatmapset of result) {
-      await this.insertBeatmapset(beatmapset, {
-        beatmapSetId: beatmapset.id,
-      });
-    }
+    // TODO: This is disabled for now. While mino sends full beatmapsets, bancho doesn't. Saving such beatmapsets is wrong and will corrupt database. I don't have time to implement partial beatmapset saving for now, so just skip saving search results until I do it.
+    // for (const beatmapset of result) {
+    //   await this.insertBeatmapset(beatmapset, {
+    //     beatmapSetId: beatmapset.id,
+    //   });
+    // }
 
     await this.cacheService.insertSearchResult(ctx, result);
   }
