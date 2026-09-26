@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+
 import { HttpStatusCode } from "axios";
 import { Beatmap } from "rosu-pp-js";
 
@@ -6,6 +9,21 @@ import type { BeatmapsManager } from "../beatmaps/beatmaps.manager";
 import { CalculatorService } from "./calculator.service";
 import type { Score, ScoreShort } from "./calculator.types";
 
+const rosuPackage: unknown = JSON.parse(
+  readFileSync(fileURLToPath(import.meta.resolve("rosu-pp-js/package.json")), "utf8"),
+);
+
+if (
+  typeof rosuPackage !== "object"
+  || rosuPackage === null
+  || !("version" in rosuPackage)
+  || typeof rosuPackage.version !== "string"
+) {
+  throw new Error("Failed to read rosu-pp-js version from its package.json");
+}
+
+const ROSU_VERSION = rosuPackage.version;
+
 export class CalculatorManager {
   private readonly calculatorService: CalculatorService;
   private readonly beatmapsManager: BeatmapsManager;
@@ -13,6 +31,10 @@ export class CalculatorManager {
   constructor() {
     this.calculatorService = new CalculatorService();
     this.beatmapsManager = BeatmapsManagerInstance;
+  }
+
+  public GetRosuVersion() {
+    return ROSU_VERSION;
   }
 
   public async CalculateBeatmapPerformances(
