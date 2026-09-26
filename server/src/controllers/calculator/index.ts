@@ -11,6 +11,17 @@ import { TryConvertToGamemode } from "../../utils/beatmap";
 export default (app: App) => {
   app.use(CalculatorManagerPlugin)
     .get(
+      "/version",
+      ({ CalculatorManagerInstance }) => {
+        return {
+          rosu: CalculatorManagerInstance.GetRosuVersion(),
+        };
+      },
+      {
+        tags: ["Calculators"],
+      },
+    )
+    .get(
       "/beatmap/:id",
       async ({
         CalculatorManagerInstance,
@@ -24,7 +35,10 @@ export default (app: App) => {
           isScoreFailed,
           isPlayedOnLazer,
         },
+        set,
       }) => {
+        set.headers["X-Rosu-Version"] = CalculatorManagerInstance.GetRosuVersion();
+
         const scores: ScoreShort[] = [];
         const beatmapMode = TryConvertToGamemode(mode);
 
@@ -86,7 +100,10 @@ export default (app: App) => {
           isScoreFailed,
           isPlayedOnLazer,
         },
+        set,
       }) => {
+        set.headers["X-Rosu-Version"] = CalculatorManagerInstance.GetRosuVersion();
+
         const beatmapMode = TryConvertToGamemode(mode);
 
         const score: Score = {
