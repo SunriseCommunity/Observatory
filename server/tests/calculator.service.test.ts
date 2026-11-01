@@ -185,10 +185,10 @@ describe("Calculator tests", () => {
   });
 
   it("Calculated score pp for with hitresults provided and only accuracy provided should be the same", async () => {
-    const EXPECTED_PP = 663.154; // https://web.archive.org/web/20251102200440/https://osu.ppy.sh/scores/1794640344
+    const EXPECTED_PP = 720.044; // osu! reports 720.043: https://web.archive.org/web/20261101165357/https://osu.ppy.sh/scores/1794640344
 
     const scoreWithoutHitresults: Score = {
-      accuracy: 99.689999999999998,
+      accuracy: 99.6900826446281,
       combo: 2955,
       isLazer: false,
       isScoreFailed: false,
@@ -227,11 +227,13 @@ describe("Calculator tests", () => {
   });
 
   it("Calculated score pp for with hitresults provided and only accuracy provided should be the same with score having a miss", async () => {
-    const EXPECTED_PP = 587.555; // https://web.archive.org/web/20251102202454/https://osu.ppy.sh/scores/2529969691
+    const EXPECTED_PP = 636.212; // osu! reports 636.211: https://web.archive.org/web/20261101165428/https://osu.ppy.sh/scores/2529969691
 
     const scoreWithoutHitresults: Score = {
-      accuracy: 99.43,
+      accuracy: 99.4318,
       combo: 1914,
+      misses: 1,
+      legacyTotalScore: 72216504,
       isLazer: false,
       isScoreFailed: false,
     };
@@ -244,6 +246,7 @@ describe("Calculator tests", () => {
       nKatu: 0,
       n50: 0,
       misses: 1,
+      legacyTotalScore: 72216504,
       mode: rosu.GameMode.Osu,
       mods: GameModBitwise.NoMod,
       isLazer: false,
@@ -269,10 +272,10 @@ describe("Calculator tests", () => {
   });
 
   it("Calculated score pp with hitresults and compare with beatmap calculation without hitresults", async () => {
-    const EXPECTED_PP = 663.154; // https://web.archive.org/web/20251102200440/https://osu.ppy.sh/scores/1794640344
+    const EXPECTED_PP = 720.044; // osu! reports 720.043: https://web.archive.org/web/20261101165357/https://osu.ppy.sh/scores/1794640344
 
     const scoreWithoutHitresults: Score = {
-      accuracy: 99.689999999999998,
+      accuracy: 99.6900826446281,
       combo: 2955,
       isLazer: false,
       isScoreFailed: false,
@@ -310,7 +313,7 @@ describe("Calculator tests", () => {
   });
 
   it("Should calculate score pp: standard", async () => {
-    const EXPECTED_PP = 243.002; // https://web.archive.org/web/20251102193936/https://osu.ppy.sh/scores/4502844247
+    const EXPECTED_PP = 248.655; // https://web.archive.org/web/20261101165506/https://osu.ppy.sh/scores/4502844247
 
     const score: Score = {
       accuracy: 97.13,
@@ -320,6 +323,7 @@ describe("Calculator tests", () => {
       n100: 34,
       n50: 1,
       misses: 32,
+      legacyTotalScore: 33054776,
       isLazer: false,
       isScoreFailed: false,
     };
@@ -333,7 +337,7 @@ describe("Calculator tests", () => {
   });
 
   it("Should calculate score pp: taiko", async () => {
-    const EXPECTED_PP = 97.975; // https://osu.ppy.sh/scores/1867539282
+    const EXPECTED_PP = 96.5268; // https://web.archive.org/web/20261101165535/https://osu.ppy.sh/scores/1867539282
 
     const score: Score = {
       accuracy: 91.64,
@@ -356,7 +360,7 @@ describe("Calculator tests", () => {
   });
 
   it("Should calculate score pp: catch", async () => {
-    const EXPECTED_PP = 224.697; // https://osu.ppy.sh/scores/1953302746
+    const EXPECTED_PP = 316.948; // osu! reports 317.017: https://web.archive.org/web/20261101165554/https://osu.ppy.sh/scores/1953302746
 
     const score: Score = {
       accuracy: 99.18,
@@ -379,7 +383,7 @@ describe("Calculator tests", () => {
   });
 
   it("Should calculate score pp: mania", async () => {
-    const EXPECTED_PP = 152.199; // https://osu.ppy.sh/scores/4111918025
+    const EXPECTED_PP = 152.199; // https://web.archive.org/web/20261101165613/https://osu.ppy.sh/scores/4111918025
 
     const score: Score = {
       accuracy: 99.06,
@@ -387,7 +391,7 @@ describe("Calculator tests", () => {
       mode: rosu.GameMode.Mania,
       combo: 2345,
       n300: 1004,
-      nGeki: 62,
+      nGeki: 1731,
       n100: 0,
       nKatu: 62,
       n50: 2,
