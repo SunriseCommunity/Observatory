@@ -3,6 +3,7 @@ import type * as rosu from "rosu-pp-js";
 import type { GameModBitwise } from "../../../types/general/gameMod";
 
 export interface Score extends ScoreShort {
+  legacyTotalScore?: number;
   n300?: number;
   nGeki?: number;
   n100?: number;

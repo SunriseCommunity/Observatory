@@ -1,7 +1,6 @@
 import crypto from "node:crypto";
 
 import * as rosu from "rosu-pp-js";
-import { HitResultPriority } from "rosu-pp-js";
 
 import { GameModBitwise } from "../../../types/general/gameMod";
 import type { Score, ScoreShort } from "./calculator.types";
@@ -24,7 +23,10 @@ export class CalculatorService {
         combo: score.combo,
         misses: score.misses,
         lazer: score.isLazer,
-        hitresultPriority: HitResultPriority.Fastest,
+        hitresultPriority: score.isScoreFailed
+          ? rosu.HitResultPriority.WorstCase
+          : rosu.HitResultPriority.BestCase,
+        hitresultGenerators: Array.from({ length: 4 }, () => rosu.HitResultGenerator.Closest),
       }).calculate(beatmap);
 
       results.push(performance);
@@ -61,8 +63,10 @@ export class CalculatorService {
       nKatu: score.nKatu,
       n50: score.n50,
       misses: score.misses,
+      legacyTotalScore: score.legacyTotalScore,
       hitresultPriority,
       lazer: score.isLazer,
+      hitresultGenerators: Array.from({ length: 4 }, () => rosu.HitResultGenerator.Closest),
     }).calculate(beatmap);
 
     return performance;

@@ -1,5 +1,6 @@
 {
   "lockfileVersion": 1,
+  "configVersion": 0,
   "workspaces": {
     "": {
       "name": "observatory",
@@ -25,7 +26,7 @@
         "pino-pretty": "^11.3.0",
         "postgres": "^3.4.5",
         "qs": "^6.14.0",
-        "rosu-pp-js": "^3.1.0",
+        "rosu-pp-js": "npm:@richardscull/rosu-pp-js@4.0.1-experimental.3",
       },
       "devDependencies": {
         "@richardscull/eslint-config": "^1.0.5",
@@ -896,7 +897,7 @@
 
     "rfdc": ["rfdc@1.4.1", "", {}, "sha512-q1b3N5QkRUWUl7iyylaaj3kOpIT0N2i9MqIEQXP73GVsN9cw3fdx8X63cEmWhJGi2PPCF23Ijp7ktmd39rawIA=="],
 
-    "rosu-pp-js": ["rosu-pp-js@3.1.0", "", {}, "sha512-5YR/ar+XKLvAJAEvPhfEeBunDAY/qPFoey9b9ykvbNDR1K6FO77Mj7VblPpVs9O5TFRwecVSvOLFHMaY63l3YA=="],
+    "rosu-pp-js": ["@richardscull/rosu-pp-js@4.0.1-experimental.3", "", {}, "sha512-3vgzUfd1/ufb92c4cy+U2oyDKXlpzYnuBMySCYcILBJe86FVU7OSG+IBc6Cw2qnKHEg62I6hqEbaLDfjSNfmNg=="],
 
     "run-parallel": ["run-parallel@1.2.0", "", { "dependencies": { "queue-microtask": "^1.2.2" } }, "sha512-5l4VyZR86LZ/lDxZTR6jqL8AFE2S0IFLMP26AbjsLVADxHdhB/c0GUsH+y39UfCi3dzz8OlQuPmnaJOMoDHQBA=="],
 

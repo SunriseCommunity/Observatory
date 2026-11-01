@@ -97,6 +97,7 @@ export default (app: App) => {
           nKatu,
           n50,
           misses,
+          legacyTotalScore,
           isScoreFailed,
           isPlayedOnLazer,
         },
@@ -117,6 +118,7 @@ export default (app: App) => {
           n50,
           combo,
           misses,
+          legacyTotalScore,
           isScoreFailed: isScoreFailed ?? false,
           isLazer: isPlayedOnLazer ?? false,
         };
@@ -142,6 +144,7 @@ export default (app: App) => {
           nKatu: t.Optional(t.Numeric()),
           n50: t.Optional(t.Numeric()),
           misses: t.Optional(t.Numeric()),
+          legacyTotalScore: t.Optional(t.Numeric()),
           mode: t.Optional(t.Numeric()),
           mods: t.Optional(t.Numeric()),
           isScoreFailed: t.Optional(t.Boolean()),
