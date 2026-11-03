@@ -78,6 +78,13 @@
       "when": 1731352050468,
       "tag": "0010_cheerful_khan",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1793730477098,
+      "tag": "0011_beatmap_lookup_indexes",
+      "breakpoints": true
     }
   ]
 }

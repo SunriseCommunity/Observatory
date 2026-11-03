@@ -1,0 +1,2 @@
+CREATE INDEX IF NOT EXISTS "beatmaps_checksum_convert_idx" ON "beatmaps" USING btree ("checksum","convert");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "beatmaps_beatmapset_convert_idx" ON "beatmaps" USING btree ("beatmapset_id","convert");

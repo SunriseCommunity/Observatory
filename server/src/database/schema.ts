@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   boolean,
+  index,
   integer,
   pgTable,
   primaryKey,
@@ -154,6 +155,8 @@ export const beatmaps = pgTable(
   },
   beatmaps => ({
     pk: primaryKey({ columns: [beatmaps.id, beatmaps.mode] }),
+    checksumConvertIdx: index("beatmaps_checksum_convert_idx").on(beatmaps.checksum, beatmaps.convert),
+    beatmapsetConvertIdx: index("beatmaps_beatmapset_convert_idx").on(beatmaps.beatmapset_id, beatmaps.convert),
   }),
 );
 
