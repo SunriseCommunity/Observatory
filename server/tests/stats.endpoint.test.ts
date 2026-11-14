@@ -10,8 +10,12 @@ import {
 import type { Elysia } from "elysia";
 
 import config from "../src/config";
-import setup from "../src/setup";
 import { Mocker } from "./utils/mocker";
+
+async function loadSetup() {
+  const { default: setup } = await import("../src/setup");
+  return setup();
+}
 
 describe("Stats Endpoint", () => {
   let app: Elysia;
@@ -21,7 +25,7 @@ describe("Stats Endpoint", () => {
     jest.restoreAllMocks();
     Mocker.mockMirrorsBenchmark();
 
-    app = (await setup()) as unknown as Elysia;
+    app = (await loadSetup()) as unknown as Elysia;
   });
 
   afterEach(() => {
@@ -168,7 +172,7 @@ describe("Stats Endpoint", () => {
 
   test("Should include mirrors statistics with correct structure when SHOW_INTERNAL_VALUES_IN_PUBLIC_STATS_ENDPOINT is true", async () => {
     config.ShowInternalValuesInPublicStatsEndpoint = true;
-    app = (await setup()) as unknown as Elysia;
+    app = (await loadSetup()) as unknown as Elysia;
 
     const response = await app.handle(
       new Request("http://localhost/stats", {
@@ -189,7 +193,7 @@ describe("Stats Endpoint", () => {
 
   test("Should include active mirrors with correct structure when SHOW_INTERNAL_VALUES_IN_PUBLIC_STATS_ENDPOINT is true", async () => {
     config.ShowInternalValuesInPublicStatsEndpoint = true;
-    app = (await setup()) as unknown as Elysia;
+    app = (await loadSetup()) as unknown as Elysia;
 
     const response = await app.handle(
       new Request("http://localhost/stats", {
@@ -239,7 +243,7 @@ describe("Stats Endpoint", () => {
 
   test("Should include rate limit information in active mirrors when SHOW_INTERNAL_VALUES_IN_PUBLIC_STATS_ENDPOINT is true", async () => {
     config.ShowInternalValuesInPublicStatsEndpoint = true;
-    app = (await setup()) as unknown as Elysia;
+    app = (await loadSetup()) as unknown as Elysia;
 
     const response = await app.handle(
       new Request("http://localhost/stats", {
@@ -303,7 +307,7 @@ describe("Stats Endpoint", () => {
       config.ShowInternalValuesInPublicStatsEndpoint = false;
       jest.restoreAllMocks();
       Mocker.mockMirrorsBenchmark();
-      app = (await setup()) as unknown as Elysia;
+      app = (await loadSetup()) as unknown as Elysia;
     });
 
     test("Should not include config in response", async () => {
@@ -352,7 +356,7 @@ describe("Stats Endpoint", () => {
       config.ShowInternalValuesInPublicStatsEndpoint = true;
       jest.restoreAllMocks();
       Mocker.mockMirrorsBenchmark();
-      app = (await setup()) as unknown as Elysia;
+      app = (await loadSetup()) as unknown as Elysia;
     });
 
     test("Should include config in response", async () => {

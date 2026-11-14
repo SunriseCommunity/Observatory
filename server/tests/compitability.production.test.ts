@@ -7,8 +7,9 @@ import { MinoClient } from "../src/core/domains/catboy.best/mino.client";
 import { GatariClient } from "../src/core/domains/gatari.pw/gatari.client";
 import { NerinyanClient } from "../src/core/domains/nerinyan.moe/nerinyan.client";
 import { StorageManager } from "../src/core/managers/storage/storage.manager";
-// @ts-expect-error -- JSON import
-import json from "./data/mirror.tests.json";
+import mirrorTests from "./data/mirror.tests.json";
+
+const json: any = mirrorTests;
 
 describe.skipIf(!config.IsProduction)(
   "Production compatibility tests - USE TO CHECK IF THE MIRRORS ARE COMPATIBLE WITH THE PRODUCTION ENVIRONMENT",

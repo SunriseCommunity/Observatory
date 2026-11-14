@@ -1,17 +1,21 @@
 import { logger } from "@bogeychan/elysia-logger";
-import { cors } from "@elysiajs/cors";
-import serverTiming from "@elysiajs/server-timing";
-import type { ElysiaSwaggerConfig } from "@elysiajs/swagger";
-import swagger from "@elysiajs/swagger";
+import { cors } from "@elysia/cors";
+import type { ElysiaOpenAPIConfig } from "@elysia/openapi";
+import { openapi } from "@elysia/openapi";
+import serverTiming from "@elysia/server-timing";
 import { Elysia, StatusMap } from "elysia";
-import { autoload } from "elysia-autoload";
 import { ip } from "elysia-ip";
 import { rateLimit } from "elysia-rate-limit";
-import { requestID } from "elysia-requestid";
 
 import config from "./config";
+import rootController from "./controllers";
+import apiController from "./controllers/api";
+import calculatorController from "./controllers/calculator";
+import downloadController from "./controllers/d";
+import osuController from "./controllers/osu";
+import { loggerOptions } from "./utils/logger";
 
-const swaggerOptions: ElysiaSwaggerConfig<"/docs"> = {
+const openapiOptions: ElysiaOpenAPIConfig<true, "/docs"> = {
   documentation: {
     info: {
       title: Bun.env.npm_package_name ?? "Observatory API",
@@ -20,45 +24,19 @@ const swaggerOptions: ElysiaSwaggerConfig<"/docs"> = {
                 Bun.env.npm_package_description ?? "API for Observatory",
     },
   },
-  exclude: ["/"],
+  exclude: { paths: ["/"] },
   path: "/docs",
 };
 
-const loggerOptions = {
-  transport: {
-    targets: [
-      ...(config.IsAutomatedTesting
-        ? []
-        : [
-            {
-              target: "pino-pretty",
-              options: {
-                colorize: true,
-              },
-            },
-          ]),
-      ...(config.LOKI_HOST
-        ? [
-            {
-              target: "pino-loki",
-              options: {
-                batching: false,
-                labels: {
-                  app:
-                                      process.env.npm_package_name || "unknown",
-                  namespace:
-                                      process.env.NODE_ENV || "development",
-                },
-                host: config.LOKI_HOST,
-              },
-            },
-          ]
-        : []),
-    ],
-  },
-};
+function requestID() {
+  return new Elysia({ name: "request-id" })
+    .onRequest(({ set, request: { headers } }) => {
+      set.headers["X-Request-ID"] = headers.get("X-Request-ID") || crypto.randomUUID();
+    })
+    .as("global");
+}
 
-async function setup() {
+function setup() {
   return new Elysia({ name: "setup" })
     .use(cors())
     .use(ip())
@@ -85,33 +63,28 @@ async function setup() {
         ...loggerOptions,
         autoLogging: true,
         customProps(ctx: any) {
-          const statusCode = (ctx.code ?? "")
-            .replaceAll("_", " ")
-            .replaceAll(/[A-Z]/g, (letter: string) =>
-              letter.toLowerCase())
-            .replaceAll(/(^\w)|(\s+\w)/g, (letter: string) =>
-              letter.toUpperCase());
+          const { status } = ctx.set;
 
           return {
             params: ctx.params,
             query: ctx.query,
             requestId: ctx.set.headers["X-Request-ID"],
             res: {
-              statusCode:
-                                StatusMap[
-                                  statusCode as keyof typeof StatusMap
-                                ]
-                                ?? ctx.set.status
-                                ?? 500,
+              statusCode: typeof status === "number"
+                ? status
+                : StatusMap[status as keyof typeof StatusMap] ?? 500,
             },
           };
         },
       }),
     )
-    .use(await autoload({ dir: `${import.meta.dirname}/controllers` }))
-    .use(swagger(swaggerOptions))
+    .use(rootController(new Elysia()))
+    .use(apiController(new Elysia({ prefix: "/api" })))
+    .use(calculatorController(new Elysia({ prefix: "/calculator" })))
+    .use(downloadController(new Elysia({ prefix: "/d" })))
+    .use(osuController(new Elysia({ prefix: "/osu" })))
+    .use(openapi(openapiOptions))
     .get("/favicon.ico", () => Bun.file("./server/public/favicon.ico"));
 }
 
 export default setup;
-export { loggerOptions };
