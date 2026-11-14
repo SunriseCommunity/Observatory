@@ -2,7 +2,40 @@ import { createPinoLogger } from "@bogeychan/elysia-logger";
 
 import config from "../config";
 import type { AxiosResponseLog } from "../core/abstracts/api/base-api.types";
-import { loggerOptions } from "../setup";
+
+export const loggerOptions = {
+  transport: {
+    targets: [
+      ...(config.IsAutomatedTesting
+        ? []
+        : [
+            {
+              target: "pino-pretty",
+              options: {
+                colorize: true,
+              },
+            },
+          ]),
+      ...(config.LOKI_HOST
+        ? [
+            {
+              target: "pino-loki",
+              options: {
+                batching: false,
+                labels: {
+                  app:
+                                      process.env.npm_package_name || "unknown",
+                  namespace:
+                                      process.env.NODE_ENV || "development",
+                },
+                host: config.LOKI_HOST,
+              },
+            },
+          ]
+        : []),
+    ],
+  },
+};
 
 const logger = createPinoLogger({
   ...loggerOptions,
