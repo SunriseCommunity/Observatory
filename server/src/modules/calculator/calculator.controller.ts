@@ -1,8 +1,9 @@
-import { Elysia, t } from "elysia";
+import { Elysia } from "elysia";
 
 import { calculatorService } from ".";
 import { TryConvertToGamemode } from "./helper/gamemode.helper";
 import type { Score, ScoreShort } from "./model/calculator.model";
+import * as CalculatorModel from "./model/calculator.schema";
 
 export const calculatorController = new Elysia({ prefix: "/calculator" })
   .get("/version", {
@@ -13,20 +14,8 @@ export const calculatorController = new Elysia({ prefix: "/calculator" })
     };
   })
   .get("/beatmap/:id", {
-    params: t.Object({
-      id: t.Numeric(),
-    }),
-    query: t.Object({
-      acc: t.Optional(
-        t.Array(t.Numeric(), { minItems: 1, maxItems: 5 }),
-      ),
-      mode: t.Optional(t.Numeric()),
-      mods: t.Optional(t.Numeric()),
-      combo: t.Optional(t.Numeric()),
-      misses: t.Optional(t.Numeric()),
-      isScoreFailed: t.Optional(t.BooleanString()),
-      isPlayedOnLazer: t.Optional(t.BooleanString()),
-    }),
+    params: CalculatorModel.BeatmapByIdGet.Params,
+    query: CalculatorModel.BeatmapByIdGet.Query,
     detail: { tags: ["Calculators"] },
   }, async ({
     params: { id },
@@ -67,23 +56,7 @@ export const calculatorController = new Elysia({ prefix: "/calculator" })
     return results;
   })
   .post("/score", {
-    body: t.Object({
-      beatmapId: t.Numeric(),
-      beatmapHash: t.Optional(t.String()),
-      acc: t.Optional(t.Numeric()),
-      combo: t.Optional(t.Numeric()),
-      n300: t.Optional(t.Numeric()),
-      nGeki: t.Optional(t.Numeric()),
-      n100: t.Optional(t.Numeric()),
-      nKatu: t.Optional(t.Numeric()),
-      n50: t.Optional(t.Numeric()),
-      misses: t.Optional(t.Numeric()),
-      legacyTotalScore: t.Optional(t.Numeric()),
-      mode: t.Optional(t.Numeric()),
-      mods: t.Optional(t.Numeric()),
-      isScoreFailed: t.Optional(t.Boolean()),
-      isPlayedOnLazer: t.Optional(t.Boolean()),
-    }),
+    body: CalculatorModel.ScorePost.Body,
     detail: { tags: ["Calculators"] },
   }, async ({
     body: {
