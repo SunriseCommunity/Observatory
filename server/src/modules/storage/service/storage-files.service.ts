@@ -1,4 +1,4 @@
-import { unlink } from "node:fs/promises";
+import { rename, unlink } from "node:fs/promises";
 
 import config from "@observatory/common/config";
 import logger from "@observatory/common/observability/logger";
@@ -167,6 +167,12 @@ export class StorageFilesService {
       return await this.readFile(path);
     }
 
+    const noVideoPath = this.getNoVideoPath(path);
+
+    if (await this.isFileExists(noVideoPath)) {
+      return await this.readFile(noVideoPath);
+    }
+
     const shadowCopyPath = `${path}.${crypto.randomUUID()}.temp`;
 
     const osz = new AdmZip(path);
@@ -183,12 +189,13 @@ export class StorageFilesService {
     }
 
     osz.writeZip(shadowCopyPath);
+    await rename(shadowCopyPath, noVideoPath);
 
-    const file = await this.readFile(shadowCopyPath);
+    return await this.readFile(noVideoPath);
+  }
 
-    this.removeIfExists(shadowCopyPath);
-
-    return file;
+  private getNoVideoPath(path: string) {
+    return path.replace(/\.osz$/, "n.osz");
   }
 
   private async readFile(path: string): Promise<ArrayBuffer> {
@@ -231,6 +238,10 @@ export class StorageFilesService {
       this.log(`Removing "${beatmapset.path}" ...`, "warn");
 
       await this.removeIfExists(beatmapset.path);
+
+      if (beatmapset.path.endsWith(".osz") && !beatmapset.path.endsWith("n.osz")) {
+        await this.removeIfExists(this.getNoVideoPath(beatmapset.path));
+      }
     }
 
     await deleteBeatmapsetsFiles(beatmapsetsForRemoval);
