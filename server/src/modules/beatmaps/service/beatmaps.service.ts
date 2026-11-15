@@ -319,9 +319,6 @@ export class BeatmapsService {
   }
 
   private formatResultAsServerError<T>(result: ResultWithStatus<T>) {
-    const message = INTERNAL_ERROR_RESPONSE;
-    message.status = result.status;
-
-    return message;
+    return { ...INTERNAL_ERROR_RESPONSE, status: result.status };
   }
 }
