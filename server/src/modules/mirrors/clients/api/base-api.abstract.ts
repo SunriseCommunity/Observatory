@@ -224,14 +224,22 @@ export class BaseApi {
       ); // KB/s
     }
 
-    // Save request to database
-    createRequest({
-      ...data,
-      data: data.status !== 200 ? data.data : undefined,
-    });
+    this.saveRequest(data);
 
     // Log request to console
     logExternalRequest(data);
+  }
+
+  private async saveRequest(data: AxiosResponseLog) {
+    try {
+      await createRequest({
+        ...data,
+        data: data.status !== 200 ? data.data : undefined,
+      });
+    }
+    catch (error) {
+      logger.error({ err: error }, "BaseApi: failed to save request");
+    }
   }
 
   private createUrl(endpoint: string): string {

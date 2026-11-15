@@ -131,7 +131,12 @@ export class StorageService {
     //   });
     // }
 
-    await this.cacheService.insertSearchResult(ctx, result);
+    try {
+      await this.cacheService.insertSearchResult(ctx, result);
+    }
+    catch (error) {
+      logger.error({ err: error }, "StorageManager: insertSearchResult failed");
+    }
   }
 
   async getOsuBeatmapFile(
@@ -146,16 +151,21 @@ export class StorageService {
     beatmap: Beatmap | null,
     ctx: GetBeatmapOptions,
   ): Promise<void> {
-    if (beatmap) {
-      await createBeatmap(beatmap);
-      await this.cacheService.insertBeatmap(beatmap);
+    try {
+      if (beatmap) {
+        await createBeatmap(beatmap);
+        await this.cacheService.insertBeatmap(beatmap);
 
-      if (ctx.beatmapFilename) {
-        await this.cacheService.insertBeatmapByFilename(beatmap, ctx.beatmapFilename);
+        if (ctx.beatmapFilename) {
+          await this.cacheService.insertBeatmapByFilename(beatmap, ctx.beatmapFilename);
+        }
+      }
+      else {
+        await this.cacheService.insertEmptyBeatmap(ctx);
       }
     }
-    else {
-      await this.cacheService.insertEmptyBeatmap(ctx);
+    catch (error) {
+      logger.error({ err: error }, "StorageManager: insertBeatmap failed");
     }
   }
 
@@ -163,12 +173,17 @@ export class StorageService {
     beatmapset: Beatmapset | null,
     ctx: GetBeatmapSetOptions,
   ): Promise<void> {
-    if (beatmapset) {
-      await createBeatmapset(beatmapset);
-      await this.cacheService.insertBeatmapset(beatmapset);
+    try {
+      if (beatmapset) {
+        await createBeatmapset(beatmapset);
+        await this.cacheService.insertBeatmapset(beatmapset);
+      }
+      else {
+        await this.cacheService.insertEmptyBeatmapset(ctx);
+      }
     }
-    else {
-      await this.cacheService.insertEmptyBeatmapset(ctx);
+    catch (error) {
+      logger.error({ err: error }, "StorageManager: insertBeatmapset failed");
     }
   }
 
@@ -176,14 +191,24 @@ export class StorageService {
     file: ArrayBuffer | null,
     ctx: DownloadBeatmapSetOptions,
   ): Promise<void> {
-    await this.filesService.insertBeatmapsetFile(file, ctx);
+    try {
+      await this.filesService.insertBeatmapsetFile(file, ctx);
+    }
+    catch (error) {
+      logger.error({ err: error }, "StorageManager: insertBeatmapsetFile failed");
+    }
   }
 
   async insertBeatmapOsuFile(
     file: ArrayBuffer | null,
     ctx: DownloadOsuBeatmap,
   ): Promise<void> {
-    await this.filesService.insertBeatmapOsuFile(file, ctx);
+    try {
+      await this.filesService.insertBeatmapOsuFile(file, ctx);
+    }
+    catch (error) {
+      logger.error({ err: error }, "StorageManager: insertBeatmapOsuFile failed");
+    }
   }
 
   public async getStorageStatistics() {
