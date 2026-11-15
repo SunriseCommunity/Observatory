@@ -1,6 +1,12 @@
 import type { GameModBitwise } from "@observatory/common/types/gameMod";
 import type * as rosu from "rosu-pp-js";
 
+type WasmMethods = "free" | "toJSON" | "toString";
+
+export type PerformanceResult = Omit<rosu.PerformanceAttributes, WasmMethods | "difficulty"> & {
+  difficulty: Omit<rosu.DifficultyAttributes, WasmMethods>;
+};
+
 export interface Score extends ScoreShort {
   legacyTotalScore?: number;
   n300?: number;

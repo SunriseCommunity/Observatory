@@ -3,14 +3,41 @@ import crypto from "node:crypto";
 import { GameModBitwise } from "@observatory/common/types/gameMod";
 import * as rosu from "rosu-pp-js";
 
-import type { Score, ScoreShort } from "../model/calculator.model";
+import type { PerformanceResult, Score, ScoreShort } from "../model/calculator.model";
+
+// rosu-pp-js only frees these through a FinalizationRegistry once the GC collects their small JS wrappers, so WASM memory
+// settled near 20 MB under load instead of 2.4 MB. They are serialized before free() because a freed object cannot be
+// serialized later, and the difficulty getter returns a fresh copy on every read, so that copy is freed as well.
+function calculateAndFree(performance: rosu.Performance, beatmap: rosu.Beatmap): PerformanceResult {
+  try {
+    const attributes = performance.calculate(beatmap);
+
+    try {
+      const json = attributes.toJSON() as Omit<PerformanceResult, "difficulty"> & { difficulty: rosu.DifficultyAttributes };
+      const { difficulty } = json;
+
+      try {
+        return { ...json, difficulty: difficulty.toJSON() as PerformanceResult["difficulty"] };
+      }
+      finally {
+        difficulty.free();
+      }
+    }
+    finally {
+      attributes.free();
+    }
+  }
+  finally {
+    performance.free();
+  }
+}
 
 export class PerformanceHelper {
   public CalculateBeatmapPerfomance(
     beatmap: rosu.Beatmap,
     scores: ScoreShort[],
   ) {
-    const results: rosu.PerformanceAttributes[] = [];
+    const results: PerformanceResult[] = [];
 
     for (const score of scores) {
       if (score.mode !== undefined && beatmap.mode !== score.mode) {
@@ -27,9 +54,9 @@ export class PerformanceHelper {
           ? rosu.HitResultPriority.WorstCase
           : rosu.HitResultPriority.BestCase,
         hitresultGenerators: Array.from({ length: 4 }, () => rosu.HitResultGenerator.Closest),
-      }).calculate(beatmap);
+      });
 
-      results.push(performance);
+      results.push(calculateAndFree(performance, beatmap));
     }
 
     return results;
@@ -67,9 +94,9 @@ export class PerformanceHelper {
       hitresultPriority,
       lazer: score.isLazer,
       hitresultGenerators: Array.from({ length: 4 }, () => rosu.HitResultGenerator.Closest),
-    }).calculate(beatmap);
+    });
 
-    return performance;
+    return calculateAndFree(performance, beatmap);
   }
 
   public ConvertBufferToBeatmap(buffer: ArrayBuffer) {

@@ -43,14 +43,15 @@ export class CalculatorService {
       return beatmap;
     }
 
-    const results = this.calculatorService.CalculateBeatmapPerfomance(
-      beatmap,
-      scores,
-    );
-
-    beatmap.free();
-
-    return results;
+    try {
+      return this.calculatorService.CalculateBeatmapPerfomance(
+        beatmap,
+        scores,
+      );
+    }
+    finally {
+      beatmap.free();
+    }
   }
 
   public async CalculateScorePerformance(
@@ -63,14 +64,15 @@ export class CalculatorService {
       return beatmap;
     }
 
-    const result = this.calculatorService.CalculateScorePerfomance(
-      beatmap,
-      score,
-    );
-
-    beatmap.free();
-
-    return result;
+    try {
+      return this.calculatorService.CalculateScorePerfomance(
+        beatmap,
+        score,
+      );
+    }
+    finally {
+      beatmap.free();
+    }
   }
 
   private async GetBeatmapHash(beatmapId: number, beatmapHash?: string) {
