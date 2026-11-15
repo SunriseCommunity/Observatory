@@ -29,6 +29,10 @@ class DbConnection {
     return DbConnection.instance;
   }
 
+  public close() {
+    return this.pool.end();
+  }
+
   public getClient(): DB {
     return drizzle(this.pool, {
       schema,
@@ -38,3 +42,4 @@ class DbConnection {
 
 const dbConnection = DbConnection.getInstance();
 export const db = dbConnection.getClient();
+export const closeDatabase = () => dbConnection.close();
