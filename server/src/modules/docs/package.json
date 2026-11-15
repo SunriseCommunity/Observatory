@@ -1,0 +1,8 @@
+{
+  "name": "@observatory/docs",
+  "type": "module",
+  "private": true,
+  "exports": {
+    "./http": "./docs.controller.ts"
+  }
+}

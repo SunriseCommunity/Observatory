@@ -1,13 +1,12 @@
 import path from "node:path";
 
+import { db } from "@observatory/common/database/client";
+import { RedisInstance } from "@observatory/common/redis/redis";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
-
-import { db } from "../src/database/client";
-import { RedisInstance } from "../src/plugins/redisInstance";
 
 const migrationPath = path.join(
   process.cwd(),
-  "server/src/database/migrations",
+  "server/src/common/database/migrations",
 );
 
 try {

@@ -1,0 +1,12 @@
+{
+  "name": "@observatory/stats",
+  "type": "module",
+  "private": true,
+  "exports": {
+    "./http": "./stats.controller.ts"
+  },
+  "dependencies": {
+    "@observatory/beatmaps": "workspace:*",
+    "@observatory/common": "workspace:*"
+  }
+}

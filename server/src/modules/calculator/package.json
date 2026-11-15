@@ -1,0 +1,12 @@
+{
+  "name": "@observatory/calculator",
+  "type": "module",
+  "private": true,
+  "exports": {
+    "./http": "./calculator.controller.ts"
+  },
+  "dependencies": {
+    "@observatory/beatmaps": "workspace:*",
+    "@observatory/common": "workspace:*"
+  }
+}

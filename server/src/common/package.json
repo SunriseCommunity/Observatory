@@ -1,0 +1,8 @@
+{
+  "name": "@observatory/common",
+  "type": "module",
+  "private": true,
+  "exports": {
+    "./*": "./*.ts"
+  }
+}

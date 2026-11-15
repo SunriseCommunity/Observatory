@@ -1,0 +1,14 @@
+{
+  "name": "@observatory/beatmaps",
+  "type": "module",
+  "private": true,
+  "exports": {
+    ".": "./index.ts",
+    "./http": "./beatmaps.controller.ts"
+  },
+  "dependencies": {
+    "@observatory/common": "workspace:*",
+    "@observatory/mirrors": "workspace:*",
+    "@observatory/storage": "workspace:*"
+  }
+}

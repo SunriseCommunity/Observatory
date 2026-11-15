@@ -1,15 +1,31 @@
+import { beatmapsController, downloadController, osuController } from "@observatory/beatmaps/http";
+import { calculatorController } from "@observatory/calculator/http";
+import { corsPlugin } from "@observatory/common/http/cors.plugin";
+import { ipPlugin } from "@observatory/common/http/ip.plugin";
+import { ratelimitPlugin } from "@observatory/common/http/ratelimit.plugin";
+import { requestIdPlugin } from "@observatory/common/http/request-id.plugin";
+import { serverTimingPlugin } from "@observatory/common/http/server-timing.plugin";
+import { loggerPlugin } from "@observatory/common/observability/logger.plugin";
+import { docsPlugin, faviconController, rootController } from "@observatory/docs/http";
+import { statsController } from "@observatory/stats/http";
 import { Elysia } from "elysia";
 
-import config from "./config";
-import setup from "./setup";
-import log from "./utils/logger";
+const api = new Elysia({ name: "setup" })
+  .use(corsPlugin)
+  .use(ipPlugin)
+  .use(requestIdPlugin)
+  .use(ratelimitPlugin)
+  .use(serverTimingPlugin)
+  .use(loggerPlugin)
+  .use(rootController)
+  .use(statsController)
+  .use(beatmapsController)
+  .use(calculatorController)
+  .use(downloadController)
+  .use(osuController)
+  .use(docsPlugin)
+  .use(faviconController);
 
-const port = config.PORT;
+export const app = new Elysia().use(api);
 
-const app = new Elysia()
-  .use(setup())
-  .listen({ port }, ({ hostname, port }) =>
-    log.info(`🔭 Observatory is running at http://${hostname}:${port}`));
-
-export { app };
 export type App = typeof app;

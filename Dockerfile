@@ -2,7 +2,9 @@ FROM oven/bun:latest
 
 WORKDIR /usr/src/app
 
-COPY package*.json bun.lockb* ./
+COPY package.json bun.lock bunfig.toml ./
+COPY server/src/common/ ./server/src/common/
+COPY server/src/modules/ ./server/src/modules/
 
 RUN bun install --frozen-lockfile
 
