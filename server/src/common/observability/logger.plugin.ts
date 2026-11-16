@@ -5,7 +5,6 @@ import logger, { logContext } from "./logger";
 
 const startedAt = new WeakMap<Request, number>();
 
-
 export function responseStatus(responseValue: unknown, set: Context["set"]): number {
   if (responseValue instanceof Response)
     return responseValue.status;

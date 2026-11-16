@@ -14,7 +14,7 @@ const pool = new Pool({
   max: 10,
 });
 
-pool.on("error", (err) => logger.error({ err }, "postgres idle client error"));
+pool.on("error", err => logger.error({ err }, "postgres idle client error"));
 
 export const db = drizzle(pool, { schema });
 export const closeDatabase = () => pool.end();

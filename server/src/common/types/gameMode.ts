@@ -27,5 +27,5 @@ export enum GameModeInt {
   /** Osu!catch */
   OSU_CATCH = 2,
   /** Osu!mania */
-  OSU_MANIA = 3
+  OSU_MANIA = 3,
 }
