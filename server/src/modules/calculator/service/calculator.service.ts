@@ -1,25 +1,10 @@
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-
 import type { BeatmapsService } from "@observatory/beatmaps";
 import { HttpStatusCode } from "axios";
 import { Beatmap } from "rosu-pp-js";
+import rosuPackage from "rosu-pp-js/package.json";
 
 import { PerformanceHelper } from "../helper/performance.helper";
 import type { Score, ScoreShort } from "../model/calculator.model";
-
-const rosuPackage: unknown = JSON.parse(
-  readFileSync(fileURLToPath(import.meta.resolve("rosu-pp-js/package.json")), "utf8"),
-);
-
-if (
-  typeof rosuPackage !== "object"
-  || rosuPackage === null
-  || !("version" in rosuPackage)
-  || typeof rosuPackage.version !== "string"
-) {
-  throw new Error("Failed to read rosu-pp-js version from its package.json");
-}
 
 const ROSU_VERSION = rosuPackage.version;
 
