@@ -1,264 +1,123 @@
 import config from "@observatory/common/config";
+import { recordExternalApiResponse } from "@observatory/common/observability/external-api-metrics";
 import logger from "@observatory/common/observability/logger";
-import type { Axios, AxiosRequestConfig, AxiosResponse } from "axios";
-import { AxiosError } from "axios";
+import { SpanKind, SpanStatusCode, trace } from "@opentelemetry/api";
+import type { AxiosInstance, AxiosRequestConfig, AxiosResponse } from "axios";
+import { isAxiosError } from "axios";
 
 import { createRequest } from "../../repository/requests.repository";
-import type { AxiosResponseLog, BaseApiOptions } from "./base-api.types";
+import type { BaseApiOptions } from "./base-api.types";
 
-function logExternalRequest(data: AxiosResponseLog) {
-  const level
-    = data.status < 400 ? "info" : data.status < 500 ? "warn" : "error";
-
-  logger[level]({
-    axios: {
-      ...data,
-      data: config.IsDebug || level !== "info" ? data : undefined,
-    },
-  });
+/** Turns "api/v2/b/123?x=1" into "api/v2/b/:id" so metrics and span names stay low-cardinality. */
+export function routeTemplate(endpoint: string): string {
+  return endpoint
+    .split("?")[0]
+    .split("/")
+    .map(segment => (/^\d+n?$|^[a-f0-9]{32}$/i.test(segment) ? ":id" : segment))
+    .join("/");
 }
 
 export class BaseApi {
+  readonly mirror: string;
+
   constructor(
-    private readonly axios: Axios,
+    private readonly axios: AxiosInstance,
     private readonly config: AxiosRequestConfig,
   ) {
-    axios.interceptors.request.use((config) => {
-      config.headers["request-startTime"] = Date.now();
-      return config;
-    });
+    this.mirror = new URL(config.baseURL ?? "http://localhost").host;
+  }
 
-    axios.interceptors.response.use((response) => {
-      const currentTime = Date.now();
-      const startTime = response.config.headers["request-startTime"];
-      response.headers["request-duration"] = currentTime - startTime;
+  public get<Q>(endpoint: string, options?: BaseApiOptions) {
+    return this.request<Q>("get", endpoint, options);
+  }
+
+  public post<Q, B = unknown>(endpoint: string, options?: BaseApiOptions<B>) {
+    return this.request<Q>("post", endpoint, options);
+  }
+
+  private async request<Q>(
+    method: "get" | "post",
+    endpoint: string,
+    options?: BaseApiOptions,
+  ): Promise<AxiosResponse<Q> | null> {
+    if (config.IsAutomatedTesting) {
+      throw new Error("Please mock the API request for automated testing");
+    }
+
+    const url = `${this.config.baseURL}/${endpoint}`;
+    const route = routeTemplate(endpoint);
+
+    // Look the tracer up per call: this module loads before the SDK starts, and a tracer taken then never records.
+    return trace.getTracer("mirrors").startActiveSpan(`${method.toUpperCase()} ${this.mirror}/${route}`, {
+      kind: SpanKind.CLIENT,
+      attributes: {
+        "http.request.method": method.toUpperCase(),
+        "server.address": this.mirror,
+        "url.full": url,
+      },
+    }, async (span) => {
+      const startedAt = performance.now();
+      let response: AxiosResponse<Q> | null = null;
+      let error: string | undefined;
+
+      try {
+        response = await this.axios.request<Q>({
+          ...this.config,
+          ...options?.config,
+          method,
+          url,
+          data: options?.body,
+        });
+      }
+      catch (e: unknown) {
+        if (isAxiosError<Q>(e) && e.response) {
+          response = e.response;
+        }
+        else {
+          // Only the message: an AxiosError serializes its request config, Bancho credentials included.
+          error = e instanceof Error ? e.message : String(e);
+        }
+      }
+
+      const latency = Math.round(performance.now() - startedAt);
+      recordExternalApiResponse(this.mirror, route, method.toUpperCase(), response?.status ?? 0, latency / 1000);
+
+      if (response) {
+        span.setAttribute("http.response.status_code", response.status);
+        if (response.status >= 500)
+          span.setStatus({ code: SpanStatusCode.ERROR });
+      }
+      else {
+        span.setStatus({ code: SpanStatusCode.ERROR, message: error });
+        logger.warn({ mirror: this.mirror, method, endpoint, duration_ms: latency, err: error }, "Mirror request got no response");
+      }
+      span.end();
+
+      const isDownload = response?.config.responseType === "arraybuffer";
+      const bytes = isDownload ? (response?.data as ArrayBuffer | undefined)?.byteLength ?? 0 : 0;
+      const errorBody: unknown = response && response.status !== 200 ? response.data : undefined;
+
+      this.saveRequest({
+        baseUrl: this.config.baseURL ?? "localhost",
+        url,
+        method,
+        status: response?.status ?? 500,
+        latency,
+        contentType: response ? response.headers["content-type"]?.split(";")[0] : null,
+        downloadSpeed: isDownload ? Math.round(bytes / 1024 / (latency / 1000)) : undefined,
+        data: error ?? (typeof errorBody === "string" || errorBody == null ? errorBody : JSON.stringify(errorBody)),
+      });
+
       return response;
     });
   }
 
-  private throwIfAutomatedTesting() {
-    if (config.IsAutomatedTesting) {
-      throw new Error(
-        "Please mock the API request for automated testing",
-      );
-    }
-  }
-
-  public async get<
-    Q,
-    B extends Record<string, never> = Record<string, never>,
-  >(endpoint: string,
-    options?: BaseApiOptions<B>,
-  ) {
-    const formedUrl = this.createUrl(endpoint);
-    const formedUrlWithAttachedParams = this.attachParams(
-      formedUrl,
-      options?.body,
-    );
-    const formedConfig = this.formConfig(options?.config);
-
-    this.throwIfAutomatedTesting();
-
+  private async saveRequest(data: Parameters<typeof createRequest>[0]) {
     try {
-      const res = await this.axios.get<Q>(
-        formedUrlWithAttachedParams,
-        formedConfig,
-      );
-
-      this.handleResponse(res);
-      return res;
-    }
-    catch (e: unknown) {
-      if (e instanceof AxiosError && e.response) {
-        this.handleResponse(e.response);
-        return e.response as AxiosResponse<Q>;
-      }
-      this.handleResponse(e);
-      return null;
-    }
-  }
-
-  public async post<Q, B extends Record<string, any>>(
-    endpoint: string,
-    options?: BaseApiOptions<B>,
-  ) {
-    const formedUrl = this.createUrl(endpoint);
-    const formedConfig = this.formConfig(options?.config);
-
-    this.throwIfAutomatedTesting();
-
-    try {
-      const res = await this.axios.post<Q>(
-        formedUrl,
-        options?.body,
-        formedConfig,
-      );
-
-      this.handleResponse(res);
-      return res;
-    }
-    catch (e: unknown) {
-      if (e instanceof AxiosError && e.response) {
-        this.handleResponse(e.response);
-        return e.response as AxiosResponse<Q>;
-      }
-      this.handleResponse(e);
-      return null;
-    }
-  }
-
-  public async put<Q, B extends Record<string, any>>(
-    endpoint: string,
-    options?: BaseApiOptions<B>,
-  ) {
-    const formedUrl = this.createUrl(endpoint);
-    const formedConfig = this.formConfig(options?.config);
-
-    this.throwIfAutomatedTesting();
-
-    try {
-      const res = await this.axios.put<Q>(
-        formedUrl,
-        options?.body,
-        formedConfig,
-      );
-
-      this.handleResponse(res);
-      return res;
-    }
-    catch (e: unknown) {
-      if (e instanceof AxiosError && e.response) {
-        this.handleResponse(e.response);
-        return e.response as AxiosResponse<Q>;
-      }
-      this.handleResponse(e);
-      return null;
-    }
-  }
-
-  public async patch<Q, B extends Record<string, any>>(
-    endpoint: string,
-    options?: BaseApiOptions<B>,
-  ) {
-    const formedUrl = this.createUrl(endpoint);
-    const formedConfig = this.formConfig(options?.config);
-
-    this.throwIfAutomatedTesting();
-
-    try {
-      const res = await this.axios.patch<Q>(
-        formedUrl,
-        options?.body,
-        formedConfig,
-      );
-
-      this.handleResponse(res);
-      return res;
-    }
-    catch (e: unknown) {
-      if (e instanceof AxiosError && e.response) {
-        this.handleResponse(e.response);
-        return e.response as AxiosResponse<Q>;
-      }
-      this.handleResponse(e);
-      return null;
-    }
-  }
-
-  public async delete<Q, B extends Record<string, any>>(
-    endpoint: string,
-    options?: BaseApiOptions<B>,
-  ) {
-    const formedUrl = this.createUrl(endpoint);
-    const formedConfig = this.formConfig(options?.config);
-
-    this.throwIfAutomatedTesting();
-
-    try {
-      const res = await this.axios.delete<Q>(formedUrl, formedConfig);
-
-      this.handleResponse(res);
-      return res;
-    }
-    catch (e: unknown) {
-      if (e instanceof AxiosError && e.response) {
-        this.handleResponse(e.response);
-        return e.response as AxiosResponse<Q>;
-      }
-      this.handleResponse(e);
-      return null;
-    }
-  }
-
-  public get axiosConfig() {
-    return this.config;
-  }
-
-  private handleResponse(res: any) {
-    if (!res)
-      return;
-    const isAxiosError = res instanceof AxiosError;
-
-    const data: AxiosResponseLog = {
-      status: isAxiosError ? 500 : res.status,
-      url: res.config.url,
-      baseUrl: this.config.baseURL ?? "localhost",
-      method: res.config.method,
-      latency: isAxiosError
-        ? -1
-        : (res.headers["request-duration"] ?? -1),
-      contentType: isAxiosError
-        ? "application/json"
-        : res.headers["content-type"]?.split(";")[0],
-      contentLength: isAxiosError
-        ? "-1"
-        : (res.headers.getContentLength() ?? "-1"),
-      data: isAxiosError ? res : res.data,
-    };
-
-    if (!isAxiosError && res.config.responseType === "arraybuffer") {
-      const downloadFileLength = res?.data?.byteLength || 0;
-
-      data.downloadSpeed = Math.round(
-        (downloadFileLength || 0) / 1024 / (data.latency / 1000),
-      ); // KB/s
-    }
-
-    this.saveRequest(data);
-
-    // Log request to console
-    logExternalRequest(data);
-  }
-
-  private async saveRequest(data: AxiosResponseLog) {
-    try {
-      await createRequest({
-        ...data,
-        data: data.status !== 200 ? data.data : undefined,
-      });
+      await createRequest(data);
     }
     catch (error) {
-      logger.error({ err: error }, "BaseApi: failed to save request");
+      logger.error({ err: error, mirror: this.mirror }, "BaseApi: failed to save request");
     }
-  }
-
-  private createUrl(endpoint: string): string {
-    return `${this.config.baseURL}/${endpoint}`;
-  }
-
-  private formConfig(config: AxiosRequestConfig = {}) {
-    return { ...this.config, ...config };
-  }
-
-  private attachParams(
-    url: string,
-    params: Record<string, string> | undefined,
-  ): string {
-    const formedSearchParams = new URLSearchParams(params ?? {});
-    const formedQuery = formedSearchParams.toString()
-      ? `?${formedSearchParams.toString()}`
-      : "";
-
-    return `${url}${formedQuery}`;
   }
 }
