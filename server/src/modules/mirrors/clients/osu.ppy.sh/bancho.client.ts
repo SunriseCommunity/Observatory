@@ -1,4 +1,3 @@
-import logger from "@observatory/common/observability/logger";
 import { BEATMAPS_SEARCH_MAX_RESULTS_LIMIT } from "@observatory/common/types/api";
 import type { Beatmap, Beatmapset } from "@observatory/common/types/beatmap";
 import type {
@@ -11,8 +10,9 @@ import type {
   SearchBeatmapsetsOptions,
 } from "@observatory/common/types/beatmap-query";
 import { RankStatus, RankStatusInt } from "@observatory/common/types/rankStatus";
-import qs from "qs";
+import type { AxiosRequestConfig } from "axios";
 
+import { convertBanchoBeatmap, convertBanchoBeatmapset } from "../../helper/convert.helper";
 import { BaseClient } from "../base-client.abstract";
 import { ClientAbilities } from "../base-client.types";
 import { BanchoService } from "./bancho-client.service";
@@ -20,6 +20,13 @@ import type { BanchoBeatmap, BanchoBeatmapset, BanchoBeatmapsetSearchResult } fr
 
 const BANCHO_SEARCH_PAGE_SIZE = 50;
 const BANCHO_SEARCH_PAGES_LIMIT = 200;
+
+// TODO: This is expected behaviour of catboy, so sunrise just went with it, but maybe we should consider adding a separate parameter for sorting instead of overloading the query parameter?
+const SORT_QUERIES = new Map<string, string | undefined>([
+  ["Newest", undefined], // Default one
+  ["Top Rated", "rating_desc"],
+  ["Most Played", "plays_desc"],
+]);
 
 export class BanchoClient extends BaseClient {
   private readonly banchoService = new BanchoService(this.baseApi);
@@ -63,50 +70,70 @@ export class BanchoClient extends BaseClient {
         ],
       },
     );
-
-    logger.info("BanchoClient: initialized");
   }
 
   async getBeatmapSet(
     ctx: GetBeatmapSetOptions,
   ): Promise<ResultWithStatus<Beatmapset>> {
-    if (ctx.beatmapSetId) {
-      return await this.getBeatmapSetById(ctx.beatmapSetId);
+    if (!ctx.beatmapSetId) {
+      throw new Error("Invalid arguments");
     }
 
-    throw new Error("Invalid arguments");
+    const result = await this.authorizedGet<BanchoBeatmapset>(
+      `api/v2/beatmapsets/${ctx.beatmapSetId}`,
+    );
+
+    if (!result || result.status !== 200 || !result.data) {
+      return { result: null, status: result?.status ?? 500 };
+    }
+
+    return {
+      result: convertBanchoBeatmapset(result.data),
+      status: result.status,
+    };
   }
 
   async getBeatmap(
     ctx: GetBeatmapOptions,
   ): Promise<ResultWithStatus<Beatmap>> {
     if (ctx.beatmapId) {
-      return await this.getBeatmapById(ctx.beatmapId);
+      return await this.getBeatmapFrom(`api/v2/beatmaps/${ctx.beatmapId}`);
     }
-    else if (ctx.beatmapHash) {
-      return await this.getBeatmapByHash(ctx.beatmapHash);
+    if (ctx.beatmapHash) {
+      return await this.getBeatmapFrom(`api/v2/beatmaps/lookup?checksum=${ctx.beatmapHash}`);
     }
-    else if (ctx.beatmapFilename) {
-      return await this.getBeatmapByFilename(ctx.beatmapFilename);
+    if (ctx.beatmapFilename) {
+      return await this.getBeatmapFrom(`api/v2/beatmaps/lookup`, {
+        params: {
+          filename: ctx.beatmapFilename,
+        },
+      });
     }
 
     throw new Error("Invalid arguments");
   }
 
+  private async getBeatmapFrom(
+    endpoint: string,
+    config?: AxiosRequestConfig,
+  ): Promise<ResultWithStatus<Beatmap>> {
+    const result = await this.authorizedGet<BanchoBeatmap>(endpoint, config);
+
+    if (!result || result.status !== 200 || !result.data) {
+      return { result: null, status: result?.status ?? 500 };
+    }
+
+    return {
+      result: convertBanchoBeatmap(result.data),
+      status: result.status,
+    };
+  }
+
   async getBeatmaps(
     ctx: GetBeatmapsOptions,
   ): Promise<ResultWithStatus<Beatmap[]>> {
-    const { ids } = ctx;
-
-    const result = await this.api.get<{ beatmaps: BanchoBeatmap[] }>(
-            `api/v2/beatmaps?${ids.map(id => `ids[]=${id}`).join("&")}`,
-            {
-              config: {
-                headers: {
-                  Authorization: `Bearer ${await this.osuApiKey}`,
-                },
-              },
-            },
+    const result = await this.authorizedGet<{ beatmaps: BanchoBeatmap[] }>(
+      `api/v2/beatmaps?${ctx.ids.map(id => `ids[]=${id}`).join("&")}`,
     );
 
     if (!result || result.status !== 200) {
@@ -114,9 +141,7 @@ export class BanchoClient extends BaseClient {
     }
 
     return {
-      result: result.data?.beatmaps?.map((b: BanchoBeatmap) =>
-        this.convertService.convertBeatmap(b),
-      ),
+      result: result.data?.beatmaps?.map(convertBanchoBeatmap),
       status: result.status,
     };
   }
@@ -124,17 +149,8 @@ export class BanchoClient extends BaseClient {
   async getBeatmapsetsByBeatmapIds(
     ctx: GetBeatmapsetsByBeatmapIdsOptions,
   ): Promise<ResultWithStatus<Beatmapset[]>> {
-    const { beatmapIds } = ctx;
-
-    const result = await this.api.get<{ beatmaps: BanchoBeatmap[] }>(
-            `api/v2/beatmaps?${beatmapIds.map(id => `ids[]=${id}`).join("&")}`,
-            {
-              config: {
-                headers: {
-                  Authorization: `Bearer ${await this.osuApiKey}`,
-                },
-              },
-            },
+    const result = await this.authorizedGet<{ beatmaps: BanchoBeatmap[] }>(
+      `api/v2/beatmaps?${ctx.beatmapIds.map(id => `ids[]=${id}`).join("&")}`,
     );
 
     if (!result || result.status !== 200) {
@@ -142,8 +158,8 @@ export class BanchoClient extends BaseClient {
     }
 
     return {
-      result: result.data?.beatmaps?.map((b: BanchoBeatmap) =>
-        this.convertService.convertBeatmapset({
+      result: result.data?.beatmaps?.map(b =>
+        convertBanchoBeatmapset({
           ...b.beatmapset,
           ...(b.convert
             ? { converts: [b.convert] }
@@ -183,41 +199,19 @@ export class BanchoClient extends BaseClient {
       return { result: null, status: 500 }; // Bancho API has a limit of 200 pages
     }
 
-    let sort_by = undefined;
+    // The fallback mirror must still see the callers query, so we don't modify ctx directly.
+    const isSortQuery = ctx.query !== undefined && SORT_QUERIES.has(ctx.query);
+    const params = {
+      q: isSortQuery ? undefined : ctx.query,
+      sort: ctx.query === undefined ? undefined : SORT_QUERIES.get(ctx.query),
+      s: ctx.status?.map(status => this.mapStatusToRankStatus(status).toString()),
+      m: ctx.mode,
+      nsfw: true, // TODO: Maybe make this configurable?
+    };
 
-    // TODO: This is expected behaviour of catboy, so sunrise just went with it, but maybe we should consider adding a separate parameter for sorting instead of overloading the query parameter?
-    if (ctx.query && ["Newest", "Top Rated", "Most Played"].includes(ctx.query)) {
-      switch (ctx.query) {
-        case "Newest":
-          // Default one
-          break;
-        case "Top Rated":
-          sort_by = "rating_desc";
-          break;
-        case "Most Played":
-          sort_by = "plays_desc";
-          break;
-      }
-
-      ctx.query = undefined;
-    }
-
-    const result = await this.api.get<BanchoBeatmapsetSearchResult>(`api/v2/beatmapsets/search`, {
-      config: {
-        headers: {
-          Authorization: `Bearer ${await this.osuApiKey}`,
-        },
-        params: {
-          q: ctx.query,
-          sort: sort_by,
-          page,
-          s: ctx.status ? ctx.status.map(status => this.mapStatusToRankStatus(status).toString()) : undefined,
-          m: ctx.mode,
-          nsfw: true, // TODO: Maybe make this configurable?
-        },
-        paramsSerializer: params =>
-          qs.stringify(params, { indices: false }),
-      },
+    const result = await this.authorizedGet<BanchoBeatmapsetSearchResult>(`api/v2/beatmapsets/search`, {
+      params: { ...params, page },
+      paramsSerializer: { indexes: null },
     });
 
     if (!result || result.status !== 200 || !result.data) {
@@ -232,21 +226,9 @@ export class BanchoClient extends BaseClient {
       }
 
       if (ctx.limit > BANCHO_SEARCH_PAGE_SIZE && page < BANCHO_SEARCH_PAGES_LIMIT) {
-        const resultForAdditionalBeatmaps = await this.api.get<BanchoBeatmapsetSearchResult>(`api/v2/beatmapsets/search`, {
-          config: {
-            headers: {
-              Authorization: `Bearer ${await this.osuApiKey}`,
-            },
-            params: {
-              q: ctx.query,
-              page: page + 1,
-              s: ctx.status ? ctx.status.map(status => this.mapStatusToRankStatus(status).toString()) : undefined,
-              m: ctx.mode,
-              nsfw: true, // TODO: Maybe make this configurable?
-            },
-            paramsSerializer: params =>
-              qs.stringify(params, { indices: false }),
-          },
+        const resultForAdditionalBeatmaps = await this.authorizedGet<BanchoBeatmapsetSearchResult>(`api/v2/beatmapsets/search`, {
+          params: { ...params, page: page + 1 },
+          paramsSerializer: { indexes: null },
         });
 
         if (resultForAdditionalBeatmaps && resultForAdditionalBeatmaps.status === 200 && resultForAdditionalBeatmaps.data) {
@@ -256,11 +238,20 @@ export class BanchoClient extends BaseClient {
     }
 
     return {
-      result: beatmapsets.map((b: BanchoBeatmapset) =>
-        this.convertService.convertBeatmapset(b),
-      ),
+      result: beatmapsets.map(convertBanchoBeatmapset),
       status: result.status,
     };
+  }
+
+  private async authorizedGet<T>(endpoint: string, config?: AxiosRequestConfig) {
+    return this.api.get<T>(endpoint, {
+      config: {
+        ...config,
+        headers: {
+          Authorization: `Bearer ${await this.banchoService.getBanchoClientToken()}`,
+        },
+      },
+    });
   }
 
   private mapStatusToRankStatus(status: RankStatusInt): RankStatus {
@@ -282,102 +273,5 @@ export class BanchoClient extends BaseClient {
       default:
         return status satisfies never;
     }
-  }
-
-  private async getBeatmapSetById(
-    beatmapSetId: number,
-  ): Promise<ResultWithStatus<Beatmapset>> {
-    const result = await this.api.get<BanchoBeatmapset>(
-            `api/v2/beatmapsets/${beatmapSetId}`,
-            {
-              config: {
-                headers: {
-                  Authorization: `Bearer ${await this.osuApiKey}`,
-                },
-              },
-            },
-    );
-
-    if (!result || result.status !== 200 || !result.data) {
-      return { result: null, status: result?.status ?? 500 };
-    }
-
-    return {
-      result: this.convertService.convertBeatmapset(result.data),
-      status: result.status,
-    };
-  }
-
-  private async getBeatmapById(
-    beatmapId: number,
-  ): Promise<ResultWithStatus<Beatmap>> {
-    const result = await this.api.get<BanchoBeatmap>(
-            `api/v2/beatmaps/${beatmapId}`,
-            {
-              config: {
-                headers: {
-                  Authorization: `Bearer ${await this.osuApiKey}`,
-                },
-              },
-            },
-    );
-
-    if (!result || result.status !== 200 || !result.data) {
-      return { result: null, status: result?.status ?? 500 };
-    }
-
-    return {
-      result: this.convertService.convertBeatmap(result.data),
-      status: result.status,
-    };
-  }
-
-  private async getBeatmapByHash(
-    beatmapHash: string,
-  ): Promise<ResultWithStatus<Beatmap>> {
-    const result = await this.api.get<BanchoBeatmap>(`api/v2/beatmaps/lookup?checksum=${beatmapHash}`, {
-      config: {
-        headers: {
-          Authorization: `Bearer ${await this.osuApiKey}`,
-        },
-      },
-    });
-
-    if (!result || result.status !== 200 || !result.data) {
-      return { result: null, status: result?.status ?? 500 };
-    }
-
-    return {
-      result: this.convertService.convertBeatmap(result.data),
-      status: result.status,
-    };
-  }
-
-  private async getBeatmapByFilename(
-    beatmapHash: string,
-  ): Promise<ResultWithStatus<Beatmap>> {
-    const result = await this.api.get<BanchoBeatmap>(`api/v2/beatmaps/lookup`, {
-      config: {
-        headers: {
-          Authorization: `Bearer ${await this.osuApiKey}`,
-        },
-        params: {
-          filename: beatmapHash,
-        },
-      },
-    });
-
-    if (!result || result.status !== 200 || !result.data) {
-      return { result: null, status: result?.status ?? 500 };
-    }
-
-    return {
-      result: this.convertService.convertBeatmap(result.data),
-      status: result.status,
-    };
-  }
-
-  private get osuApiKey() {
-    return this.banchoService.getBanchoClientToken();
   }
 }

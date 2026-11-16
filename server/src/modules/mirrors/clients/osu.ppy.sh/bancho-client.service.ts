@@ -1,4 +1,5 @@
 import config from "@observatory/common/config";
+import logger from "@observatory/common/observability/logger";
 
 import type { BaseApi } from "../api/base-api.abstract";
 import type {
@@ -7,9 +8,12 @@ import type {
   OsuApiCredentialsResponse,
 } from "./bancho-client.types";
 
+const TOKEN_REFRESH_MARGIN_MS = 60_000;
+
 export class BanchoService {
   private readonly api: BaseApi;
   private clientCredentials: OsuApiCredentials | null = null;
+  private pendingCredentials?: Promise<OsuApiCredentials>;
 
   constructor(api: BaseApi) {
     this.api = api;
@@ -18,15 +22,18 @@ export class BanchoService {
   async getBanchoClientToken(): Promise<string> {
     if (
       !this.clientCredentials
-      || this.clientCredentials.expires_on <= Date.now()
+      || this.clientCredentials.expires_on - TOKEN_REFRESH_MARGIN_MS <= Date.now()
     ) {
-      this.clientCredentials = await this._fetchBanchoClientToken();
+      this.pendingCredentials ??= this.fetchBanchoClientToken().finally(() => {
+        this.pendingCredentials = undefined;
+      });
+      this.clientCredentials = await this.pendingCredentials;
     }
 
     return this.clientCredentials.access_token;
   }
 
-  private async _fetchBanchoClientToken(): Promise<OsuApiCredentials> {
+  private async fetchBanchoClientToken(): Promise<OsuApiCredentials> {
     if (!config.BANCHO_CLIENT_ID || !config.BANCHO_CLIENT_SECRET) {
       throw new Error(
         "Requesting Bancho client token without client ID/secret",
@@ -34,9 +41,9 @@ export class BanchoService {
     }
 
     const result = await this.api.post<
-            OsuApiCredentialsResponse,
-            OsuApiCredentialsRequest
-        >("oauth/token", {
+      OsuApiCredentialsResponse,
+      OsuApiCredentialsRequest
+    >("oauth/token", {
       body: {
         client_id: config.BANCHO_CLIENT_ID,
         client_secret: config.BANCHO_CLIENT_SECRET,
@@ -47,13 +54,16 @@ export class BanchoService {
 
     if (!result || result.status !== 200 || !result.data) {
       throw new Error(
-        "BanchoService: Failed to fetch Bancho client token. Please check your client ID/secret",
+        `BanchoService: Failed to fetch Bancho client token (status ${result?.status ?? "none"}). Please check your client ID/secret`,
       );
     }
 
+    const expiresOn = Date.now() + result.data.expires_in * 1000;
+    logger.info({ mirror: this.api.mirror, expires_at: new Date(expiresOn).toISOString() }, "Bancho client token refreshed");
+
     return {
       ...result.data,
-      expires_on: Date.now() + result.data.expires_in * 1000,
+      expires_on: expiresOn,
     };
   }
 }
