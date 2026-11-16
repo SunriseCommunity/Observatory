@@ -16,10 +16,14 @@ services:
         ports:
             - ${PORT}:${PORT}
         depends_on:
-            - loki
-            - postgres
-            - redis
-            - grafana
+            loki:
+                condition: service_started
+            postgres:
+                condition: service_healthy
+            redis:
+                condition: service_started
+            grafana:
+                condition: service_started
         networks:
             - container_network
 
