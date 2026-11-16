@@ -7,6 +7,8 @@ services:
         volumes:
             - ./data:/usr/src/app/data
         restart: always
+        env_file:
+            - .env
         environment:
             NODE_ENV: production
             POSTGRES_HOST: postgres

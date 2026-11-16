@@ -5,6 +5,7 @@
   "private": true,
   "description": "Observatory API",
   "scripts": {
+    "build": "bun bundler.ts",
     "db:generate": "bun --bun drizzle-kit generate --config server/src/common/database/config.ts",
     "db:migration": "bun run server/src/common/database/migrate.ts",
     "db:push": "bun --bun drizzle-kit push --config server/src/common/database/config.ts",
@@ -57,6 +58,7 @@
     "@types/adm-zip": "^0.5.6",
     "@types/bun": "^1.3.4",
     "@types/pg": "^8.11.10",
+    "bun-plugin-pino": "1.5.0",
     "drizzle-kit": "^0.26.2",
     "eslint": "^9.39.2",
     "jiti": "^2.6.1",
