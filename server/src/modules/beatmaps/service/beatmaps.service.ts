@@ -7,31 +7,18 @@ import type {
   GetBeatmapSetOptions,
   GetBeatmapsetsByBeatmapIdsOptions,
   GetBeatmapsOptions,
-  ResultWithStatus,
   SearchBeatmapsetsOptions,
 } from "@observatory/common/types/beatmap-query";
-import type { MirrorsService } from "@observatory/mirrors";
-import type { StorageService } from "@observatory/storage";
+import { MirrorsHelper } from "@observatory/mirrors";
+import { StorageHelper } from "@observatory/storage";
 import { HttpStatusCode } from "axios";
 
+import { BeatmapsHelper, formatResultAsServerError } from "../helper/beatmaps.helper";
 import type { ServerResponse } from "../model/beatmaps.model";
 
-const INTERNAL_ERROR_RESPONSE = {
-  data: null,
-  status: HttpStatusCode.InternalServerError,
-  message:
-        "An unexpected error occurred. Please check the status code for more details and try again later. >.<",
-  source: null,
-};
-
-export class BeatmapsService {
-  constructor(
-    private readonly storageService: StorageService,
-    private readonly mirrorsService: MirrorsService,
-  ) {}
-
-  async getBeatmap(ctx: GetBeatmapOptions): Promise<ServerResponse<Beatmap>> {
-    const beatmap = await this.storageService.getBeatmap(ctx);
+export abstract class BeatmapsService {
+  static async getBeatmap(ctx: GetBeatmapOptions): Promise<ServerResponse<Beatmap>> {
+    const beatmap = await StorageHelper.getBeatmap(ctx);
     if (beatmap || beatmap === null) {
       return {
         data: beatmap,
@@ -41,14 +28,17 @@ export class BeatmapsService {
       };
     }
 
-    const result = await this.mirrorsService.getBeatmap(ctx);
+    const result = await MirrorsHelper.getBeatmap(ctx);
 
     if (result.status >= 500) {
-      return this.formatResultAsServerError(result);
+      return formatResultAsServerError(result);
     }
 
     // Allow caching partial mirror responses with placeholder fields for now.
-    this.storageService.insertBeatmap(result.result, ctx);
+    StorageHelper.insertBeatmap(result.result, ctx);
+    if (result.beatmapset) {
+      StorageHelper.insertBeatmapset(result.beatmapset, { beatmapSetId: result.beatmapset.id });
+    }
 
     return {
       data: result.result,
@@ -58,10 +48,10 @@ export class BeatmapsService {
     };
   }
 
-  async getBeatmapSet(
+  static async getBeatmapSet(
     ctx: GetBeatmapSetOptions,
   ): Promise<ServerResponse<Beatmapset>> {
-    const beatmapset = await this.storageService.getBeatmapSet(ctx);
+    const beatmapset = await StorageHelper.getBeatmapSet(ctx);
     if (beatmapset || beatmapset === null) {
       return {
         data: beatmapset,
@@ -73,13 +63,13 @@ export class BeatmapsService {
       };
     }
 
-    const result = await this.mirrorsService.getBeatmapSet(ctx);
+    const result = await MirrorsHelper.getBeatmapSet(ctx);
 
     if (result.status >= 500) {
-      return this.formatResultAsServerError(result);
+      return formatResultAsServerError(result);
     }
 
-    this.storageService.insertBeatmapset(result.result, ctx);
+    StorageHelper.insertBeatmapset(result.result, ctx);
 
     return {
       data: result.result,
@@ -89,10 +79,10 @@ export class BeatmapsService {
     };
   }
 
-  async searchBeatmapsets(
+  static async searchBeatmapsets(
     ctx: SearchBeatmapsetsOptions,
   ): Promise<ServerResponse<Beatmapset[]>> {
-    const searchResult = await this.storageService.getSearchResult(ctx);
+    const searchResult = await StorageHelper.getSearchResult(ctx);
 
     if (searchResult) {
       return {
@@ -103,14 +93,14 @@ export class BeatmapsService {
       };
     }
 
-    const result = await this.mirrorsService.searchBeatmapsets(ctx);
+    const result = await MirrorsHelper.searchBeatmapsets(ctx);
 
     if (result.status >= 500) {
-      return this.formatResultAsServerError(result);
+      return formatResultAsServerError(result);
     }
 
     if (result.result && result.status === 200) {
-      this.storageService.insertSearchResult(ctx, result.result);
+      StorageHelper.insertSearchResult(ctx, result.result);
     }
 
     return {
@@ -122,18 +112,18 @@ export class BeatmapsService {
     };
   }
 
-  async getBeatmaps(
+  static async getBeatmaps(
     ctx: GetBeatmapsOptions,
   ): Promise<ServerResponse<Beatmap[]>> {
-    const result = await this.mirrorsService.getBeatmaps(ctx);
+    const result = await MirrorsHelper.getBeatmaps(ctx);
 
     if (result.status >= 500) {
-      return this.formatResultAsServerError(result);
+      return formatResultAsServerError(result);
     }
 
     if (result.result && result.result.length > 0) {
       for (const beatmap of result.result) {
-        this.storageService.insertBeatmap(beatmap, {
+        StorageHelper.insertBeatmap(beatmap, {
           beatmapId: beatmap.id,
         });
       }
@@ -147,11 +137,11 @@ export class BeatmapsService {
     };
   }
 
-  async getBeatmapsetsByBeatmapIds(
+  static async getBeatmapsetsByBeatmapIds(
     ctx: GetBeatmapsetsByBeatmapIdsOptions,
   ): Promise<ServerResponse<Beatmapset[]>> {
     const beatmapsets
-      = await this.storageService.getBeatmapSetsByBeatmapIds(ctx);
+      = await StorageHelper.getBeatmapSetsByBeatmapIds(ctx);
 
     const storedIds = new Set(
       beatmapsets.flatMap(set => [
@@ -170,12 +160,12 @@ export class BeatmapsService {
       };
     }
 
-    const result = await this.mirrorsService.getBeatmapsetsByBeatmapIds({
+    const result = await MirrorsHelper.getBeatmapsetsByBeatmapIds({
       beatmapIds: missingIds,
     });
 
     if (result.status >= 500) {
-      return this.formatResultAsServerError(result);
+      return formatResultAsServerError(result);
     }
 
     // ! NOTE: Results from getBeatmapsetsByBeatmapIds hold one partial beatmapset per requested beatmap, so fetch each missing set once in full
@@ -186,10 +176,10 @@ export class BeatmapsService {
     );
 
     const setIds = [...missingSetIds];
-    const fetched = await Promise.all(setIds.map(beatmapSetId => this.getBeatmapSet({ beatmapSetId })));
+    const fetched = await Promise.all(setIds.map(beatmapSetId => BeatmapsService.getBeatmapSet({ beatmapSetId })));
     const failed = fetched.find(response => response.status >= 500);
     if (failed) {
-      return this.formatResultAsServerError({ result: null, status: failed.status });
+      return formatResultAsServerError({ result: null, status: failed.status });
     }
 
     const sets = [...beatmapsets, ...fetched.flatMap(response => response.data ?? [])];
@@ -216,10 +206,10 @@ export class BeatmapsService {
     };
   }
 
-  async downloadBeatmapSet(
+  static async downloadBeatmapSet(
     ctx: DownloadBeatmapSetOptions,
   ): Promise<ServerResponse<null | ArrayBuffer>> {
-    const beatmapsetFile = await this.storageService.getBeatmapsetFile(ctx);
+    const beatmapsetFile = await StorageHelper.getBeatmapsetFile(ctx);
 
     if (beatmapsetFile) {
       return {
@@ -237,13 +227,13 @@ export class BeatmapsService {
       };
     }
 
-    const result = await this.mirrorsService.downloadBeatmapSet(ctx);
+    const result = await MirrorsHelper.downloadBeatmapSet(ctx);
 
     if (result.status >= 500) {
-      return this.formatResultAsServerError(result);
+      return formatResultAsServerError(result);
     }
 
-    this.storageService.insertBeatmapsetFile(result.result, ctx);
+    StorageHelper.insertBeatmapsetFile(result.result, ctx);
 
     if (result.status >= 400 || !result.result) {
       return {
@@ -261,59 +251,7 @@ export class BeatmapsService {
     };
   }
 
-  async downloadOsuBeatmap(
-    ctx: DownloadOsuBeatmap,
-  ): Promise<ServerResponse<null | ArrayBuffer>> {
-    const beatmapOsuFile = await this.storageService.getOsuBeatmapFile(ctx);
-
-    if (beatmapOsuFile) {
-      return {
-        data: beatmapOsuFile,
-        status: HttpStatusCode.Ok,
-        source: "storage",
-      };
-    }
-    else if (beatmapOsuFile === null) {
-      return {
-        data: null,
-        status: HttpStatusCode.NotFound,
-        message: "Osu file not found",
-        source: "storage",
-      };
-    }
-
-    const result = await this.mirrorsService.downloadOsuBeatmap(ctx);
-
-    if (result.status >= 500) {
-      return this.formatResultAsServerError(result);
-    }
-
-    this.storageService.insertBeatmapOsuFile(result.result, ctx);
-
-    if (result.status >= 400 || !result.result) {
-      return {
-        data: null,
-        status: HttpStatusCode.NotFound,
-        message: "Osu file not found",
-        source: null,
-      };
-    }
-
-    return {
-      data: result.result,
-      status: result.status,
-      source: "mirror",
-    };
-  }
-
-  public async getManagerStats(shouldIncludeMirrorStats = true) {
-    return {
-      storage: await this.storageService.getStorageStatistics(),
-      mirrors: shouldIncludeMirrorStats ? await this.mirrorsService.getMirrorsStatistics() : undefined,
-    };
-  }
-
-  private formatResultAsServerError<T>(result: ResultWithStatus<T>) {
-    return { ...INTERNAL_ERROR_RESPONSE, status: result.status };
+  static downloadOsuBeatmap(ctx: DownloadOsuBeatmap) {
+    return BeatmapsHelper.downloadOsuBeatmap(ctx);
   }
 }
