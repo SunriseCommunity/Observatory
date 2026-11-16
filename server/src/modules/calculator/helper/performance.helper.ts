@@ -32,8 +32,8 @@ function calculateAndFree(performance: rosu.Performance, beatmap: rosu.Beatmap):
   }
 }
 
-export class PerformanceHelper {
-  public CalculateBeatmapPerfomance(
+export abstract class PerformanceHelper {
+  static CalculateBeatmapPerfomance(
     beatmap: rosu.Beatmap,
     scores: ScoreShort[],
   ) {
@@ -62,7 +62,7 @@ export class PerformanceHelper {
     return results;
   }
 
-  public CalculateScorePerfomance(beatmap: rosu.Beatmap, score: Score) {
+  static CalculateScorePerfomance(beatmap: rosu.Beatmap, score: Score) {
     if (score.mode !== undefined && beatmap.mode !== score.mode) {
       beatmap.convert(score.mode, score.mods);
     }
@@ -99,11 +99,11 @@ export class PerformanceHelper {
     return calculateAndFree(performance, beatmap);
   }
 
-  public ConvertBufferToBeatmap(buffer: ArrayBuffer) {
+  static ConvertBufferToBeatmap(buffer: ArrayBuffer) {
     return new rosu.Beatmap(new Uint8Array(buffer));
   }
 
-  public GetHashOfOsuFile(arrayBuffer: ArrayBuffer) {
+  static GetHashOfOsuFile(arrayBuffer: ArrayBuffer) {
     const hash = crypto.createHash("md5");
     hash.update(new Uint8Array(arrayBuffer));
     return hash.digest("hex");

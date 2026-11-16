@@ -1,16 +1,16 @@
 import { Elysia } from "elysia";
 
-import { calculatorService } from ".";
 import { TryConvertToGamemode } from "./helper/gamemode.helper";
 import type { Score, ScoreShort } from "./model/calculator.model";
 import * as CalculatorModel from "./model/calculator.schema";
+import { CalculatorService } from "./service/calculator.service";
 
 export const calculatorController = new Elysia({ prefix: "/calculator" })
   .get("/version", {
     detail: { tags: ["Calculators"] },
   }, () => {
     return {
-      rosu: calculatorService.GetRosuVersion(),
+      rosu: CalculatorService.GetRosuVersion(),
     };
   })
   .get("/beatmap/:id", {
@@ -30,7 +30,7 @@ export const calculatorController = new Elysia({ prefix: "/calculator" })
     },
     set,
   }) => {
-    set.headers["X-Rosu-Version"] = calculatorService.GetRosuVersion();
+    set.headers["X-Rosu-Version"] = CalculatorService.GetRosuVersion();
 
     const scores: ScoreShort[] = [];
     const beatmapMode = TryConvertToGamemode(mode);
@@ -48,7 +48,7 @@ export const calculatorController = new Elysia({ prefix: "/calculator" })
     }
 
     const results
-      = await calculatorService.CalculateBeatmapPerformances(
+      = await CalculatorService.CalculateBeatmapPerformances(
         id,
         scores,
       );
@@ -78,7 +78,7 @@ export const calculatorController = new Elysia({ prefix: "/calculator" })
     },
     set,
   }) => {
-    set.headers["X-Rosu-Version"] = calculatorService.GetRosuVersion();
+    set.headers["X-Rosu-Version"] = CalculatorService.GetRosuVersion();
 
     const beatmapMode = TryConvertToGamemode(mode);
 
@@ -99,7 +99,7 @@ export const calculatorController = new Elysia({ prefix: "/calculator" })
     };
 
     const results
-      = await calculatorService.CalculateScorePerformance(
+      = await CalculatorService.CalculateScorePerformance(
         beatmapId,
         score,
         beatmapHash,

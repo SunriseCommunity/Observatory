@@ -17,7 +17,7 @@ import type {
 } from "../model/calculator.model";
 
 describe("Calculator tests", () => {
-  const calculatorService = new PerformanceHelper();
+  const calculatorService = PerformanceHelper;
 
   let beatmapBuffer = null! as ArrayBuffer;
   let beatmap = null! as rosu.Beatmap;

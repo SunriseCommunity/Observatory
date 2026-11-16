@@ -1,4 +1,4 @@
-import type { BeatmapsService } from "@observatory/beatmaps";
+import { BeatmapsHelper } from "@observatory/beatmaps";
 import { HttpStatusCode } from "axios";
 import { Beatmap } from "rosu-pp-js";
 import rosuPackage from "rosu-pp-js/package.json";
@@ -8,28 +8,22 @@ import type { Score, ScoreShort } from "../model/calculator.model";
 
 const ROSU_VERSION = rosuPackage.version;
 
-export class CalculatorService {
-  private readonly calculatorService: PerformanceHelper;
-
-  constructor(private readonly beatmapsManager: BeatmapsService) {
-    this.calculatorService = new PerformanceHelper();
-  }
-
-  public GetRosuVersion() {
+export abstract class CalculatorService {
+  static GetRosuVersion() {
     return ROSU_VERSION;
   }
 
-  public async CalculateBeatmapPerformances(
+  static async CalculateBeatmapPerformances(
     beatmapId: number,
     scores: ScoreShort[],
   ) {
-    const beatmap = await this.GetBeatmapHash(beatmapId);
+    const beatmap = await CalculatorService.GetBeatmapHash(beatmapId);
     if (!(beatmap instanceof Beatmap)) {
       return beatmap;
     }
 
     try {
-      return this.calculatorService.CalculateBeatmapPerfomance(
+      return PerformanceHelper.CalculateBeatmapPerfomance(
         beatmap,
         scores,
       );
@@ -39,18 +33,18 @@ export class CalculatorService {
     }
   }
 
-  public async CalculateScorePerformance(
+  static async CalculateScorePerformance(
     beatmapId: number,
     score: Score,
     beatmapHash?: string,
   ) {
-    const beatmap = await this.GetBeatmapHash(beatmapId, beatmapHash);
+    const beatmap = await CalculatorService.GetBeatmapHash(beatmapId, beatmapHash);
     if (!(beatmap instanceof Beatmap)) {
       return beatmap;
     }
 
     try {
-      return this.calculatorService.CalculateScorePerfomance(
+      return PerformanceHelper.CalculateScorePerfomance(
         beatmap,
         score,
       );
@@ -60,8 +54,8 @@ export class CalculatorService {
     }
   }
 
-  private async GetBeatmapHash(beatmapId: number, beatmapHash?: string) {
-    const beatmapBuffer = await this.beatmapsManager.downloadOsuBeatmap({
+  private static async GetBeatmapHash(beatmapId: number, beatmapHash?: string) {
+    const beatmapBuffer = await BeatmapsHelper.downloadOsuBeatmap({
       beatmapId,
     });
 
@@ -70,7 +64,7 @@ export class CalculatorService {
     }
 
     if (beatmapHash) {
-      const fileHash = this.calculatorService.GetHashOfOsuFile(
+      const fileHash = PerformanceHelper.GetHashOfOsuFile(
         beatmapBuffer.data,
       );
 
@@ -83,7 +77,7 @@ export class CalculatorService {
       }
     }
 
-    const beatmap = this.calculatorService.ConvertBufferToBeatmap(
+    const beatmap = PerformanceHelper.ConvertBufferToBeatmap(
       beatmapBuffer.data,
     );
 

@@ -8,7 +8,7 @@ function wasmMemoryBytes() {
 }
 
 describe("PerformanceHelper WASM lifecycle", () => {
-  const helper = new PerformanceHelper();
+  const helper = PerformanceHelper;
   const loadBuffer = () => Bun.file(`${import.meta.dir}/data/2809623.osu.test`).arrayBuffer();
 
   it("returns plain objects that serialize like rosu attributes", async () => {
