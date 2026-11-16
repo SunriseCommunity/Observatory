@@ -11,7 +11,7 @@ import type {
 } from "@observatory/common/types/beatmap-query";
 
 import {
-  createBeatmap,
+  createBeatmaps,
   getBeatmapByHash,
   getBeatmapById,
   getBeatmapCount,
@@ -19,19 +19,25 @@ import {
 import { getBeatmapOsuFileCount } from "../repository/beatmap-osu-file.repository";
 import {
   createBeatmapset,
-  deleteBeatmapsets,
+  deleteUnvalidBeatmapSets,
   getBeatmapSetById,
   getBeatmapSetCount,
   getBeatmapSetsByBeatmapIds,
-  getUnvalidBeatmapSets,
 } from "../repository/beatmapset.repository";
 import { getBeatmapSetsFilesCount } from "../repository/beatmapset-file.repository";
 import { StorageCacheService } from "./storage-cache.service";
 import { StorageFilesService } from "./storage-files.service";
 
+const STORAGE_STATISTICS_TTL_MS = 60 * 1000;
+
 export class StorageService {
   private readonly cacheService: StorageCacheService;
   private readonly filesService: StorageFilesService;
+  // cache for storage statistics to avoid frequent expensive operations
+  private storageStatistics?: {
+    expiresAt: number;
+    value: Awaited<ReturnType<StorageService["readStorageStatistics"]>>;
+  };
 
   constructor() {
     this.cacheService = new StorageCacheService();
@@ -66,7 +72,9 @@ export class StorageService {
     }
 
     if (entity) {
-      this.cacheService.insertBeatmap(entity);
+      this.cacheService.insertBeatmap(entity).catch((error: unknown) => {
+        logger.error({ err: error }, "StorageManager: caching beatmap failed");
+      });
     }
 
     return entity ?? undefined;
@@ -86,7 +94,9 @@ export class StorageService {
     }
 
     if (entity) {
-      this.cacheService.insertBeatmapset(entity);
+      this.cacheService.insertBeatmapset(entity).catch((error: unknown) => {
+        logger.error({ err: error }, "StorageManager: caching beatmapset failed");
+      });
     }
 
     return entity ?? undefined;
@@ -94,30 +104,20 @@ export class StorageService {
 
   async getBeatmapSetsByBeatmapIds(
     ctx: GetBeatmapsetsByBeatmapIdsOptions,
-  ): Promise<Beatmapset[] | null | undefined> {
-    const entities = await getBeatmapSetsByBeatmapIds(ctx.beatmapIds, true);
-
-    if (entities === null) {
-      return null;
-    }
-
-    return entities ?? undefined;
+  ): Promise<Beatmapset[]> {
+    return await getBeatmapSetsByBeatmapIds(ctx.beatmapIds);
   }
 
   async getBeatmapsetFile(
     ctx: DownloadBeatmapSetOptions,
   ): Promise<ArrayBuffer | undefined | null> {
-    const entity = await this.filesService.getBeatmapsetFile(ctx);
-
-    return entity;
+    return await this.filesService.getBeatmapsetFile(ctx);
   }
 
   async getSearchResult(
     ctx: SearchBeatmapsetsOptions,
   ): Promise<Beatmapset[] | undefined> {
-    const entity = await this.cacheService.getSearchResult(ctx);
-
-    return entity;
+    return await this.cacheService.getSearchResult(ctx);
   }
 
   async insertSearchResult(
@@ -142,9 +142,7 @@ export class StorageService {
   async getOsuBeatmapFile(
     ctx: DownloadOsuBeatmap,
   ): Promise<ArrayBuffer | undefined | null> {
-    const entity = await this.filesService.getOsuBeatmapFile(ctx);
-
-    return entity;
+    return await this.filesService.getOsuBeatmapFile(ctx);
   }
 
   async insertBeatmap(
@@ -153,7 +151,7 @@ export class StorageService {
   ): Promise<void> {
     try {
       if (beatmap) {
-        await createBeatmap(beatmap);
+        await createBeatmaps([beatmap]);
         await this.cacheService.insertBeatmap(beatmap);
 
         if (ctx.beatmapFilename) {
@@ -212,6 +210,27 @@ export class StorageService {
   }
 
   public async getStorageStatistics() {
+    if (!this.storageStatistics || this.storageStatistics.expiresAt <= Date.now()) {
+      this.storageStatistics = {
+        expiresAt: Date.now() + STORAGE_STATISTICS_TTL_MS,
+        value: await this.readStorageStatistics(),
+      };
+    }
+
+    return this.storageStatistics.value;
+  }
+
+  async clearOldBeatmapsets() {
+    if (!config.EnableCronToClearOutdatedBeatmaps) {
+      return;
+    }
+
+    const removed = await deleteUnvalidBeatmapSets();
+
+    this.log(`Cleaning unvalid beatmaps is finished! Removed ${removed} beatmapsets`);
+  }
+
+  private async readStorageStatistics() {
     return {
       database: {
         beatmaps: await getBeatmapCount(),
@@ -222,30 +241,6 @@ export class StorageService {
       files: await this.filesService.getStorageFilesStats(),
       cache: await this.cacheService.getRedisStats(),
     };
-  }
-
-  async clearOldBeatmapsets() {
-    if (!config.EnableCronToClearOutdatedBeatmaps) {
-      return;
-    }
-
-    const beatmapsetsForRemoval = await getUnvalidBeatmapSets();
-
-    const forRemoval = [...beatmapsetsForRemoval];
-
-    if (!forRemoval) {
-      this.log("Nothing to remove. Skip cleaning unvalid beatmaps.");
-      return;
-    }
-
-    this.log(
-            `Going to remove ${beatmapsetsForRemoval.length} unvalid beatmapsets from database`,
-            "warn",
-    );
-
-    await deleteBeatmapsets(beatmapsetsForRemoval);
-
-    this.log("Cleaning unvalid beatmaps is finished!");
   }
 
   private log(message: string, level: "info" | "warn" | "error" = "info") {

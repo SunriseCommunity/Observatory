@@ -1,9 +1,8 @@
-import { rename, unlink } from "node:fs/promises";
+import { rename, rm } from "node:fs/promises";
 
 import config from "@observatory/common/config";
 import logger from "@observatory/common/observability/logger";
 import type { DownloadBeatmapSetOptions, DownloadOsuBeatmap } from "@observatory/common/types/beatmap-query";
-import { getUTCDate } from "@observatory/common/utilities/date";
 import {
   bytesToHumanReadableMegabytes,
   getDirectoryStats,
@@ -23,6 +22,8 @@ import {
   getUnvalidBeatmapSetsFiles,
 } from "../repository/beatmapset-file.repository";
 import type { StorageCacheService } from "./storage-cache.service";
+
+const CLEANUP_BATCH_SIZE = 1000;
 
 export class StorageFilesService {
   private readonly dataPath = "data";
@@ -51,7 +52,7 @@ export class StorageFilesService {
     );
 
     if (ctx.noVideo !== true) {
-      this.removeIfExists(`${this.dataPath}/${ctx.beatmapSetId}n.osz`);
+      await rm(`${this.dataPath}/${ctx.beatmapSetId}n.osz`, { force: true });
     }
 
     const beatmapsetFile = await createBeatmapsetFile({
@@ -59,8 +60,7 @@ export class StorageFilesService {
       noVideo: ctx.noVideo || false,
       path,
       validUntil: new Date(
-        getUTCDate().getTime()
-        + 1000 * 60 * 60 * config.OSZ_FILES_LIFE_SPAN,
+        Date.now() + 1000 * 60 * 60 * config.OSZ_FILES_LIFE_SPAN,
       ).toISOString(),
     });
 
@@ -82,8 +82,7 @@ export class StorageFilesService {
       id: ctx.beatmapId,
       path,
       validUntil: new Date(
-        getUTCDate().getTime()
-        + 1000 * 60 * 60 * config.OSZ_FILES_LIFE_SPAN, // Same as .osz files
+        Date.now() + 1000 * 60 * 60 * config.OSZ_FILES_LIFE_SPAN, // Same as .osz files
       ).toISOString(),
     });
 
@@ -95,28 +94,25 @@ export class StorageFilesService {
   ): Promise<ArrayBuffer | undefined | null> {
     let data = await this.cacheService.getBeatmapOsuFile(ctx);
 
-    if (data === undefined) {
-      data = await getBeatmapOsuFile(ctx);
-    }
-    else if (data === null) {
+    if (data === null) {
       return null;
     }
 
-    if (!data) {
+    if (data === undefined) {
+      data = await getBeatmapOsuFile(ctx);
+
+      if (!data) {
+        return undefined;
+      }
+
+      await this.cacheService.insertBeatmapOsuFile(ctx, data);
+    }
+
+    if (!(await this.isFileExists(data.path))) {
       return undefined;
     }
 
-    await this.cacheService.insertBeatmapOsuFile(ctx, data);
-
-    const { path } = data;
-
-    const isFileExists = await this.isFileExists(path);
-
-    if (!isFileExists) {
-      return undefined;
-    }
-
-    return this.readFile(path);
+    return this.readFile(data.path);
   }
 
   async getBeatmapsetFile(
@@ -124,30 +120,31 @@ export class StorageFilesService {
   ): Promise<ArrayBuffer | undefined | null> {
     let data = await this.cacheService.getBeatmapSetFile(ctx);
 
-    if (data === undefined) {
-      data = await getBeatmapSetFile(ctx);
-    }
-    else if (data === null) {
+    if (data === null) {
       return null;
     }
 
-    // Return if we we don't have the file or the file is marked as no video,
+    if (data === undefined) {
+      data = await getBeatmapSetFile(ctx);
+
+      if (!data) {
+        return undefined;
+      }
+
+      await this.cacheService.insertBeatmapsetFile(ctx, data);
+    }
+
+    // Return if the file is marked as no video,
     // which we can't serve to request with noVideo set to false (or undefined)
-    if (!data || (ctx.noVideo !== true && data.noVideo)) {
+    if (ctx.noVideo !== true && data.noVideo) {
       return undefined;
     }
 
-    await this.cacheService.insertBeatmapsetFile(ctx, data);
-
-    const { path } = data;
-
-    const isFileExists = await this.isFileExists(path);
-
-    if (!isFileExists) {
+    if (!(await this.isFileExists(data.path))) {
       return undefined;
     }
 
-    return this.getZippedFile(path, { noVideo: ctx.noVideo || false });
+    return this.getZippedFile(data.path, { noVideo: ctx.noVideo || false });
   }
 
   public async getStorageFilesStats() {
@@ -164,13 +161,13 @@ export class StorageFilesService {
       (path.endsWith("n.osz") && ctx.noVideo)
       || (!path.endsWith("n.osz") && !ctx.noVideo)
     ) {
-      return await this.readFile(path);
+      return this.readFile(path);
     }
 
     const noVideoPath = this.getNoVideoPath(path);
 
     if (await this.isFileExists(noVideoPath)) {
-      return await this.readFile(noVideoPath);
+      return this.readFile(noVideoPath);
     }
 
     const shadowCopyPath = `${path}.${crypto.randomUUID()}.temp`;
@@ -191,7 +188,7 @@ export class StorageFilesService {
     osz.writeZip(shadowCopyPath);
     await rename(shadowCopyPath, noVideoPath);
 
-    return await this.readFile(noVideoPath);
+    return this.readFile(noVideoPath);
   }
 
   private getNoVideoPath(path: string) {
@@ -206,14 +203,6 @@ export class StorageFilesService {
     return await Bun.file(path).exists();
   }
 
-  private async removeIfExists(path: string) {
-    const isFileExists = await this.isFileExists(path);
-
-    if (isFileExists) {
-      await unlink(path);
-    }
-  }
-
   private async saveFile(
     file: ArrayBuffer,
     fileName: string,
@@ -224,30 +213,40 @@ export class StorageFilesService {
   }
 
   async clearOldFiles() {
-    const beatmapsetsForRemoval = await getUnvalidBeatmapSetsFiles();
-    const osuBeatmapsForRemoval = await getUnvalidBeatmapOsuFiles();
+    let removed = 0;
 
-    const forRemoval = [...beatmapsetsForRemoval, ...osuBeatmapsForRemoval];
+    while (true) {
+      const beatmapsetsForRemoval = await getUnvalidBeatmapSetsFiles(CLEANUP_BATCH_SIZE);
+      const osuBeatmapsForRemoval = await getUnvalidBeatmapOsuFiles(CLEANUP_BATCH_SIZE);
 
-    if (!forRemoval) {
+      const forRemoval = [...beatmapsetsForRemoval, ...osuBeatmapsForRemoval];
+
+      if (forRemoval.length === 0) {
+        break;
+      }
+
+      for (const file of forRemoval) {
+        this.log(`Removing "${file.path}" ...`, "warn");
+
+        await rm(file.path, { force: true });
+
+        if (file.path.endsWith(".osz") && !file.path.endsWith("n.osz")) {
+          await rm(this.getNoVideoPath(file.path), { force: true });
+        }
+      }
+
+      await deleteBeatmapsetsFiles(beatmapsetsForRemoval.map(file => file.id));
+      await deleteBeatmapsOsuFiles(osuBeatmapsForRemoval.map(file => file.id));
+
+      removed += forRemoval.length;
+    }
+
+    if (removed === 0) {
       this.log("Nothing to remove. Skip cleaning.");
       return;
     }
 
-    for (const beatmapset of forRemoval) {
-      this.log(`Removing "${beatmapset.path}" ...`, "warn");
-
-      await this.removeIfExists(beatmapset.path);
-
-      if (beatmapset.path.endsWith(".osz") && !beatmapset.path.endsWith("n.osz")) {
-        await this.removeIfExists(this.getNoVideoPath(beatmapset.path));
-      }
-    }
-
-    await deleteBeatmapsetsFiles(beatmapsetsForRemoval);
-    await deleteBeatmapsOsuFiles(osuBeatmapsForRemoval);
-
-    this.log("Cleaning is finished!");
+    this.log(`Cleaning is finished! Removed ${removed} files`);
   }
 
   private log(message: string, level: "info" | "warn" | "error" = "info") {
