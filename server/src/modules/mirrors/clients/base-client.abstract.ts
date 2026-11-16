@@ -1,4 +1,5 @@
 /* eslint-disable unused-imports/no-unused-vars -- Abstract class with unimplemented methods */
+import logger from "@observatory/common/observability/logger";
 import type { Beatmap, Beatmapset } from "@observatory/common/types/beatmap";
 import type {
   DownloadBeatmapSetOptions,
@@ -13,12 +14,15 @@ import type {
 import type { StorageService } from "@observatory/storage";
 import axios from "axios";
 
-import { ConvertHelper } from "../helper/convert.helper";
+import packageJson from "../../../../../package.json";
 import { BaseApi } from "./api/base-api.abstract";
 import type { ClientOptions } from "./base-client.types";
 import { ClientAbilities } from "./base-client.types";
 import { ApiRateLimiter } from "./ratelimiter/rate-limiter.abstract";
 import type { RateLimitOptions } from "./ratelimiter/rate-limiter.types";
+
+const API_TIMEOUT_MS = 10_000;
+export const DOWNLOAD_TIMEOUT_MS = 60_000;
 
 export class BaseClient {
   protected storageManager?: StorageService;
@@ -26,8 +30,6 @@ export class BaseClient {
   protected config: ClientOptions;
   protected api: ApiRateLimiter;
   protected baseApi: BaseApi;
-
-  protected convertService: ConvertHelper;
 
   constructor(
     config: ClientOptions,
@@ -38,15 +40,16 @@ export class BaseClient {
 
     this.storageManager = storageManager;
 
-    this.baseApi = new BaseApi(axios.create(), {
+    this.baseApi = new BaseApi(axios.create({
+      headers: { "User-Agent": `observatory-sunrise/${packageJson.version}` },
+    }), {
       baseURL: this.config.baseUrl,
+      timeout: API_TIMEOUT_MS,
       headers: {
         "Accept": "application/json",
         "Content-Type": "application/json",
       },
     });
-
-    this.convertService = new ConvertHelper(this.config.baseUrl);
 
     const domainHash = Bun.hash(this.config.baseUrl).toString();
     this.api = new ApiRateLimiter(
@@ -54,6 +57,8 @@ export class BaseClient {
       this.baseApi,
       rateLimitConfig,
     );
+
+    logger.info({ mirror: this.baseApi.mirror }, `${this.constructor.name} initialized`);
   }
 
   async getBeatmapSet(
@@ -102,17 +107,14 @@ export class BaseClient {
     limit: number;
     remaining: number;
   } {
+    const { rateLimits } = this.api.config;
     const limit
-      = this.api.limiterConfig.rateLimits.find(rateLimit =>
-        rateLimit.abilities?.includes(ability),
-      )
-      || this.api.limiterConfig.rateLimits.find(rateLimit =>
-        rateLimit.routes.includes("/"),
-      );
+      = rateLimits.find(rateLimit => rateLimit.abilities?.includes(ability))
+        || rateLimits.find(rateLimit => rateLimit.routes.includes("/"));
 
     if (!limit) {
       throw new Error(
-                `No rate limit found for ${this.config.baseUrl} / ${ability}`,
+        `No rate limit found for ${this.config.baseUrl} / ${ability}`,
       );
     }
 
@@ -124,23 +126,23 @@ export class BaseClient {
     limit: number;
     remaining: number;
   }> {
-    const { rateLimits } = this.api.limiterConfig;
-    const capacities = rateLimits.flatMap(rateLimit =>
+    return this.api.config.rateLimits.flatMap(rateLimit =>
       rateLimit.abilities.map(ability => ({
         ability: ClientAbilities[ability],
-        limit: this.getCapacity(ability).limit,
-        remaining: this.getCapacity(ability).remaining,
+        ...this.getCapacity(ability),
       })),
     );
-
-    return capacities;
   }
 
   onCooldownUntil(): number | undefined {
-    return this.api.limiterConfig.onCooldownUntil;
+    return this.api.onCooldownUntil;
   }
 
   get clientConfig(): ClientOptions {
     return this.config;
+  }
+  
+  get mirror(): string {
+    return this.baseApi.mirror;
   }
 }
