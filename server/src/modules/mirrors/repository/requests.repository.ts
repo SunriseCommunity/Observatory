@@ -2,35 +2,7 @@ import { db } from "@observatory/common/database/client";
 import type { NewRequest, Request } from "@observatory/common/database/schema";
 import { requests } from "@observatory/common/database/schema";
 import type { HttpStatusCode } from "axios";
-import { and, count, eq, gte, inArray, sql } from "drizzle-orm";
-
-export async function getRequestsCount(
-  baseUrl: string,
-  createdAfter?: number,
-  statusCodes?: HttpStatusCode[],
-) {
-  const entities = await db
-    .select({ count: count() })
-    .from(requests)
-    .where(
-      and(
-        eq(requests.baseUrl, baseUrl),
-        createdAfter
-          ? gte(
-              sql`cast(${requests.createdAt} as timestamp)`,
-              sql`cast(${new Date(createdAfter)} as timestamp)`,
-            )
-          : undefined,
-        statusCodes ? inArray(requests.status, statusCodes) : undefined,
-      ),
-    );
-
-  if (entities.length <= 0) {
-    return 0;
-  }
-
-  return entities[0].count;
-}
+import { and, eq, sql } from "drizzle-orm";
 
 export async function getMirrorsRequestsCountForStats(
   dataRequests: Array<{
@@ -82,25 +54,27 @@ export async function getMirrorsRequestsCountForStats(
   return entities;
 }
 
-export async function getRequestsByBaseUrl(
-  baseUrl: string,
-  createdAfter: number,
-): Promise<Request[]> {
-  const entities = await db
-    .select()
+export async function getRequestsBenchmark(baseUrl: string, hours: number) {
+  const succeeded = sql`${requests.status} < 400`;
+  const isJson = sql`${requests.contentType} = 'application/json'`;
+  const isNotJson = sql`${requests.contentType} is distinct from 'application/json'`;
+
+  const [stats] = await db
+    .select({
+      total: sql<number>`(count(*))::int`,
+      failed: sql<number>`(count(*) filter (where ${requests.status} >= 400 and ${requests.status} <> 404))::int`, // 404 is expected
+      apiRequests: sql<number>`(count(*) filter (where ${succeeded} and ${isJson}))::int`,
+      averageLatency: sql<number | null>`(avg(coalesce(${requests.latency}, 0)) filter (where ${succeeded} and ${isJson}))::float8`,
+      downloadRequests: sql<number>`(count(*) filter (where ${succeeded} and ${isNotJson}))::int`,
+      averageDownloadSpeed: sql<number | null>`(avg(coalesce(${requests.downloadSpeed}, 0)) filter (where ${succeeded} and ${isNotJson}))::float8`,
+    })
     .from(requests)
-    .where(
-      and(
-        eq(requests.baseUrl, baseUrl),
-        createdAfter
-          ? gte(
-              sql`cast(${requests.createdAt} as timestamp)`,
-              sql`cast(${new Date(createdAfter)} as timestamp)`,
-            )
-          : undefined,
-      ),
-    );
-  return entities ?? [];
+    .where(and(
+      eq(requests.baseUrl, baseUrl),
+      sql`cast(${requests.createdAt} as timestamp) >= (now() - make_interval(hours => ${hours}))::timestamp`,
+    ));
+
+  return stats;
 }
 
 export async function createRequest(data: NewRequest): Promise<Request> {
