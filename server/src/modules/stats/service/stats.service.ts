@@ -1,41 +1,34 @@
-import { bytesToHumanReadableMegabytes } from "@observatory/common/utilities/stats";
+import { BeatmapsHelper } from "@observatory/beatmaps";
+import config, { observatoryConfigPublic } from "@observatory/common/config";
+import { formatNanoseconds, humanReadableMemory } from "@observatory/common/utilities/stats";
 
-export class StatsService {
-  public getServerStatistics() {
+export abstract class StatsService {
+  static async getStats() {
+    const serverStats = StatsService.getServerStatistics();
+    const managerStats
+      = await BeatmapsHelper.getManagerStats(config.ShowInternalValuesInPublicStatsEndpoint);
+    const serverConfig = observatoryConfigPublic;
+
+    return {
+      config: config.ShowInternalValuesInPublicStatsEndpoint ? serverConfig : undefined,
+      server: serverStats,
+      manager: managerStats,
+    };
+  }
+
+  private static getServerStatistics() {
     const uptimeNanoseconds = Bun.nanoseconds();
     const memory = process.memoryUsage();
 
     return {
       uptime: {
         nanoseconds: uptimeNanoseconds,
-        pretty: this.formatNanoseconds(uptimeNanoseconds),
+        pretty: formatNanoseconds(uptimeNanoseconds),
       },
-      memory: this.humanReadableMemory(memory),
+      memory: humanReadableMemory(memory),
       pid: process.pid,
       version: Bun.version,
       revision: Bun.revision,
     };
-  }
-
-  private humanReadableMemory(memory: NodeJS.MemoryUsage) {
-    return Object.fromEntries(
-      Object.entries(memory).map(([key, value]) => [
-        key,
-        bytesToHumanReadableMegabytes(value),
-      ]),
-    );
-  }
-
-  private formatNanoseconds(nanoseconds: number) {
-    let seconds = Math.floor(nanoseconds / 1e9);
-    let minutes = Math.floor(seconds / 60);
-    let hours = Math.floor(minutes / 60);
-    const days = Math.floor(hours / 24);
-
-    seconds %= 60;
-    minutes %= 60;
-    hours %= 24;
-
-    return `${days}d ${hours}h ${minutes}m ${seconds}s`;
   }
 }

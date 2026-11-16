@@ -22,3 +22,25 @@ export async function getDirectoryStats(directory: string) {
 export function bytesToHumanReadableMegabytes(bytes: number) {
   return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
 }
+
+export function humanReadableMemory(memory: NodeJS.MemoryUsage) {
+  return Object.fromEntries(
+    Object.entries(memory).map(([key, value]) => [
+      key,
+      bytesToHumanReadableMegabytes(value),
+    ]),
+  );
+}
+
+export function formatNanoseconds(nanoseconds: number) {
+  let seconds = Math.floor(nanoseconds / 1e9);
+  let minutes = Math.floor(seconds / 60);
+  let hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+
+  seconds %= 60;
+  minutes %= 60;
+  hours %= 24;
+
+  return `${days}d ${hours}h ${minutes}m ${seconds}s`;
+}
