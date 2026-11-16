@@ -7,10 +7,6 @@ import type { DeepPartial } from "@observatory/common/types/utils";
 import { mock } from "bun:test";
 
 import type {
-  OsulabsBeatmap,
-  OsulabsBeatmapset,
-} from "../../clients/beatmaps.download/osulabs-client.types";
-import type {
   MinoBeatmap,
   MinoBeatmapset,
 } from "../../clients/catboy.best/mino-client.types";
@@ -56,68 +52,6 @@ export const FakerGenerator = {
       profile_colour: null,
       ...(options as any),
     });
-  },
-
-  generateOsulabsBeatmapset(
-    options?: DeepPartial<OsulabsBeatmapset>,
-  ): OsulabsBeatmapset {
-    return this.generateBeatmapset({
-      last_updated: Date.now() as unknown as string, // number is expected by the service
-      beatmaps: options?.beatmaps ?? [
-        FakerGenerator.generateOsulabsBeatmap({
-          set: null,
-          convert: false,
-        }),
-        FakerGenerator.generateOsulabsBeatmap({
-          set: null,
-          convert: false,
-        }),
-      ],
-      converts: options?.converts ?? [
-        FakerGenerator.generateOsulabsBeatmap({
-          convert: true,
-          set: null,
-        }),
-        FakerGenerator.generateOsulabsBeatmap({
-          convert: true,
-          set: null,
-        }),
-      ],
-      ...options,
-    }) as OsulabsBeatmapset;
-  },
-
-  generateOsulabsBeatmap(
-    options?: DeepPartial<OsulabsBeatmap>,
-  ): OsulabsBeatmap {
-    return this.generateBeatmap({
-      last_updated: Date.now() as unknown as string, // number is expected by the service
-      ...options,
-      set:
-                options?.set !== undefined
-                  ? options.set
-                  : FakerGenerator.generateOsulabsBeatmapset({
-                      beatmaps: [
-                        FakerGenerator.generateOsulabsBeatmap({
-                          set: null,
-                        }) as any,
-                        FakerGenerator.generateOsulabsBeatmap({
-                          set: null,
-                        }) as any,
-                      ],
-                      converts: [
-                        FakerGenerator.generateOsulabsBeatmap({
-                          convert: true,
-                          set: null,
-                        }) as any,
-                        FakerGenerator.generateOsulabsBeatmap({
-                          convert: true,
-                          set: null,
-                        }) as any,
-                      ],
-                    }),
-      ...options,
-    }) as OsulabsBeatmap;
   },
 
   generateMinoBeatmapset(

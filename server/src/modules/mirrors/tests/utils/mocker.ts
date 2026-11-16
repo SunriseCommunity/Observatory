@@ -12,11 +12,6 @@ import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { BanchoClient } from "../../clients";
 import { BaseApi } from "../../clients/api/base-api.abstract";
 import type { BaseClient } from "../../clients/base-client.abstract";
-import { OsulabsClient } from "../../clients/beatmaps.download/osulabs.client";
-import type {
-  OsulabsBeatmap,
-  OsulabsBeatmapset,
-} from "../../clients/beatmaps.download/osulabs-client.types";
 import { MinoClient } from "../../clients/catboy.best/mino.client";
 import type {
   MinoBeatmap,
@@ -200,15 +195,6 @@ export class Mocker {
           generateBeatmapset: (
             options?: DeepPartial<MinoBeatmapset>,
           ) => FakerGenerator.generateMinoBeatmapset(options),
-          generateArrayBuffer: () => new ArrayBuffer(1024),
-        };
-      case OsulabsClient:
-        return {
-          generateBeatmap: (options?: DeepPartial<OsulabsBeatmap>) =>
-            FakerGenerator.generateOsulabsBeatmap(options),
-          generateBeatmapset: (
-            options?: DeepPartial<OsulabsBeatmapset>,
-          ) => FakerGenerator.generateOsulabsBeatmapset(options),
           generateArrayBuffer: () => new ArrayBuffer(1024),
         };
       default:

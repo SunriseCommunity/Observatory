@@ -17,7 +17,6 @@ import {
 import { DirectClient } from "../clients";
 import type { BaseClient } from "../clients/base-client.abstract";
 import { ClientAbilities } from "../clients/base-client.types";
-import { OsulabsClient } from "../clients/beatmaps.download/osulabs.client";
 import { MinoClient } from "../clients/catboy.best/mino.client";
 import { GatariClient } from "../clients/gatari.pw/gatari.client";
 import { NerinyanClient } from "../clients/nerinyan.moe/nerinyan.client";
@@ -30,7 +29,6 @@ const mirrors: Array<new (...args: any[]) => BaseClient> = [
   BanchoClient,
   GatariClient,
   NerinyanClient,
-  OsulabsClient,
   DirectClient,
 ];
 
@@ -69,6 +67,34 @@ describe("MirrorsService", () => {
     jest.restoreAllMocks();
     mirrorsManager = null!;
     Mocker.mockMirrorsBenchmark();
+  });
+
+  test("initializes only the supported mirrors", () => {
+    const previous = {
+      mirrorsToIgnore: config.MirrorsToIgnore,
+      useBancho: config.UseBancho,
+      useUsCatboyServerOnly: config.UseUsCatboyServerOnly,
+    };
+
+    try {
+      config.MirrorsToIgnore = [];
+      config.UseBancho = true;
+      config.UseUsCatboyServerOnly = false;
+      const service = new MirrorsService(mockStorageManager) as unknown as { clients: Array<{ client: BaseClient }> };
+
+      expect(service.clients.map(({ client }) => client.mirror)).toEqual([
+        "osu.direct",
+        "catboy.best",
+        "osu.gatari.pw",
+        "api.nerinyan.moe",
+        "osu.ppy.sh",
+      ]);
+    }
+    finally {
+      config.MirrorsToIgnore = previous.mirrorsToIgnore;
+      config.UseBancho = previous.useBancho;
+      config.UseUsCatboyServerOnly = previous.useUsCatboyServerOnly;
+    }
   });
 
   const getMirrorClient = (

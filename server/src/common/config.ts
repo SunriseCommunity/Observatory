@@ -6,7 +6,6 @@ export type Mirror
   = | "direct"
     | "bancho"
     | "mino"
-    | "osulabs"
     | "gatari"
     | "nerinyan";
 
