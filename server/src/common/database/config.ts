@@ -1,11 +1,9 @@
-import "dotenv/config";
-
 import type { Config } from "drizzle-kit";
 import { defineConfig } from "drizzle-kit";
 
 import config from "../config";
 
-export const dbCredentials = {
+const dbCredentials = {
   host: config.POSTGRES_HOST,
   port: Number.parseInt(config.POSTGRES_PORT, 10),
   user: config.POSTGRES_USER,

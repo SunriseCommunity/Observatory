@@ -1,45 +1,20 @@
-import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 
 import config from "../config";
+import logger from "../observability/logger";
 import * as schema from "./schema";
 
-export type DB = NodePgDatabase<typeof schema>;
+const pool = new Pool({
+  host: config.POSTGRES_HOST,
+  port: Number.parseInt(config.POSTGRES_PORT, 10),
+  user: config.POSTGRES_USER,
+  password: config.POSTGRES_PASSWORD,
+  database: config.POSTGRES_DB,
+  max: 10,
+});
 
-class DbConnection {
-  private static instance: DbConnection;
-  private pool: Pool;
+pool.on("error", (err) => logger.error({ err }, "postgres idle client error"));
 
-  private constructor() {
-    this.pool = new Pool({
-      host: config.POSTGRES_HOST,
-      port: Number.parseInt(config.POSTGRES_PORT, 10),
-      user: config.POSTGRES_USER,
-      password: config.POSTGRES_PASSWORD,
-      database: config.POSTGRES_DB,
-      max: 10,
-    });
-  }
-
-  public static getInstance(): DbConnection {
-    if (!DbConnection.instance) {
-      DbConnection.instance = new DbConnection();
-    }
-    return DbConnection.instance;
-  }
-
-  public close() {
-    return this.pool.end();
-  }
-
-  public getClient(): DB {
-    return drizzle(this.pool, {
-      schema,
-    });
-  }
-}
-
-const dbConnection = DbConnection.getInstance();
-export const db = dbConnection.getClient();
-export const closeDatabase = () => dbConnection.close();
+export const db = drizzle(pool, { schema });
+export const closeDatabase = () => pool.end();

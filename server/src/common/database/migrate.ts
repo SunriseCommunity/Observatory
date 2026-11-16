@@ -1,12 +1,10 @@
-import { exit } from "node:process";
-
-import { drizzle } from "drizzle-orm/postgres-js";
-import { migrate } from "drizzle-orm/postgres-js/migrator";
-import postgres from "postgres";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { migrate } from "drizzle-orm/node-postgres/migrator";
+import { Pool } from "pg";
 
 import config from "../config";
 
-const connection = postgres({
+const pool = new Pool({
   host: config.POSTGRES_HOST,
   port: Number.parseInt(config.POSTGRES_PORT, 10),
   user: config.POSTGRES_USER,
@@ -15,7 +13,7 @@ const connection = postgres({
   max: 1,
 });
 
-await migrate(drizzle(connection), {
+await migrate(drizzle(pool), {
   migrationsFolder: `${import.meta.dirname}/migrations`,
 });
-exit(0);
+await pool.end();
