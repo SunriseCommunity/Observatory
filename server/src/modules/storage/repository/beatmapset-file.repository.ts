@@ -2,19 +2,13 @@ import { db } from "@observatory/common/database/client";
 import type { BeatmapsetFile, NewBeatmapsetFile } from "@observatory/common/database/schema";
 import { beatmapsetsFiles } from "@observatory/common/database/schema";
 import type { DownloadBeatmapSetOptions } from "@observatory/common/types/beatmap-query";
-import { getUTCDate } from "@observatory/common/utilities/date";
-import { and, count, eq, gte, inArray, sql } from "drizzle-orm";
+import { and, count, eq, inArray, sql } from "drizzle-orm";
 
 export async function getBeatmapSetsFilesCount() {
   const entities = await db
     .select({ count: count() })
     .from(beatmapsetsFiles)
-    .where(
-      gte(
-        sql`cast(${beatmapsetsFiles.validUntil} as timestamp)`,
-        sql`cast(${getUTCDate()} as timestamp)`,
-      ),
-    );
+    .where(sql`${beatmapsetsFiles.validUntil}::timestamptz >= now()`);
 
   if (entities.length <= 0) {
     return 0;
@@ -23,20 +17,12 @@ export async function getBeatmapSetsFilesCount() {
   return entities[0].count;
 }
 
-export async function getUnvalidBeatmapSetsFiles(): Promise<BeatmapsetFile[]> {
-  const entities = await db
-    .select()
+export async function getUnvalidBeatmapSetsFiles(limit: number) {
+  return await db
+    .select({ id: beatmapsetsFiles.id, path: beatmapsetsFiles.path })
     .from(beatmapsetsFiles)
-    .where(
-      and(
-        gte(
-          sql`cast(${getUTCDate()} as timestamp)`,
-          sql`cast(${beatmapsetsFiles.validUntil} as timestamp)`,
-        ),
-      ),
-    );
-
-  return entities ?? [];
+    .where(sql`${beatmapsetsFiles.validUntil}::timestamptz < now()`)
+    .limit(limit);
 }
 
 export async function getBeatmapSetFile(
@@ -51,10 +37,7 @@ export async function getBeatmapSetFile(
         ctx.noVideo !== true
           ? eq(beatmapsetsFiles.noVideo, false)
           : undefined,
-        gte(
-          sql`cast(${beatmapsetsFiles.validUntil} as timestamp)`,
-          sql`cast(${getUTCDate()} as timestamp)`,
-        ),
+        sql`${beatmapsetsFiles.validUntil}::timestamptz >= now()`,
       ),
     );
 
@@ -75,11 +58,6 @@ export async function createBeatmapsetFile(
   return entities[0];
 }
 
-export async function deleteBeatmapsetsFiles(data: BeatmapsetFile[]) {
-  await db.delete(beatmapsetsFiles).where(
-    inArray(
-      beatmapsetsFiles.id,
-      data.map(s => s.id),
-    ),
-  );
+export async function deleteBeatmapsetsFiles(ids: number[]) {
+  await db.delete(beatmapsetsFiles).where(inArray(beatmapsetsFiles.id, ids));
 }

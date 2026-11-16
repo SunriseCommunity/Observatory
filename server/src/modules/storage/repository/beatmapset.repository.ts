@@ -1,29 +1,24 @@
 import { db } from "@observatory/common/database/client";
-import type { Beatmapset, Beatmapset as BeatmapsetDatabase, NewBeatmapset } from "@observatory/common/database/schema";
+import type { Beatmapset as BeatmapsetDatabase, NewBeatmapset } from "@observatory/common/database/schema";
 import { beatmaps, beatmapsets } from "@observatory/common/database/schema";
 import type {
   Beatmap as BeatmapObject,
   Beatmapset as BeatmapsetObject,
 } from "@observatory/common/types/beatmap";
-import { RankStatus } from "@observatory/common/types/rankStatus";
+import type { RankStatus } from "@observatory/common/types/rankStatus";
 import { splitByCondition } from "@observatory/common/utilities/array";
-import { getUTCDate } from "@observatory/common/utilities/date";
-import { and, count, eq, gte, inArray, sql } from "drizzle-orm";
+import type { SQL } from "drizzle-orm";
+import { and, count, eq, inArray, sql } from "drizzle-orm";
 
-import { createBeatmap, databaseToObject as beatmapDatabaseToObject } from "./beatmap.repository";
+import { createBeatmaps, databaseToObject as beatmapDatabaseToObject, getTTLBasedOnStatus } from "./beatmap.repository";
 
-const ONE_DAY = 1000 * 60 * 60 * 24;
+const isBeatmapsetValid = sql`${beatmapsets.validUntil}::timestamptz >= now()`;
 
 export async function getBeatmapSetCount() {
   const entities = await db
     .select({ count: count() })
     .from(beatmapsets)
-    .where(
-      gte(
-        sql`cast(${beatmapsets.validUntil} as timestamp)`,
-        sql`cast(${getUTCDate()} as timestamp)`,
-      ),
-    );
+    .where(isBeatmapsetValid);
 
   if (entities.length <= 0) {
     return 0;
@@ -32,147 +27,84 @@ export async function getBeatmapSetCount() {
   return entities[0].count;
 }
 
-export async function getUnvalidBeatmapSets(): Promise<Beatmapset[]> {
-  const entities = await db
-    .select()
-    .from(beatmapsets)
-    .where(
-      and(
-        gte(
-          sql`cast(${getUTCDate()} as timestamp)`,
-          sql`cast(${beatmapsets.validUntil} as timestamp)`,
-        ),
+export async function deleteUnvalidBeatmapSets(): Promise<number> {
+  // now() is fixed for the whole transaction, so both deletes see the same expired sets
+  return await db.transaction(async (tx) => {
+    const isExpired = sql`${beatmapsets.validUntil}::timestamptz < now()`;
+
+    await tx.delete(beatmaps).where(
+      inArray(
+        beatmaps.beatmapset_id,
+        tx.select({ id: beatmapsets.id }).from(beatmapsets).where(isExpired),
       ),
     );
 
-  return entities;
+    const { rowCount } = await tx.delete(beatmapsets).where(isExpired);
+    return rowCount ?? 0;
+  });
 }
 
 export async function getBeatmapSetById(
   beatmapsetId: number,
 ): Promise<BeatmapsetObject | null> {
-  const entities = await db
-    .select()
-    .from(beatmapsets)
-    .where(
-      and(
-        eq(beatmapsets.id, beatmapsetId),
-        gte(
-          sql`cast(${beatmapsets.validUntil} as timestamp)`,
-          sql`cast(${getUTCDate()} as timestamp)`,
-        ),
-      ),
-    )
-    .innerJoin(beatmaps, eq(beatmapsets.id, beatmaps.beatmapset_id));
+  const [beatmapset] = await getValidBeatmapSets(eq(beatmapsets.id, beatmapsetId));
 
-  if (entities.length === 0) {
-    return null;
-  }
-
-  const result = {
-    beatmapsets: entities[0].beatmapsets,
-    beatmaps: entities.map(e => e.beatmaps),
-  };
-
-  if (
-    result.beatmaps.some(
-      b => Date.parse(b.validUntil) < getUTCDate().getTime(),
-    )
-  ) {
-    return null;
-  }
-
-  return await enrichWithBeatmaps(
-    databaseToObject(result.beatmapsets),
-    result.beatmaps.map(b => beatmapDatabaseToObject(b)),
-  );
+  return beatmapset ?? null;
 }
 
 export async function getBeatmapSetsByBeatmapIds(
   beatmapIds: number[],
-  ignoreValidUntil: true,
-): Promise<BeatmapsetObject[] | null> {
-  const whereConditions = [
-    inArray(beatmaps.id, beatmapIds),
-    ignoreValidUntil
-      ? undefined
-      : gte(
-          sql`cast(${beatmapsets.validUntil} as timestamp)`,
-          sql`cast(${getUTCDate()} as timestamp)`,
-        ),
-  ].filter(condition => condition !== undefined);
-
-  const entities = await db
-    .select()
-    .from(beatmapsets)
-    .innerJoin(beatmaps, eq(beatmapsets.id, beatmaps.beatmapset_id))
-    .where(and(...whereConditions));
-
-  if (entities.length === 0) {
-    return null;
-  }
-
-  const data = entities.reduce((acc, { beatmapsets, beatmaps }) => {
-    const setId = beatmapsets.id;
-
-    const existing = acc.find(e => e.id === setId);
-
-    if (existing) {
-      existing.beatmaps?.push(beatmapDatabaseToObject(beatmaps));
-    }
-    else {
-      acc.push({
-        ...databaseToObject(beatmapsets),
-        beatmaps: [beatmapDatabaseToObject(beatmaps)],
-      });
-    }
-
-    return acc;
-  }, [] as BeatmapsetObject[]);
-
-  return data.map(set => enrichWithBeatmaps(set, set.beatmaps ?? []));
+): Promise<BeatmapsetObject[]> {
+  return await getValidBeatmapSets(
+    inArray(
+      beatmapsets.id,
+      db
+        .select({ id: beatmaps.beatmapset_id })
+        .from(beatmaps)
+        .where(inArray(beatmaps.id, beatmapIds)),
+    ),
+  );
 }
 
-export async function createBeatmapset(
-  obj: BeatmapsetObject,
-): Promise<BeatmapsetDatabase> {
-  const data: NewBeatmapset = objectToDatabase(obj);
+export async function createBeatmapset(obj: BeatmapsetObject) {
+  const setBeatmaps = [...(obj.beatmaps ?? []), ...(obj.converts ?? [])];
+  const data: NewBeatmapset = objectToDatabase(obj, setBeatmaps);
 
-  const createBeatmapsPromises = Array.from(
-    [obj.beatmaps, obj.converts].flat(),
-  ).map(async b => (b ? await createBeatmap(b) : null));
+  await createBeatmaps(setBeatmaps);
 
-  await Promise.all(createBeatmapsPromises);
-
-  data.validUntil = getValidUntilBasedOnBeatmapsTTL(
-    [obj.beatmaps ?? [], obj.converts ?? []].flat(),
-  );
-
-  const entities = await db
+  await db
     .insert(beatmapsets)
     .values(data)
     .onConflictDoUpdate({
       target: [beatmapsets.id],
       set: data,
-    })
-    .returning();
-  return entities[0];
+    });
 }
 
-export async function deleteBeatmapsets(data: Beatmapset[]) {
-  await db.delete(beatmapsets).where(
-    inArray(
-      beatmapsets.id,
-      data.map(s => s.id),
-    ),
-  );
+// Whole sets with all their beatmaps and converts; a set with any expired beatmap counts as missing
+async function getValidBeatmapSets(
+  where: SQL,
+): Promise<BeatmapsetObject[]> {
+  const entities = await db
+    .select()
+    .from(beatmapsets)
+    .innerJoin(beatmaps, eq(beatmapsets.id, beatmaps.beatmapset_id))
+    .where(and(where, isBeatmapsetValid));
 
-  await db.delete(beatmaps).where(
-    inArray(
-      beatmaps.beatmapset_id,
-      data.map(s => s.id),
-    ),
-  );
+  const sets = new Map<number, { beatmapset: BeatmapsetDatabase; beatmaps: BeatmapObject[]; expired: boolean }>();
+
+  for (const entity of entities) {
+    const set = sets.get(entity.beatmapsets.id)
+      ?? { beatmapset: entity.beatmapsets, beatmaps: [], expired: false };
+
+    set.beatmaps.push(beatmapDatabaseToObject(entity.beatmaps));
+    set.expired ||= Date.parse(entity.beatmaps.validUntil) < Date.now();
+    sets.set(entity.beatmapsets.id, set);
+  }
+
+  return [...sets.values()]
+    .filter(set => !set.expired)
+    .map(set => enrichWithBeatmaps(databaseToObject(set.beatmapset), set.beatmaps));
 }
 
 function enrichWithBeatmaps(
@@ -191,8 +123,8 @@ function enrichWithBeatmaps(
   };
 }
 
-function objectToDatabase(obj: BeatmapsetObject): BeatmapsetDatabase {
-  const data: BeatmapsetDatabase = {
+function objectToDatabase(obj: BeatmapsetObject, setBeatmaps: BeatmapObject[]): BeatmapsetDatabase {
+  return {
     ...obj,
     status: obj.status,
     ranked: obj.ranked,
@@ -216,11 +148,9 @@ function objectToDatabase(obj: BeatmapsetObject): BeatmapsetDatabase {
     related_users: JSON.stringify(obj.related_users),
     user: JSON.stringify(obj.user),
     validUntil: new Date(
-      getUTCDate().getTime() + getTTLBasedOnStatus(obj.status),
+      Date.now() + getLowestTTLBasedOnStatuses(setBeatmaps.map(b => b.status)),
     ).toISOString(),
   };
-
-  return data;
 }
 
 function databaseToObject(obj: BeatmapsetDatabase): BeatmapsetObject {
@@ -252,35 +182,9 @@ function databaseToObject(obj: BeatmapsetDatabase): BeatmapsetObject {
   return data;
 }
 
-function getTTLBasedOnStatus(status: RankStatus): number {
-  switch (status) {
-    case RankStatus.GRAVEYARD:
-      return ONE_DAY * 7; // 7 days
-    case RankStatus.PENDING:
-    case RankStatus.WIP:
-    case RankStatus.QUALIFIED:
-      return 1000 * 60 * 5; // 5 minutes
-    case RankStatus.APPROVED:
-    case RankStatus.LOVED:
-    case RankStatus.RANKED:
-      return ONE_DAY * 30; // 30 days
-    default:
-      return -1;
-  }
-}
-
-function getValidUntilBasedOnBeatmapsTTL(beatmaps: BeatmapObject[]): string {
-  return new Date(
-    getUTCDate().getTime()
-    + getLowestTTLBasedOnStatuses(beatmaps.map(b => b.status)),
-  ).toISOString();
-}
-
 function getLowestTTLBasedOnStatuses(statuses: RankStatus[]): number {
   if (statuses.length === 0)
     return 0;
 
-  return statuses
-    .map(status => getTTLBasedOnStatus(status))
-    .sort((a, b) => a - b)[0];
+  return Math.min(...statuses.map(status => getTTLBasedOnStatus(status)));
 }

@@ -1,24 +1,25 @@
 import { db } from "@observatory/common/database/client";
-import type { Beatmap as BeatmapDatabase, NewBeatmap } from "@observatory/common/database/schema";
+import type { Beatmap as BeatmapDatabase } from "@observatory/common/database/schema";
 import { beatmaps } from "@observatory/common/database/schema";
 import type { Beatmap as BeatmapObject } from "@observatory/common/types/beatmap";
 import type { GameMode } from "@observatory/common/types/gameMode";
 import { RankStatus } from "@observatory/common/types/rankStatus";
-import { getUTCDate } from "@observatory/common/utilities/date";
-import { and, count, eq, gte, sql } from "drizzle-orm";
+import { and, count, eq, getTableColumns, sql } from "drizzle-orm";
 
 const ONE_DAY = 1000 * 60 * 60 * 24;
+
+const excludedBeatmapColumns = Object.fromEntries(
+  Object.entries(getTableColumns(beatmaps)).map(([key, column]) => [
+    key,
+    sql.raw(`excluded."${column.name}"`),
+  ]),
+);
 
 export async function getBeatmapCount() {
   const entities = await db
     .select({ count: count() })
     .from(beatmaps)
-    .where(
-      gte(
-        sql`cast(${beatmaps.validUntil} as timestamp)`,
-        sql`cast(${getUTCDate()} as timestamp)`,
-      ),
-    );
+    .where(sql`${beatmaps.validUntil}::timestamptz >= now()`);
 
   if (entities.length <= 0) {
     return 0;
@@ -37,10 +38,7 @@ export async function getBeatmapById(
       and(
         eq(beatmaps.id, beatmapId),
         eq(beatmaps.convert, false),
-        gte(
-          sql`cast(${beatmaps.validUntil} as timestamp)`,
-          sql`cast(${getUTCDate()} as timestamp)`,
-        ),
+        sql`${beatmaps.validUntil}::timestamptz >= now()`,
       ),
     );
 
@@ -61,10 +59,7 @@ export async function getBeatmapByHash(
       and(
         eq(beatmaps.checksum, beatmapHash),
         eq(beatmaps.convert, false),
-        gte(
-          sql`cast(${beatmaps.validUntil} as timestamp)`,
-          sql`cast(${getUTCDate()} as timestamp)`,
-        ),
+        sql`${beatmaps.validUntil}::timestamptz >= now()`,
       ),
     );
 
@@ -75,49 +70,22 @@ export async function getBeatmapByHash(
   return databaseToObject(entities[0]);
 }
 
-export async function getBeatmapsBySetId(
-  beatmapSetId: number,
-  convert = false,
-): Promise<BeatmapObject[] | null> {
-  const entities = await db
-    .select()
-    .from(beatmaps)
-    .where(
-      and(
-        eq(beatmaps.beatmapset_id, beatmapSetId),
-        eq(beatmaps.convert, convert),
-        gte(
-          sql`cast(${beatmaps.validUntil} as timestamp)`,
-          sql`cast(${getUTCDate()} as timestamp)`,
-        ),
-      ),
-    );
-
-  if (entities.length === 0) {
-    return null;
+export async function createBeatmaps(objs: BeatmapObject[]) {
+  if (objs.length === 0) {
+    return;
   }
 
-  return entities.map(e => databaseToObject(e));
-}
-
-export async function createBeatmap(
-  obj: BeatmapObject,
-): Promise<BeatmapDatabase> {
-  const data: NewBeatmap = objectToDatabase(obj);
-
-  const entities = await db
+  await db
     .insert(beatmaps)
-    .values(data)
+    .values(objs.map(obj => objectToDatabase(obj)))
     .onConflictDoUpdate({
       target: [beatmaps.id, beatmaps.mode],
-      set: data,
-    })
-    .returning();
-  return entities[0];
+      set: excludedBeatmapColumns,
+    });
 }
 
 function objectToDatabase(obj: BeatmapObject): BeatmapDatabase {
-  const data: BeatmapDatabase = {
+  return {
     ...obj,
     status: obj.status,
     ranked: obj.ranked,
@@ -126,12 +94,8 @@ function objectToDatabase(obj: BeatmapObject): BeatmapDatabase {
     deleted_at: obj.deleted_at ?? null,
     checksum: obj.checksum ?? null,
     max_combo: obj.max_combo ?? null,
-    validUntil: new Date(
-      getUTCDate().getTime() + getTTLBasedOnStatus(obj.status),
-    ).toISOString(),
+    validUntil: new Date(Date.now() + getTTLBasedOnStatus(obj.status)).toISOString(),
   };
-
-  return data;
 }
 
 export function databaseToObject(obj: BeatmapDatabase): BeatmapObject {
@@ -149,7 +113,7 @@ export function databaseToObject(obj: BeatmapDatabase): BeatmapObject {
   };
 }
 
-function getTTLBasedOnStatus(status: RankStatus): number {
+export function getTTLBasedOnStatus(status: RankStatus): number {
   switch (status) {
     case RankStatus.GRAVEYARD:
       return ONE_DAY * 7; // 7 days

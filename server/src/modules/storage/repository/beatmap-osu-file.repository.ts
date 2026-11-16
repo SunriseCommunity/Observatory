@@ -2,19 +2,13 @@ import { db } from "@observatory/common/database/client";
 import type { BeatmapOsuFile, NewBeatmapOsuFile } from "@observatory/common/database/schema";
 import { beatmapOsuFiles } from "@observatory/common/database/schema";
 import type { DownloadOsuBeatmap } from "@observatory/common/types/beatmap-query";
-import { getUTCDate } from "@observatory/common/utilities/date";
-import { and, count, eq, gte, inArray, sql } from "drizzle-orm";
+import { and, count, eq, inArray, sql } from "drizzle-orm";
 
 export async function getBeatmapOsuFileCount() {
   const entities = await db
     .select({ count: count() })
     .from(beatmapOsuFiles)
-    .where(
-      gte(
-        sql`cast(${beatmapOsuFiles.validUntil} as timestamp)`,
-        sql`cast(${getUTCDate()} as timestamp)`,
-      ),
-    );
+    .where(sql`${beatmapOsuFiles.validUntil}::timestamptz >= now()`);
 
   if (entities.length <= 0) {
     return 0;
@@ -23,20 +17,12 @@ export async function getBeatmapOsuFileCount() {
   return entities[0].count;
 }
 
-export async function getUnvalidBeatmapOsuFiles(): Promise<BeatmapOsuFile[]> {
-  const entities = await db
-    .select()
+export async function getUnvalidBeatmapOsuFiles(limit: number) {
+  return await db
+    .select({ id: beatmapOsuFiles.id, path: beatmapOsuFiles.path })
     .from(beatmapOsuFiles)
-    .where(
-      and(
-        gte(
-          sql`cast(${getUTCDate()} as timestamp)`,
-          sql`cast(${beatmapOsuFiles.validUntil} as timestamp)`,
-        ),
-      ),
-    );
-
-  return entities ?? [];
+    .where(sql`${beatmapOsuFiles.validUntil}::timestamptz < now()`)
+    .limit(limit);
 }
 
 export async function getBeatmapOsuFile(
@@ -48,10 +34,7 @@ export async function getBeatmapOsuFile(
     .where(
       and(
         eq(beatmapOsuFiles.id, ctx.beatmapId),
-        gte(
-          sql`cast(${beatmapOsuFiles.validUntil} as timestamp)`,
-          sql`cast(${getUTCDate()} as timestamp)`,
-        ),
+        sql`${beatmapOsuFiles.validUntil}::timestamptz >= now()`,
       ),
     );
 
@@ -72,11 +55,6 @@ export async function createBeatmapOsuFile(
   return entities[0];
 }
 
-export async function deleteBeatmapsOsuFiles(data: BeatmapOsuFile[]) {
-  await db.delete(beatmapOsuFiles).where(
-    inArray(
-      beatmapOsuFiles.id,
-      data.map(s => s.id),
-    ),
-  );
+export async function deleteBeatmapsOsuFiles(ids: number[]) {
+  await db.delete(beatmapOsuFiles).where(inArray(beatmapOsuFiles.id, ids));
 }
