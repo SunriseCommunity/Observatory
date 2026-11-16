@@ -14,5 +14,5 @@ jobs:
 
             - run: docker compose -f docker-compose.tests.yml up --detach --wait
             - run: bun install --frozen-lockfile
-            - run: bun lint
+            - run: bunx eslint
             - run: bun test
