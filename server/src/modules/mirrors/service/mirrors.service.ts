@@ -1,3 +1,4 @@
+import type { Mirror } from "@observatory/common/config";
 import config from "@observatory/common/config";
 import logger from "@observatory/common/observability/logger";
 import type { Beatmap, Beatmapset } from "@observatory/common/types/beatmap";
@@ -14,93 +15,42 @@ import type {
 import type { StorageService } from "@observatory/storage";
 
 import { BanchoClient, DirectClient } from "../clients";
+import type { BaseClient } from "../clients/base-client.abstract";
 import type { MirrorClient } from "../clients/base-client.types";
 import { ClientAbilities } from "../clients/base-client.types";
-import { OsulabsClient } from "../clients/beatmaps.download/osulabs.client";
 import { MinoClient } from "../clients/catboy.best/mino.client";
 import { GatariClient } from "../clients/gatari.pw/gatari.client";
 import { NerinyanClient } from "../clients/nerinyan.moe/nerinyan.client";
 import {
   getMirrorsRequestsQueryData,
-  TIME_RANGES_FOR_MIRRORS_STATS,
+  getMirrorsStatsTimeRanges,
 } from "../helper/mirrors-stats.helper";
 import {
   getMirrorsRequestsCountForStats,
 } from "../repository/requests.repository";
 import { MirrorsBenchmarkService } from "./mirrors-benchmark.service";
 
-const DEFAULT_CLIENT_PROPS = {
-  weights: {
-    download: 0,
-    API: 0,
-    failrate: 0,
-  },
-};
+// In fallback order
+const MIRRORS: Array<[name: Mirror, create: (storage: StorageService) => BaseClient]> = [
+  ["direct", () => new DirectClient()],
+  ["mino", storage => new MinoClient(storage)],
+  ["gatari", () => new GatariClient()],
+  ["nerinyan", () => new NerinyanClient()],
+  ["bancho", () => new BanchoClient()],
+];
 
 export class MirrorsService {
   private readonly managerService: MirrorsBenchmarkService;
-  private readonly storageManager: StorageService;
 
-  private readonly clients: MirrorClient[] = [];
+  private readonly clients: MirrorClient[];
 
   constructor(storageManager: StorageService) {
-    this.clients = [];
-
-    this.storageManager = storageManager;
-
-    if (!config.MirrorsToIgnore.includes("direct")) {
-      const directClient = new DirectClient();
-
-      this.clients.push({
-        client: directClient,
-        ...DEFAULT_CLIENT_PROPS,
-      });
-    }
-
-    if (!config.MirrorsToIgnore.includes("mino")) {
-      const minoClient = new MinoClient(storageManager);
-
-      this.clients.push({
-        client: minoClient,
-        ...DEFAULT_CLIENT_PROPS,
-      });
-    }
-
-    if (!config.MirrorsToIgnore.includes("osulabs")) {
-      const osulabsClient = new OsulabsClient(storageManager);
-
-      this.clients.push({
-        client: osulabsClient,
-        ...DEFAULT_CLIENT_PROPS,
-      });
-    }
-
-    if (!config.MirrorsToIgnore.includes("gatari")) {
-      const gatariClient = new GatariClient();
-
-      this.clients.push({
-        client: gatariClient,
-        ...DEFAULT_CLIENT_PROPS,
-      });
-    }
-
-    if (!config.MirrorsToIgnore.includes("nerinyan")) {
-      const nerinyanClient = new NerinyanClient();
-
-      this.clients.push({
-        client: nerinyanClient,
-        ...DEFAULT_CLIENT_PROPS,
-      });
-    }
-
-    if (!config.MirrorsToIgnore.includes("bancho") && config.UseBancho) {
-      const banchoClient = new BanchoClient();
-
-      this.clients.push({
-        client: banchoClient,
-        ...DEFAULT_CLIENT_PROPS,
-      });
-    }
+    this.clients = MIRRORS
+      .filter(([name]) => !config.MirrorsToIgnore.includes(name) && (name !== "bancho" || config.UseBancho))
+      .map(([, create]) => ({
+        client: create(storageManager),
+        weights: { download: 0, API: 0, failrate: 0 },
+      }));
 
     this.managerService = new MirrorsBenchmarkService(this.clients);
   }
@@ -116,9 +66,7 @@ export class MirrorsService {
       throw new Error("beatmapSetId is required to fetch beatmap set");
     }
 
-    const criteria = ClientAbilities.GetBeatmapSetById;
-
-    return await this.useMirror<Beatmapset>(ctx, criteria, "getBeatmapSet");
+    return await this.useMirror<Beatmapset>(ctx, ClientAbilities.GetBeatmapSetById, "getBeatmapSet");
   }
 
   async getBeatmap(
@@ -128,64 +76,59 @@ export class MirrorsService {
       throw new Error("Either beatmapId, beatmapHash or beatmapFilename is required");
     }
 
-    let criteria: ClientAbilities;
-    if (ctx.beatmapId) {
-      criteria = ctx.allowMissingNonBeatmapValues
-        ? ClientAbilities.GetBeatmapByIdWithSomeNonBeatmapValues
-        : ClientAbilities.GetBeatmapById;
-    }
-    else if (ctx.beatmapHash) {
-      criteria = ctx.allowMissingNonBeatmapValues
-        ? ClientAbilities.GetBeatmapByHashWithSomeNonBeatmapValues
-        : ClientAbilities.GetBeatmapByHash;
-    }
-    else {
-      criteria = ClientAbilities.GetBeatmapByFilename;
+    if (ctx.beatmapFilename && !ctx.beatmapId && !ctx.beatmapHash) {
+      return await this.useMirror<Beatmap>(ctx, ClientAbilities.GetBeatmapByFilename, "getBeatmap");
     }
 
-    return await this.useMirror<Beatmap>(ctx, criteria, "getBeatmap");
+    const fullCriteria = ctx.beatmapId
+      ? ClientAbilities.GetBeatmapById
+      : ClientAbilities.GetBeatmapByHash;
+
+    if (!ctx.allowMissingNonBeatmapValues) {
+      return await this.useMirror<Beatmap>(ctx, fullCriteria, "getBeatmap");
+    }
+
+    // Partial data is enough here, so ask the mirrors that only have partial data first.
+    const partial = await this.useMirror<Beatmap>(
+      ctx,
+      ctx.beatmapId
+        ? ClientAbilities.GetBeatmapByIdWithSomeNonBeatmapValues
+        : ClientAbilities.GetBeatmapByHashWithSomeNonBeatmapValues,
+      "getBeatmap",
+    );
+    if (partial.result || partial.status === 404)
+      return partial;
+
+    const full = await this.useMirror<Beatmap>(ctx, fullCriteria, "getBeatmap");
+    return full.status === 501 ? partial : full;
   }
 
   async searchBeatmapsets(
     ctx: SearchBeatmapsetsOptions,
   ): Promise<ResultWithStatus<Beatmapset[]>> {
-    const criteria = ClientAbilities.SearchBeatmapsets;
-
-    return await this.useMirror<Beatmapset[]>(
-      ctx,
-      criteria,
-      "searchBeatmapsets",
-    );
+    return await this.useMirror<Beatmapset[]>(ctx, ClientAbilities.SearchBeatmapsets, "searchBeatmapsets");
   }
 
   async getBeatmaps(
     ctx: GetBeatmapsOptions,
   ): Promise<ResultWithStatus<Beatmap[]>> {
-    const { ids } = ctx;
-
-    if (!ids || ids.length === 0) {
+    if (!ctx.ids || ctx.ids.length === 0) {
       throw new Error("ids is required to fetch beatmaps");
     }
 
-    const criteria = ClientAbilities.GetBeatmaps;
-
-    return await this.useMirror<Beatmap[]>(ctx, criteria, "getBeatmaps");
+    return await this.useMirror<Beatmap[]>(ctx, ClientAbilities.GetBeatmaps, "getBeatmaps");
   }
 
   async getBeatmapsetsByBeatmapIds(
     ctx: GetBeatmapsetsByBeatmapIdsOptions,
   ): Promise<ResultWithStatus<Beatmapset[]>> {
-    const { beatmapIds } = ctx;
-
-    if (!beatmapIds || beatmapIds.length === 0) {
+    if (!ctx.beatmapIds || ctx.beatmapIds.length === 0) {
       throw new Error("beatmapIds is required to fetch beatmapsets");
     }
 
-    const criteria = ClientAbilities.GetBeatmapsetsByBeatmapIds;
-
     return await this.useMirror<Beatmapset[]>(
       ctx,
-      criteria,
+      ClientAbilities.GetBeatmapsetsByBeatmapIds,
       "getBeatmapsetsByBeatmapIds",
     );
   }
@@ -197,17 +140,11 @@ export class MirrorsService {
       throw new Error("beatmapSetId is required to download beatmap set");
     }
 
-    let criteria: ClientAbilities;
-    if (ctx.noVideo) {
-      criteria = ClientAbilities.DownloadBeatmapSetByIdNoVideo;
-    }
-    else {
-      criteria = ClientAbilities.DownloadBeatmapSetById;
-    }
-
     return await this.useMirror<ArrayBuffer>(
       ctx,
-      criteria,
+      ctx.noVideo
+        ? ClientAbilities.DownloadBeatmapSetByIdNoVideo
+        : ClientAbilities.DownloadBeatmapSetById,
       "downloadBeatmapSet",
     );
   }
@@ -215,18 +152,13 @@ export class MirrorsService {
   async downloadOsuBeatmap(
     ctx: DownloadOsuBeatmap,
   ): Promise<ResultWithStatus<ArrayBuffer>> {
-    const criteria = ClientAbilities.DownloadOsuBeatmap;
-
-    return await this.useMirror<ArrayBuffer>(
-      ctx,
-      criteria,
-      "downloadOsuBeatmap",
-    );
+    return await this.useMirror<ArrayBuffer>(ctx, ClientAbilities.DownloadOsuBeatmap, "downloadOsuBeatmap");
   }
 
   async getMirrorsStatistics() {
+    const timeRanges = getMirrorsStatsTimeRanges();
     const data = await getMirrorsRequestsCountForStats(
-      getMirrorsRequestsQueryData(this.clients),
+      getMirrorsRequestsQueryData(this.clients, timeRanges),
     );
 
     const dataMap = new Map<string, number>();
@@ -243,45 +175,34 @@ export class MirrorsService {
       dataMap.set(key, item.count);
     }
 
+    const mirrors = this.clients.map(c => ({ client: c.client, capacities: c.client.getCapacities() }));
+
     return {
-      activeMirrors: await Promise.all(
-        this.clients.map(async (c) => {
-          const { baseUrl } = c.client.clientConfig;
-          const stats = Object.fromEntries(
-            TIME_RANGES_FOR_MIRRORS_STATS.map(({ name, time }) => [
-              name,
-              {
-                total: Number(
-                  dataMap.get(`${baseUrl}|${time}|null`) || 0,
-                ),
-                successful: Number(
-                  dataMap.get(`${baseUrl}|${time}|success`)
-                  || 0,
-                ),
-                failed: Number(
-                  dataMap.get(`${baseUrl}|${time}|fail`) || 0,
-                ),
-              },
-            ]),
-          );
+      activeMirrors: mirrors.map(({ client, capacities }) => {
+        const { baseUrl } = client.clientConfig;
+        const stats = Object.fromEntries(
+          timeRanges.map(({ name, time }) => [
+            name,
+            {
+              total: Number(dataMap.get(`${baseUrl}|${time}|null`) || 0),
+              successful: Number(dataMap.get(`${baseUrl}|${time}|success`) || 0),
+              failed: Number(dataMap.get(`${baseUrl}|${time}|fail`) || 0),
+            },
+          ]),
+        );
 
-          return {
-            name: c.client.constructor.name,
-            url: baseUrl,
-            onCooldownUntil: c.client.onCooldownUntil(),
-            rateLimit: c.client.getCapacities(),
-            requests: stats,
-          };
-        }),
-      ),
-      rateLimitsTotal: this.clients.reduce(
-        (acc, c) => {
-          const clientCapacities = c.client.getCapacities();
-
-          for (const capacity of clientCapacities) {
-            if (!acc[capacity.ability]) {
-              acc[capacity.ability] = { total: 0, remaining: 0 };
-            }
+        return {
+          name: client.constructor.name,
+          url: baseUrl,
+          onCooldownUntil: client.onCooldownUntil(),
+          rateLimit: capacities,
+          requests: stats,
+        };
+      }),
+      rateLimitsTotal: mirrors.reduce(
+        (acc, { capacities }) => {
+          for (const capacity of capacities) {
+            acc[capacity.ability] ??= { total: 0, remaining: 0 };
             acc[capacity.ability].total += capacity.limit;
             acc[capacity.ability].remaining += capacity.remaining;
           }
@@ -311,32 +232,41 @@ export class MirrorsService {
       if (!client)
         return { result: null, status: 501 };
 
-      const result = await (client.client[action] as (ctx: any) => Promise<ResultWithStatus<T>>)(ctx);
+      let result: ResultWithStatus<T>;
+      try {
+        result = await (client.client[action] as (ctx: any) => Promise<ResultWithStatus<T>>)(ctx);
+      }
+      catch (error) {
+        logger.error({ err: error, mirror: client.client.mirror, ability: ClientAbilities[criteria] }, "Mirror client threw");
+        result = { result: null, status: 500 };
+      }
+
       if (result.result || result.status === 404)
         return result;
 
       usedClients.push(client);
+      logger.warn({
+        mirror: client.client.mirror,
+        ability: ClientAbilities[criteria],
+        status: result.status,
+        attempt: usedClients.length,
+      }, "Mirror could not serve the request");
     }
     return { result: null, status: 502 };
   }
 
   private getClient(
     criteria: ClientAbilities,
-    ignore?: MirrorClient[],
+    ignore: MirrorClient[],
   ): MirrorClient | null {
-    const clients = this.clients
-      .filter(client =>
-        client.client.clientConfig.abilities.includes(criteria),
-      )
-      .filter(client => !ignore || !ignore.includes(client));
+    const clients = this.clients.filter(client =>
+      client.client.clientConfig.abilities.includes(criteria)
+      && !ignore.includes(client),
+    );
 
-    const isSearchCriteria = criteria === ClientAbilities.SearchBeatmapsets;
-
-    const client = isSearchCriteria
+    return criteria === ClientAbilities.SearchBeatmapsets
       ? this.getClientForSearchEndpoint(clients)
       : this.getClientByWeight(criteria, clients);
-
-    return client;
   }
 
   // We want to prioritise a single mirror for all search endpoints while it's available to have consistent results from page to page.
@@ -372,10 +302,6 @@ export class MirrorsService {
       }
     }
 
-    if (bestWeight === -1 || !bestClient) {
-      return null;
-    }
-
     return bestClient;
   }
 
@@ -401,9 +327,5 @@ export class MirrorsService {
       * Math.max(0.00000001, latencyWeight)
       * Math.max(0.00000001, 1 - client.weights.failrate)
     );
-  }
-
-  private log(message: string, level: "info" | "warn" | "error" = "info") {
-    logger[level](`MirrorsManager: ${message}`);
   }
 }
