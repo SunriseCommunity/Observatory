@@ -1,4 +1,6 @@
-import logger from "../observability/logger";
+import { SpanStatusCode, trace } from "@opentelemetry/api";
+
+import logger, { logContext } from "../observability/logger";
 
 type BackgroundJobOptions = {
   name: string;
@@ -19,16 +21,26 @@ export function startBackgroundJob({ name, intervalMs, run }: BackgroundJobOptio
       return;
     }
 
-    running = run()
-      .then(
-        () => {},
-        (error: unknown) => {
-          logger.error({ err: error }, `${name}: background job failed`);
-        },
-      )
-      .finally(() => {
-        running = undefined;
-      });
+    running = logContext.run({ job: name }, () =>
+      trace.getTracer("observatory").startActiveSpan(`job ${name}`, (span) => {
+        const started = performance.now();
+
+        return run()
+          .then(
+            () => {
+              logger.info({ duration_ms: Math.round(performance.now() - started) }, `${name}: background job completed`);
+            },
+            (error: unknown) => {
+              span.recordException(error as Error);
+              span.setStatus({ code: SpanStatusCode.ERROR });
+              logger.error({ err: error }, `${name}: background job failed`);
+            },
+          )
+          .finally(() => {
+            span.end();
+            running = undefined;
+          });
+      }));
   };
 
   execute();
