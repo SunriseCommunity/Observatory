@@ -20,12 +20,12 @@ export enum GameMode {
  * ([Undocumented but can be found in Score](https://osu.ppy.sh/docs/index.html#score))
  */
 export enum GameModeInt {
-  /** Osu!catch */
-  OSU_CATCH = 2,
-  /** Osu!mania */
-  OSU_MANIA = 1,
   /** Osu!standard */
   OSU_STANDARD = 0,
   /** Osu!taiko */
-  OSU_TAIKO = 3,
+  OSU_TAIKO = 1,
+  /** Osu!catch */
+  OSU_CATCH = 2,
+  /** Osu!mania */
+  OSU_MANIA = 3
 }
