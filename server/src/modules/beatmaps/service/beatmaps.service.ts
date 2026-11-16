@@ -1,3 +1,4 @@
+import logger from "@observatory/common/observability/logger";
 import type { Beatmap, Beatmapset } from "@observatory/common/types/beatmap";
 import type {
   DownloadBeatmapSetOptions,
@@ -46,6 +47,7 @@ export class BeatmapsService {
       return this.formatResultAsServerError(result);
     }
 
+    // Allow caching partial mirror responses with placeholder fields for now.
     this.storageService.insertBeatmap(result.result, ctx);
 
     return {
@@ -151,18 +153,15 @@ export class BeatmapsService {
     const beatmapsets
       = await this.storageService.getBeatmapSetsByBeatmapIds(ctx);
 
-    const missingIds
-      = ctx.beatmapIds.filter(
-        id =>
-          beatmapsets !== undefined
-          && !beatmapsets
-            ?.flatMap(
-              set => set.beatmaps?.map(map => map.id) ?? [],
-            )
-            .includes(id),
-      ) ?? ctx.beatmapIds;
+    const storedIds = new Set(
+      beatmapsets.flatMap(set => [
+        ...(set.beatmaps?.map(map => map.id) ?? []),
+        ...(set.converts?.map(map => map.id) ?? []),
+      ]),
+    );
+    const missingIds = ctx.beatmapIds.filter(id => !storedIds.has(id));
 
-    if (beatmapsets && missingIds.length === 0) {
+    if (missingIds.length === 0) {
       return {
         data: beatmapsets,
         status: HttpStatusCode.Ok,
@@ -179,44 +178,40 @@ export class BeatmapsService {
       return this.formatResultAsServerError(result);
     }
 
-    // ! NOTE: Results from getBeatmapsetsByBeatmapIds will include not all beatmaps, so we need to fetch beatmapsets again to fetch all beatmaps with them
-    result.result = await Promise.all(
-      result.result?.map(
-        async beatmapset =>
-          await this.getBeatmapSet({
-            beatmapSetId: beatmapset.id,
-          }),
-      ) ?? [],
-    ).then(
-      results =>
-        results
-          .map(result => result.data ?? null)
-          .filter(result => result !== null) as Beatmapset[],
+    // ! NOTE: Results from getBeatmapsetsByBeatmapIds hold one partial beatmapset per requested beatmap, so fetch each missing set once in full
+    const missingSetIds = new Set(
+      result.result
+        ?.map(beatmapset => beatmapset.id)
+        .filter(id => !beatmapsets.some(set => set.id === id)),
     );
 
-    if (result.result && result.result.length > 0) {
-      for (const beatmapset of result.result) {
-        this.storageService.insertBeatmapset(beatmapset, {
-          beatmapSetId: beatmapset.id,
-        });
-      }
+    const setIds = [...missingSetIds];
+    const fetched = await Promise.all(setIds.map(beatmapSetId => this.getBeatmapSet({ beatmapSetId })));
+    const failed = fetched.find(response => response.status >= 500);
+    if (failed) {
+      return this.formatResultAsServerError({ result: null, status: failed.status });
     }
 
-    const missingIdsFromResult
-      = result.result?.filter(
-        set =>
-          !beatmapsets
-            ?.flatMap(set => set.beatmaps?.map(map => map.id))
-            .includes(set.id),
-      ) ?? [];
+    const sets = [...beatmapsets, ...fetched.flatMap(response => response.data ?? [])];
+    const returnedIds = new Set(sets.flatMap(set => [
+      ...(set.beatmaps?.map(map => map.id) ?? []),
+      ...(set.converts?.map(map => map.id) ?? []),
+    ]));
+    const missingBeatmapIds = ctx.beatmapIds.filter(id => !returnedIds.has(id));
+    const missingBeatmapsetIds = setIds.filter((_, index) => !fetched[index].data);
+    const messages = [
+      missingBeatmapIds.length ? `Some beatmaps not found: ${missingBeatmapIds.join(", ")}` : undefined,
+      missingBeatmapsetIds.length ? `Some beatmapsets could not be fetched: ${missingBeatmapsetIds.join(", ")}` : undefined,
+    ].filter(message => message !== undefined);
+
+    if (messages.length) {
+      logger.warn({ missingBeatmapIds, missingBeatmapsetIds }, "Beatmapset lookup returned incomplete results");
+    }
 
     return {
-      data: [...(beatmapsets ?? []), ...(result.result ?? [])],
+      data: sets,
       status: result.status,
-      message:
-                missingIdsFromResult.length > 0
-                  ? `Some beatmapsets not found: ${missingIdsFromResult.join(", ")}`
-                  : undefined,
+      message: messages.length ? messages.join("; ") : undefined,
       source: "mirror",
     };
   }
