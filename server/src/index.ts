@@ -1,7 +1,8 @@
 import config from "@observatory/common/config";
 import { closeDatabase } from "@observatory/common/database/client";
 import { registerShutdown } from "@observatory/common/lifecycle/shutdown";
-import logger from "@observatory/common/observability/logger";
+import logger, { flushLogger } from "@observatory/common/observability/logger";
+import { shutdownTelemetry } from "@observatory/common/observability/otlp.plugin";
 import { RedisInstance } from "@observatory/common/redis/redis";
 import { startMirrorsCron } from "@observatory/mirrors/cron";
 import { startStorageCron } from "@observatory/storage/cron";
@@ -17,4 +18,6 @@ registerShutdown([
   { name: "http and background jobs", run: () => Promise.all([app.stop(), ...jobs.map(job => job.stop())]) },
   { name: "redis", run: () => RedisInstance.quit() },
   { name: "database", run: closeDatabase },
+  { name: "telemetry", run: shutdownTelemetry },
+  { name: "logger", run: flushLogger },
 ]);
