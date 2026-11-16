@@ -1,7 +1,6 @@
-import logger from "@observatory/common/observability/logger";
 import type { DownloadBeatmapSetOptions, ResultWithStatus } from "@observatory/common/types/beatmap-query";
 
-import { BaseClient } from "../base-client.abstract";
+import { BaseClient, DOWNLOAD_TIMEOUT_MS } from "../base-client.abstract";
 import { ClientAbilities } from "../base-client.types";
 
 export class GatariClient extends BaseClient {
@@ -15,20 +14,19 @@ export class GatariClient extends BaseClient {
         rateLimits: [],
       },
     );
-
-    logger.info("GatariClient initialized");
   }
 
   async downloadBeatmapSet(
     ctx: DownloadBeatmapSetOptions,
   ): Promise<ResultWithStatus<ArrayBuffer>> {
     const result = await this.api.get<ArrayBuffer>(
-            `d/${ctx.beatmapSetId}`,
-            {
-              config: {
-                responseType: "arraybuffer",
-              },
-            },
+      `d/${ctx.beatmapSetId}`,
+      {
+        config: {
+          responseType: "arraybuffer",
+          timeout: DOWNLOAD_TIMEOUT_MS,
+        },
+      },
     );
 
     if (!result || result.status !== 200 || !result.data) {

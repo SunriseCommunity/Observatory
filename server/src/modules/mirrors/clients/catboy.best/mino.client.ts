@@ -1,5 +1,4 @@
 import config from "@observatory/common/config";
-import logger from "@observatory/common/observability/logger";
 import type { Beatmap, Beatmapset } from "@observatory/common/types/beatmap";
 import type {
   DownloadBeatmapSetOptions,
@@ -10,14 +9,14 @@ import type {
   SearchBeatmapsetsOptions,
 } from "@observatory/common/types/beatmap-query";
 import type { StorageService } from "@observatory/storage";
-import qs from "qs";
 
-import { BaseClient } from "../base-client.abstract";
+import { convertMinoBeatmap, convertMinoBeatmapset } from "../../helper/convert.helper";
+import { BaseClient, DOWNLOAD_TIMEOUT_MS } from "../base-client.abstract";
 import { ClientAbilities } from "../base-client.types";
 import type { MinoBeatmap, MinoBeatmapset } from "./mino-client.types";
 
 export class MinoClient extends BaseClient {
-  constructor(storageManager: StorageService) {
+  constructor(storageManager?: StorageService) {
     super(
       {
         baseUrl: config.UseUsCatboyServerOnly ? "https://us.catboy.best" : "https://catboy.best",
@@ -89,20 +88,19 @@ export class MinoClient extends BaseClient {
       },
       storageManager,
     );
-
-    logger.info("MinoClient initialized");
   }
 
   async downloadBeatmapSet(
     ctx: DownloadBeatmapSetOptions,
   ): Promise<ResultWithStatus<ArrayBuffer>> {
     const result = await this.api.get<ArrayBuffer>(
-            `d/${ctx.beatmapSetId}${ctx.noVideo ? "n" : ""}`,
-            {
-              config: {
-                responseType: "arraybuffer",
-              },
-            },
+      `d/${ctx.beatmapSetId}${ctx.noVideo ? "n" : ""}`,
+      {
+        config: {
+          responseType: "arraybuffer",
+          timeout: DOWNLOAD_TIMEOUT_MS,
+        },
+      },
     );
 
     if (!result || result.status !== 200 || !result.data) {
@@ -131,17 +129,26 @@ export class MinoClient extends BaseClient {
   async getBeatmapSet(
     ctx: GetBeatmapSetOptions,
   ): Promise<ResultWithStatus<Beatmapset>> {
-    if (ctx.beatmapSetId) {
-      return await this.getBeatmapSetById(ctx.beatmapSetId);
+    if (!ctx.beatmapSetId) {
+      throw new Error("Invalid arguments");
     }
 
-    throw new Error("Invalid arguments");
+    const result = await this.api.get<MinoBeatmapset>(`api/v2/s/${ctx.beatmapSetId}`);
+
+    if (!result || result.status !== 200 || !result.data) {
+      return { result: null, status: result?.status ?? 500 };
+    }
+
+    return {
+      result: convertMinoBeatmapset(result.data),
+      status: result.status,
+    };
   }
 
   async searchBeatmapsets(
     ctx: SearchBeatmapsetsOptions,
   ): Promise<ResultWithStatus<Beatmapset[]>> {
-    const result = await this.api.get<Beatmapset[]>(`api/v2/search`, {
+    const result = await this.api.get<MinoBeatmapset[]>(`api/v2/search`, {
       config: {
         params: {
           query: ctx.query,
@@ -150,8 +157,7 @@ export class MinoClient extends BaseClient {
           status: ctx.status,
           mode: ctx.mode,
         },
-        paramsSerializer: params =>
-          qs.stringify(params, { indices: false }),
+        paramsSerializer: { indexes: null },
       },
     });
 
@@ -160,9 +166,7 @@ export class MinoClient extends BaseClient {
     }
 
     return {
-      result: result.data.map((b: MinoBeatmapset) =>
-        this.convertService.convertBeatmapset(b),
-      ),
+      result: result.data.map(convertMinoBeatmapset),
       status: result.status,
     };
   }
@@ -171,74 +175,33 @@ export class MinoClient extends BaseClient {
     ctx: GetBeatmapOptions,
   ): Promise<ResultWithStatus<Beatmap>> {
     if (ctx.beatmapId) {
-      return await this.getBeatmapById(ctx.beatmapId);
+      return await this.getBeatmapFrom(`api/v2/b/${ctx.beatmapId}`);
     }
     else if (ctx.beatmapHash) {
-      return await this.getBeatmapByHash(ctx.beatmapHash);
+      return await this.getBeatmapFrom(`api/v2/md5/${ctx.beatmapHash}`);
     }
 
     throw new Error("Invalid arguments");
   }
 
-  private async getBeatmapSetById(
-    beatmapSetId: number,
-  ): Promise<ResultWithStatus<Beatmapset>> {
-    const result = await this.api.get<Beatmapset>(
-            `api/v2/s/${beatmapSetId}`,
-    );
-
-    if (!result || result.status !== 200 || !result.data) {
-      return { result: null, status: result?.status ?? 500 };
-    }
-
-    return {
-      result: this.convertService.convertBeatmapset(result.data),
-      status: result.status,
-    };
-  }
-
-  private async getBeatmapById(
-    beatmapId: number,
+  private async getBeatmapFrom(
+    endpoint: string,
   ): Promise<ResultWithStatus<Beatmap>> {
-    const result = await this.api.get<Beatmap>(`api/v2/b/${beatmapId}`);
+    const result = await this.api.get<MinoBeatmap>(endpoint);
 
     if (!result || result.status !== 200 || !result.data) {
       return { result: null, status: result?.status ?? 500 };
     }
 
-    const beatmap = result.data as MinoBeatmap;
-    if (beatmap.set) {
-      const beatmapSet = this.convertService.convertBeatmapset(beatmap.set);
-      await this.storageManager?.insertBeatmapset(beatmapSet, {
+    if (result.data.set) {
+      const beatmapSet = convertMinoBeatmapset(result.data.set);
+      this.storageManager?.insertBeatmapset(beatmapSet, {
         beatmapSetId: beatmapSet.id,
       });
     }
 
     return {
-      result: this.convertService.convertBeatmap(result.data),
-      status: result.status,
-    };
-  }
-
-  private async getBeatmapByHash(
-    beatmapHash: string,
-  ): Promise<ResultWithStatus<Beatmap>> {
-    const result = await this.api.get<Beatmap>(`api/v2/md5/${beatmapHash}`);
-
-    if (!result || result.status !== 200 || !result.data) {
-      return { result: null, status: result?.status ?? 500 };
-    }
-
-    const beatmap = result.data as MinoBeatmap;
-    if (beatmap.set) {
-      const beatmapSet = this.convertService.convertBeatmapset(beatmap.set);
-      await this.storageManager?.insertBeatmapset(beatmapSet, {
-        beatmapSetId: beatmapSet.id,
-      });
-    }
-
-    return {
-      result: this.convertService.convertBeatmap(result.data),
+      result: convertMinoBeatmap(result.data),
       status: result.status,
     };
   }

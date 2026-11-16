@@ -1,4 +1,3 @@
-import logger from "@observatory/common/observability/logger";
 import type { Beatmap } from "@observatory/common/types/beatmap";
 import type {
   DownloadBeatmapSetOptions,
@@ -7,8 +6,10 @@ import type {
   ResultWithStatus,
 } from "@observatory/common/types/beatmap-query";
 
-import { BaseClient } from "../base-client.abstract";
+import { convertDirectBeatmap } from "../../helper/convert.helper";
+import { BaseClient, DOWNLOAD_TIMEOUT_MS } from "../base-client.abstract";
 import { ClientAbilities } from "../base-client.types";
+import type { DirectBeatmap } from "./direct-client.types";
 
 export class DirectClient extends BaseClient {
   constructor() {
@@ -45,49 +46,32 @@ export class DirectClient extends BaseClient {
         ],
       },
     );
-
-    logger.info("DirectClient initialized");
   }
 
   async getBeatmap(
     ctx: GetBeatmapOptions,
   ): Promise<ResultWithStatus<Beatmap>> {
     if (ctx.beatmapId) {
-      return await this.getBeatmapById(ctx.beatmapId);
+      return await this.getBeatmapFrom(`v2/b/${ctx.beatmapId}`);
     }
-    else if (ctx.beatmapHash) {
-      return await this.getBeatmapByHash(ctx.beatmapHash);
+    if (ctx.beatmapHash) {
+      return await this.getBeatmapFrom(`v2/md5/${ctx.beatmapHash}`);
     }
 
     throw new Error("Invalid arguments");
   }
 
-  private async getBeatmapById(
-    beatmapId: number,
+  private async getBeatmapFrom(
+    endpoint: string,
   ): Promise<ResultWithStatus<Beatmap>> {
-    const result = await this.api.get<Beatmap>(`v2/b/${beatmapId}`);
+    const result = await this.api.get<DirectBeatmap>(endpoint);
 
     if (!result || result.status !== 200 || !result.data) {
       return { result: null, status: result?.status ?? 500 };
     }
 
     return {
-      result: this.convertService.convertBeatmap(result.data),
-      status: result.status,
-    };
-  }
-
-  private async getBeatmapByHash(
-    beatmapHash: string,
-  ): Promise<ResultWithStatus<Beatmap>> {
-    const result = await this.api.get<Beatmap>(`v2/md5/${beatmapHash}`);
-
-    if (!result || result.status !== 200 || !result.data) {
-      return { result: null, status: result?.status ?? 500 };
-    }
-
-    return {
-      result: this.convertService.convertBeatmap(result.data),
+      result: convertDirectBeatmap(result.data),
       status: result.status,
     };
   }
@@ -96,15 +80,16 @@ export class DirectClient extends BaseClient {
     ctx: DownloadBeatmapSetOptions,
   ): Promise<ResultWithStatus<ArrayBuffer>> {
     const result = await this.api.get<ArrayBuffer>(
-            `d/${ctx.beatmapSetId}`,
-            {
-              config: {
-                responseType: "arraybuffer",
-                params: {
-                  noVideo: ctx.noVideo ? true : undefined,
-                },
-              },
-            },
+      `d/${ctx.beatmapSetId}`,
+      {
+        config: {
+          responseType: "arraybuffer",
+          timeout: DOWNLOAD_TIMEOUT_MS,
+          params: {
+            noVideo: ctx.noVideo ? true : undefined,
+          },
+        },
+      },
     );
 
     if (!result || result.status !== 200 || !result.data) {

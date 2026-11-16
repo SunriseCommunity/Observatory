@@ -1,7 +1,6 @@
-import logger from "@observatory/common/observability/logger";
 import type { DownloadBeatmapSetOptions, ResultWithStatus } from "@observatory/common/types/beatmap-query";
 
-import { BaseClient } from "../base-client.abstract";
+import { BaseClient, DOWNLOAD_TIMEOUT_MS } from "../base-client.abstract";
 import { ClientAbilities } from "../base-client.types";
 
 export class NerinyanClient extends BaseClient {
@@ -18,23 +17,22 @@ export class NerinyanClient extends BaseClient {
         rateLimits: [],
       },
     );
-
-    logger.info("NerinyanClient initialized");
   }
 
   async downloadBeatmapSet(
     ctx: DownloadBeatmapSetOptions,
   ): Promise<ResultWithStatus<ArrayBuffer>> {
     const result = await this.api.get<ArrayBuffer>(
-            `d/${ctx.beatmapSetId}`,
-            {
-              config: {
-                responseType: "arraybuffer",
-                params: {
-                  noVideo: ctx.noVideo ? true : false,
-                },
-              },
-            },
+      `d/${ctx.beatmapSetId}`,
+      {
+        config: {
+          responseType: "arraybuffer",
+          timeout: DOWNLOAD_TIMEOUT_MS,
+          params: {
+            noVideo: ctx.noVideo ? true : false,
+          },
+        },
+      },
     );
 
     if (!result || result.status !== 200 || !result.data) {
