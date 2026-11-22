@@ -1,5 +1,4 @@
 import config from "@observatory/common/config";
-import { StorageService } from "@observatory/storage";
 import { beforeAll, describe, expect, it } from "bun:test";
 
 import { BanchoClient, DirectClient } from "../clients";
@@ -13,10 +12,8 @@ const json: any = mirrorTests;
 describe.skipIf(!config.IsProduction)(
   "Production compatibility tests - USE TO CHECK IF THE MIRRORS ARE COMPATIBLE WITH THE PRODUCTION ENVIRONMENT",
   () => {
-    const storageManager = new StorageService();
-
     const banchoClient = new BanchoClient();
-    const minoClient = new MinoClient(storageManager);
+    const minoClient = new MinoClient();
     const directClient = new DirectClient();
     const nerinyanClient = new NerinyanClient();
     const gatariClient = new GatariClient();

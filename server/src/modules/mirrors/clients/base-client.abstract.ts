@@ -11,10 +11,10 @@ import type {
   ResultWithStatus,
   SearchBeatmapsetsOptions,
 } from "@observatory/common/types/beatmap-query";
-import type { StorageService } from "@observatory/storage";
 import axios from "axios";
 
 import packageJson from "../../../../../package.json";
+import type { BeatmapWithSet } from "../model/mirrors.model";
 import { BaseApi } from "./api/base-api.abstract";
 import type { ClientOptions } from "./base-client.types";
 import { ClientAbilities } from "./base-client.types";
@@ -25,8 +25,6 @@ const API_TIMEOUT_MS = 10_000;
 export const DOWNLOAD_TIMEOUT_MS = 60_000;
 
 export class BaseClient {
-  protected storageManager?: StorageService;
-
   protected config: ClientOptions;
   protected api: ApiRateLimiter;
   protected baseApi: BaseApi;
@@ -34,11 +32,8 @@ export class BaseClient {
   constructor(
     config: ClientOptions,
     rateLimitConfig: RateLimitOptions,
-    storageManager?: StorageService,
   ) {
     this.config = config;
-
-    this.storageManager = storageManager;
 
     this.baseApi = new BaseApi(axios.create({
       headers: { "User-Agent": `observatory-sunrise/${packageJson.version}` },
@@ -81,7 +76,7 @@ export class BaseClient {
 
   async getBeatmap(
     ctx: GetBeatmapOptions,
-  ): Promise<ResultWithStatus<Beatmap>> {
+  ): Promise<BeatmapWithSet> {
     throw new Error("Method not implemented.");
   }
 
@@ -141,7 +136,7 @@ export class BaseClient {
   get clientConfig(): ClientOptions {
     return this.config;
   }
-  
+
   get mirror(): string {
     return this.baseApi.mirror;
   }

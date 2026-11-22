@@ -2,26 +2,29 @@ import assert from "node:assert";
 
 import { faker } from "@faker-js/faker";
 import config from "@observatory/common/config";
-import type { StorageService } from "@observatory/storage";
 import {
-  beforeAll,
   beforeEach,
   describe,
   expect,
   jest,
-  mock,
   setSystemTime,
+  spyOn,
   test,
 } from "bun:test";
 
 import { DirectClient } from "../clients";
 import type { BaseClient } from "../clients/base-client.abstract";
+import type { MirrorClient } from "../clients/base-client.types";
 import { ClientAbilities } from "../clients/base-client.types";
 import { MinoClient } from "../clients/catboy.best/mino.client";
 import { GatariClient } from "../clients/gatari.pw/gatari.client";
 import { NerinyanClient } from "../clients/nerinyan.moe/nerinyan.client";
 import { BanchoClient } from "../clients/osu.ppy.sh/bancho.client";
+import { convertMinoBeatmap } from "../helper/convert.helper";
+import { MirrorsHelper } from "../helper/mirrors.helper";
+import { MirrorsBenchmarkHelper } from "../helper/mirrors-benchmark.helper";
 import { MirrorsService } from "../service/mirrors.service";
+import { FakerGenerator } from "./utils/faker.generator";
 import { Mocker } from "./utils/mocker";
 
 const mirrors: Array<new (...args: any[]) => BaseClient> = [
@@ -52,16 +55,29 @@ async function waitForCapacityChange(
   }
 }
 
-describe("MirrorsService", () => {
-  let mirrorsManager: MirrorsService;
-  let mockStorageManager: StorageService;
+// @ts-expect-error accessing private property for testing
+const initialClients: MirrorClient[] = MirrorsHelper.clients;
+const initialMirrorNames = [
+  ["direct", "osu.direct"],
+  ["mino", config.UseUsCatboyServerOnly ? "us.catboy.best" : "catboy.best"],
+  ["gatari", "osu.gatari.pw"],
+  ["nerinyan", "api.nerinyan.moe"],
+  ["bancho", "osu.ppy.sh"],
+].filter(([name]) => !config.MirrorsToIgnore.includes(name) && (name !== "bancho" || config.UseBancho)).map(([, name]) => name);
 
-  beforeAll(async () => {
-    mockStorageManager = {
-      getBeatmapSet: mock(async () => {}),
-      insertBeatmapset: mock(async () => {}),
-    } as unknown as StorageService;
-  });
+function resetMirrorClients() {
+  // @ts-expect-error accessing private property for testing
+  MirrorsHelper.clients = [DirectClient, MinoClient, GatariClient, NerinyanClient, BanchoClient]
+    .filter(Mirror => !config.MirrorsToIgnore.includes(Mirror.name.slice(0, -6).toLowerCase()) && (Mirror !== BanchoClient || config.UseBancho))
+    .map(Mirror => ({
+      client: new Mirror(),
+      weights: { download: 0, API: 0, failrate: 0 },
+    }));
+  return MirrorsHelper;
+}
+
+describe("MirrorsHelper", () => {
+  let mirrorsManager: typeof MirrorsHelper;
 
   beforeEach(async () => {
     jest.restoreAllMocks();
@@ -69,38 +85,38 @@ describe("MirrorsService", () => {
     Mocker.mockMirrorsBenchmark();
   });
 
-  test("initializes only the supported mirrors", () => {
-    const previous = {
-      mirrorsToIgnore: config.MirrorsToIgnore,
-      useBancho: config.UseBancho,
-      useUsCatboyServerOnly: config.UseUsCatboyServerOnly,
-    };
+  test("initializes the configured mirrors once in fallback order", async () => {
+    expect(initialClients.map(({ client }) => client.mirror)).toEqual(initialMirrorNames);
+    const previous = config.MirrorsToIgnore;
 
     try {
-      config.MirrorsToIgnore = [];
-      config.UseBancho = true;
-      config.UseUsCatboyServerOnly = false;
-      const service = new MirrorsService(mockStorageManager) as unknown as { clients: Array<{ client: BaseClient }> };
+      config.MirrorsToIgnore = ["direct", "mino", "gatari", "nerinyan", "bancho"];
+      // @ts-expect-error accessing private property for testing
+      MirrorsHelper.clients = initialClients;
 
-      expect(service.clients.map(({ client }) => client.mirror)).toEqual([
-        "osu.direct",
-        "catboy.best",
-        "osu.gatari.pw",
-        "api.nerinyan.moe",
-        "osu.ppy.sh",
-      ]);
+      await MirrorsHelper.updateMirrorWeights();
+
+      // @ts-expect-error accessing private property for testing
+      expect(MirrorsHelper.clients).toBe(initialClients);
+      expect(MirrorsBenchmarkHelper.updateWeights).toHaveBeenCalledWith(initialClients);
     }
     finally {
-      config.MirrorsToIgnore = previous.mirrorsToIgnore;
-      config.UseBancho = previous.useBancho;
-      config.UseUsCatboyServerOnly = previous.useUsCatboyServerOnly;
+      config.MirrorsToIgnore = previous;
     }
+  });
+
+  test("the cron service updates the helper's mirror weights", async () => {
+    const updateWeights = spyOn(MirrorsHelper, "updateMirrorWeights").mockResolvedValue();
+
+    await MirrorsService.fetchMirrorsData();
+
+    expect(updateWeights).toHaveBeenCalledTimes(1);
   });
 
   const getMirrorClient = (
     mirror: new (...args: any[]) => BaseClient,
     initMirrors: Array<new (...args: any[]) => BaseClient> = [],
-  ) => {
+  ): BaseClient => {
     const mirrorsToInitialize = [...initMirrors, mirror];
 
     config.MirrorsToIgnore = mirrors
@@ -110,18 +126,19 @@ describe("MirrorsService", () => {
     const isMirrorsManagerInitialized = mirrorsManager !== null;
 
     if (!isMirrorsManagerInitialized) {
-      mirrorsManager = new MirrorsService(mockStorageManager);
+      mirrorsManager = resetMirrorClients();
 
+      // @ts-expect-error accessing private property for testing
+      const { clients } = MirrorsHelper;
       assert(
-        // @ts-expect-error accessing protected property for testing
-        mirrorsManager.clients.length === mirrorsToInitialize.length,
-                // @ts-expect-error accessing protected property for testing
-                `Expected ${mirrorsToInitialize.length} clients, got ${mirrorsManager.clients.length}`,
+        clients.length === mirrorsToInitialize.length,
+                `Expected ${mirrorsToInitialize.length} clients, got ${clients.length}`,
       );
     }
 
-    // @ts-expect-error accessing protected property for testing
-    const client = mirrorsManager.clients.find(
+    // @ts-expect-error accessing private property for testing
+    const { clients } = MirrorsHelper;
+    const client = clients.find(
       (c: any) => c.client instanceof mirror,
     )?.client;
 
@@ -299,6 +316,66 @@ describe("MirrorsService", () => {
       const mirrors = getMirrorsWithAbility(
         ClientAbilities.GetBeatmapById,
       );
+
+      describe.each(["MinoClient", "MirrorsHelper"])("%s metadata", (source) => {
+        test.each(["id", "hash", "partial"])("returns the converted embedded set for %s lookup without changing the beatmap", async (lookup) => {
+          const client = getMirrorClient(MinoClient);
+          const set = FakerGenerator.generateMinoBeatmapset({
+            last_updated: "2024-01-02T03:04:05Z",
+            next_update: 123,
+            last_checked: 456,
+            beatmaps: [],
+            converts: [],
+          });
+          set.beatmaps = [FakerGenerator.generateMinoBeatmap({
+            last_updated: "2024-02-03T04:05:06Z",
+            last_checked: 789,
+            set: null,
+          })];
+          const beatmap = FakerGenerator.generateMinoBeatmap({ set: null });
+          beatmap.set = set;
+          const expectedBeatmap = convertMinoBeatmap({ ...beatmap });
+          Mocker.mockRequest(client, "api", "get", { data: beatmap, status: 200 });
+
+          const ctx = lookup === "hash"
+            ? { beatmapHash: beatmap.checksum }
+            : { beatmapId: beatmap.id, allowMissingNonBeatmapValues: lookup === "partial" };
+          const result = await (source === "MinoClient" ? client : mirrorsManager).getBeatmap(ctx);
+
+          expect(result.status).toBe(200);
+          expect(result.result).toEqual(expectedBeatmap);
+          expect(result.result).not.toHaveProperty("set");
+          expect(result.result).not.toHaveProperty("beatmapset");
+          expect(result.beatmapset?.id).toBe(set.id);
+          expect(result.beatmapset?.last_updated).toBe("2024-01-02T03:04:05.000Z");
+          expect(result.beatmapset).not.toHaveProperty("next_update");
+          expect(result.beatmapset).not.toHaveProperty("last_checked");
+          expect(result.beatmapset?.beatmaps?.[0].last_updated).toBe("2024-02-03T04:05:06.000Z");
+          expect(result.beatmapset?.beatmaps?.[0]).not.toHaveProperty("last_checked");
+          expect(result.beatmapset?.beatmaps?.[0]).not.toHaveProperty("set");
+        });
+
+        test.each([null, undefined])("returns undefined metadata without an embedded set (%s)", async (set) => {
+          const client = getMirrorClient(MinoClient);
+          const beatmap = { ...FakerGenerator.generateMinoBeatmap({ set: null }), set };
+          const expectedBeatmap = convertMinoBeatmap({ ...beatmap });
+          Mocker.mockRequest(client, "api", "get", { data: beatmap, status: 200 });
+
+          const result = await (source === "MinoClient" ? client : mirrorsManager).getBeatmap({ beatmapId: beatmap.id });
+
+          expect(result).toEqual({ result: expectedBeatmap, status: 200, beatmapset: undefined });
+        });
+
+        test("does not return metadata for a failed response", async () => {
+          const client = getMirrorClient(MinoClient);
+          const beatmap = FakerGenerator.generateMinoBeatmap();
+          Mocker.mockRequest(client, "api", "get", { data: beatmap, status: 500 });
+
+          const result = await (source === "MinoClient" ? client : mirrorsManager).getBeatmap({ beatmapId: beatmap.id });
+
+          expect(result).toEqual({ result: null, status: source === "MinoClient" ? 500 : 502 });
+        });
+      });
 
       test.each(mirrors)(
                 `$name: Should successfully fetch a beatmap by id`,
@@ -2059,8 +2136,8 @@ describe("MirrorsService", () => {
 
       // Create a custom client configuration with ability-specific daily limits
       const TestableMinoClient = class extends MinoClient {
-        constructor(storageManager: any) {
-          super(storageManager);
+        constructor() {
+          super();
           // @ts-expect-error accessing protected property for testing
           this.api._config.dailyRateLimits = [
             { limit: 100, abilities: [ClientAbilities.DownloadBeatmapSetById, ClientAbilities.DownloadBeatmapSetByIdNoVideo] },
@@ -2074,14 +2151,12 @@ describe("MirrorsService", () => {
         .filter(m => m !== MinoClient)
         .map(m => m.name.slice(0, -6).toLowerCase());
 
-      mirrorsManager = new MirrorsService(mockStorageManager);
+      mirrorsManager = resetMirrorClients();
 
       // Override the client with our testable version
-      // @ts-expect-error accessing protected property for testing
-      mirrorsManager.clients[0].client = new TestableMinoClient(mockStorageManager);
-
-      // @ts-expect-error accessing protected property for testing
-      const testClient = mirrorsManager.clients[0].client;
+      const testClient = new TestableMinoClient();
+      // @ts-expect-error accessing private property for testing
+      MirrorsHelper.clients[0].client = testClient;
 
       // @ts-expect-error skip type check due to protected property
       const { dailyRateLimits } = testClient.api.config;
@@ -2117,8 +2192,8 @@ describe("MirrorsService", () => {
 
       // Create a custom client with very low limit for download
       const TestableMinoClient = class extends MinoClient {
-        constructor(storageManager: any) {
-          super(storageManager);
+        constructor() {
+          super();
           // @ts-expect-error accessing protected property for testing
           this.api._config.dailyRateLimits = [
             { limit: 1, abilities: [ClientAbilities.DownloadOsuBeatmap] },
@@ -2131,13 +2206,11 @@ describe("MirrorsService", () => {
         .filter(m => m !== MinoClient)
         .map(m => m.name.slice(0, -6).toLowerCase());
 
-      mirrorsManager = new MirrorsService(mockStorageManager);
+      mirrorsManager = resetMirrorClients();
 
-      // @ts-expect-error accessing protected property for testing
-      mirrorsManager.clients[0].client = new TestableMinoClient(mockStorageManager);
-
-      // @ts-expect-error accessing protected property for testing
-      const testClient = mirrorsManager.clients[0].client;
+      const testClient = new TestableMinoClient();
+      // @ts-expect-error accessing private property for testing
+      MirrorsHelper.clients[0].client = testClient;
 
       const { mockArrayBuffer } = Mocker.getClientMockMethods(testClient);
       const { generateBeatmap } = Mocker.getClientGenerateMethods(testClient);
@@ -2175,8 +2248,8 @@ describe("MirrorsService", () => {
 
       // Create a custom client with only ability-specific limits (no global)
       const TestableMinoClient = class extends MinoClient {
-        constructor(storageManager: any) {
-          super(storageManager);
+        constructor() {
+          super();
           // @ts-expect-error accessing protected property for testing
           this.api._config.dailyRateLimits = [
             { limit: 1, abilities: [ClientAbilities.DownloadOsuBeatmap] },
@@ -2189,13 +2262,11 @@ describe("MirrorsService", () => {
         .filter(m => m !== MinoClient)
         .map(m => m.name.slice(0, -6).toLowerCase());
 
-      mirrorsManager = new MirrorsService(mockStorageManager);
+      mirrorsManager = resetMirrorClients();
 
-      // @ts-expect-error accessing protected property for testing
-      mirrorsManager.clients[0].client = new TestableMinoClient(mockStorageManager);
-
-      // @ts-expect-error accessing protected property for testing
-      const testClient = mirrorsManager.clients[0].client;
+      const testClient = new TestableMinoClient();
+      // @ts-expect-error accessing private property for testing
+      MirrorsHelper.clients[0].client = testClient;
 
       const { generateBeatmap } = Mocker.getClientGenerateMethods(testClient);
 
@@ -2222,8 +2293,8 @@ describe("MirrorsService", () => {
       // Create a client with BOTH a specific limit for DownloadOsuBeatmap AND a global limit
       // Both should be decremented when using DownloadOsuBeatmap
       const TestableMinoClient = class extends MinoClient {
-        constructor(storageManager: any) {
-          super(storageManager);
+        constructor() {
+          super();
           // @ts-expect-error accessing protected property for testing
           this.api._config.dailyRateLimits = [
             { limit: 5, abilities: [ClientAbilities.DownloadOsuBeatmap] }, // Specific: 5 requests
@@ -2247,13 +2318,11 @@ describe("MirrorsService", () => {
         .filter(m => m !== MinoClient)
         .map(m => m.name.slice(0, -6).toLowerCase());
 
-      mirrorsManager = new MirrorsService(mockStorageManager);
+      mirrorsManager = resetMirrorClients();
 
-      // @ts-expect-error accessing protected property for testing
-      mirrorsManager.clients[0].client = new TestableMinoClient(mockStorageManager);
-
-      // @ts-expect-error accessing protected property for testing
-      const testClient = mirrorsManager.clients[0].client;
+      const testClient = new TestableMinoClient();
+      // @ts-expect-error accessing private property for testing
+      MirrorsHelper.clients[0].client = testClient;
 
       const { mockArrayBuffer } = Mocker.getClientMockMethods(testClient);
 
@@ -2281,8 +2350,8 @@ describe("MirrorsService", () => {
 
       // Create a client where specific limit is lower than global
       const TestableMinoClient = class extends MinoClient {
-        constructor(storageManager: any) {
-          super(storageManager);
+        constructor() {
+          super();
           // @ts-expect-error accessing protected property for testing
           this.api._config.dailyRateLimits = [
             { limit: 2, abilities: [ClientAbilities.DownloadOsuBeatmap] }, // Specific: 2 requests - bottleneck
@@ -2306,13 +2375,11 @@ describe("MirrorsService", () => {
         .filter(m => m !== MinoClient)
         .map(m => m.name.slice(0, -6).toLowerCase());
 
-      mirrorsManager = new MirrorsService(mockStorageManager);
+      mirrorsManager = resetMirrorClients();
 
-      // @ts-expect-error accessing protected property for testing
-      mirrorsManager.clients[0].client = new TestableMinoClient(mockStorageManager);
-
-      // @ts-expect-error accessing protected property for testing
-      const testClient = mirrorsManager.clients[0].client;
+      const testClient = new TestableMinoClient();
+      // @ts-expect-error accessing private property for testing
+      MirrorsHelper.clients[0].client = testClient;
 
       const { mockArrayBuffer } = Mocker.getClientMockMethods(testClient);
 
@@ -2340,8 +2407,8 @@ describe("MirrorsService", () => {
 
       // Create a client with a specific limit for download abilities AND a global limit
       const TestableMinoClient = class extends MinoClient {
-        constructor(storageManager: any) {
-          super(storageManager);
+        constructor() {
+          super();
           // @ts-expect-error accessing protected property for testing
           this.api._config.dailyRateLimits = [
             { limit: 100, abilities: [ClientAbilities.DownloadOsuBeatmap, ClientAbilities.DownloadBeatmapSetById] }, // Download-specific
@@ -2365,13 +2432,11 @@ describe("MirrorsService", () => {
         .filter(m => m !== MinoClient)
         .map(m => m.name.slice(0, -6).toLowerCase());
 
-      mirrorsManager = new MirrorsService(mockStorageManager);
+      mirrorsManager = resetMirrorClients();
 
-      // @ts-expect-error accessing protected property for testing
-      mirrorsManager.clients[0].client = new TestableMinoClient(mockStorageManager);
-
-      // @ts-expect-error accessing protected property for testing
-      const testClient = mirrorsManager.clients[0].client;
+      const testClient = new TestableMinoClient();
+      // @ts-expect-error accessing private property for testing
+      MirrorsHelper.clients[0].client = testClient;
 
       const { generateBeatmap } = Mocker.getClientGenerateMethods(testClient);
 

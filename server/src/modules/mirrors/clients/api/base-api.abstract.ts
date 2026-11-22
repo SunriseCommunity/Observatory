@@ -5,7 +5,7 @@ import { SpanKind, SpanStatusCode, trace } from "@opentelemetry/api";
 import type { AxiosInstance, AxiosRequestConfig, AxiosResponse } from "axios";
 import { isAxiosError } from "axios";
 
-import { createRequest } from "../../repository/requests.repository";
+import { RequestsRepository } from "../../repository/requests.repository";
 import type { BaseApiOptions } from "./base-api.types";
 
 /** Turns "api/v2/b/123?x=1" into "api/v2/b/:id" so metrics and span names stay low-cardinality. */
@@ -112,9 +112,9 @@ export class BaseApi {
     });
   }
 
-  private async saveRequest(data: Parameters<typeof createRequest>[0]) {
+  private async saveRequest(data: Parameters<typeof RequestsRepository.create>[0]) {
     try {
-      await createRequest(data);
+      await RequestsRepository.create(data);
     }
     catch (error) {
       logger.error({ err: error, mirror: this.mirror }, "BaseApi: failed to save request");

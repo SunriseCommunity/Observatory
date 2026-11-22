@@ -1,23 +1,17 @@
 import logger from "@observatory/common/observability/logger";
 
 import type { MirrorClient } from "../clients/base-client.types";
-import { abilitiesToBenchmark, benchmarkMirror } from "../helper/compare.helper";
-import { getRequestsBenchmark } from "../repository/requests.repository";
+import { RequestsRepository } from "../repository/requests.repository";
+import { abilitiesToBenchmark, benchmarkMirror } from "./compare.helper";
 
-export class MirrorsBenchmarkService {
-  private readonly clients: MirrorClient[];
-
-  constructor(clients: MirrorClient[]) {
-    this.clients = clients;
-  }
-
-  public async fetchMirrorsData(): Promise<void> {
-    for (const client of this.clients) {
-      const benchmark = await this.getMirrorBenchmark(client);
+export abstract class MirrorsBenchmarkHelper {
+  static async updateWeights(clients: MirrorClient[]): Promise<void> {
+    for (const client of clients) {
+      const benchmark = await MirrorsBenchmarkHelper.getMirrorBenchmark(client);
 
       client.weights = {
-        API: this.exponentialDecrease(benchmark.latency || Infinity),
-        download: this.exponentialIncrease(benchmark.downloadSpeed || 0),
+        API: MirrorsBenchmarkHelper.exponentialDecrease(benchmark.latency || Infinity),
+        download: MirrorsBenchmarkHelper.exponentialIncrease(benchmark.downloadSpeed || 0),
         failrate: benchmark.failrate,
       };
 
@@ -30,9 +24,9 @@ export class MirrorsBenchmarkService {
     }
   }
 
-  private async getMirrorBenchmark(client: MirrorClient) {
+  private static async getMirrorBenchmark(client: MirrorClient) {
     const { baseUrl } = client.client.clientConfig;
-    const stats = await getRequestsBenchmark(baseUrl, 3);
+    const stats = await RequestsRepository.getBenchmark(baseUrl, 3);
     const failrate = stats.failed / stats.total || 0;
 
     const toBenchmark = abilitiesToBenchmark(client);
@@ -56,11 +50,11 @@ export class MirrorsBenchmarkService {
     };
   }
 
-  private exponentialDecrease(x: number): number {
+  private static exponentialDecrease(x: number): number {
     return 10000 * Math.exp((-1 / 10000) * x);
   }
 
-  private exponentialIncrease(x: number): number {
+  private static exponentialIncrease(x: number): number {
     return 10000 * (1 - Math.exp((-1 / 10000) * x));
   }
 }

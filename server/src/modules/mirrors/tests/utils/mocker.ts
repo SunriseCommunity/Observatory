@@ -19,7 +19,7 @@ import type {
 } from "../../clients/catboy.best/mino-client.types";
 import type { BanchoService } from "../../clients/osu.ppy.sh/bancho-client.service";
 import type { ApiRateLimiter } from "../../clients/ratelimiter/rate-limiter.abstract";
-import { MirrorsBenchmarkService } from "../../service/mirrors-benchmark.service";
+import { MirrorsBenchmarkHelper } from "../../helper/mirrors-benchmark.helper";
 import { FakerGenerator } from "./faker.generator";
 
 type MockAxiosResponse<T> = Partial<AxiosResponse<T>> & {
@@ -28,7 +28,6 @@ type MockAxiosResponse<T> = Partial<AxiosResponse<T>> & {
   headers?: Record<string, string>;
 };
 
-// eslint-disable-next-line unicorn/no-static-only-class -- Used for methods overloading
 export class Mocker {
   static mockRequest<T>(
     baseClient: BaseClient,
@@ -181,8 +180,8 @@ export class Mocker {
 
   static mockMirrorsBenchmark() {
     spyOn(
-      MirrorsBenchmarkService.prototype,
-      "fetchMirrorsData",
+      MirrorsBenchmarkHelper,
+      "updateWeights",
     ).mockResolvedValue();
   }
 

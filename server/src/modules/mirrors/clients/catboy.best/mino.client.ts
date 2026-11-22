@@ -1,5 +1,5 @@
 import config from "@observatory/common/config";
-import type { Beatmap, Beatmapset } from "@observatory/common/types/beatmap";
+import type { Beatmapset } from "@observatory/common/types/beatmap";
 import type {
   DownloadBeatmapSetOptions,
   DownloadOsuBeatmap,
@@ -8,15 +8,15 @@ import type {
   ResultWithStatus,
   SearchBeatmapsetsOptions,
 } from "@observatory/common/types/beatmap-query";
-import type { StorageService } from "@observatory/storage";
 
 import { convertMinoBeatmap, convertMinoBeatmapset } from "../../helper/convert.helper";
+import type { BeatmapWithSet } from "../../model/mirrors.model";
 import { BaseClient, DOWNLOAD_TIMEOUT_MS } from "../base-client.abstract";
 import { ClientAbilities } from "../base-client.types";
 import type { MinoBeatmap, MinoBeatmapset } from "./mino-client.types";
 
 export class MinoClient extends BaseClient {
-  constructor(storageManager?: StorageService) {
+  constructor() {
     super(
       {
         baseUrl: config.UseUsCatboyServerOnly ? "https://us.catboy.best" : "https://catboy.best",
@@ -86,7 +86,6 @@ export class MinoClient extends BaseClient {
           },
         ],
       },
-      storageManager,
     );
   }
 
@@ -173,7 +172,7 @@ export class MinoClient extends BaseClient {
 
   async getBeatmap(
     ctx: GetBeatmapOptions,
-  ): Promise<ResultWithStatus<Beatmap>> {
+  ): Promise<BeatmapWithSet> {
     if (ctx.beatmapId) {
       return await this.getBeatmapFrom(`api/v2/b/${ctx.beatmapId}`);
     }
@@ -186,23 +185,19 @@ export class MinoClient extends BaseClient {
 
   private async getBeatmapFrom(
     endpoint: string,
-  ): Promise<ResultWithStatus<Beatmap>> {
+  ): Promise<BeatmapWithSet> {
     const result = await this.api.get<MinoBeatmap>(endpoint);
 
     if (!result || result.status !== 200 || !result.data) {
       return { result: null, status: result?.status ?? 500 };
     }
 
-    if (result.data.set) {
-      const beatmapSet = convertMinoBeatmapset(result.data.set);
-      this.storageManager?.insertBeatmapset(beatmapSet, {
-        beatmapSetId: beatmapSet.id,
-      });
-    }
+    const beatmapset = result.data.set ? convertMinoBeatmapset(result.data.set) : undefined;
 
     return {
       result: convertMinoBeatmap(result.data),
       status: result.status,
+      beatmapset,
     };
   }
 }
