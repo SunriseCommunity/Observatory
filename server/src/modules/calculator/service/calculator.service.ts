@@ -1,4 +1,4 @@
-import { BeatmapsHelper } from "@observatory/beatmaps";
+import { BeatmapsPublic } from "@observatory/beatmaps";
 import { HttpStatusCode } from "axios";
 import { Beatmap } from "rosu-pp-js";
 import rosuPackage from "rosu-pp-js/package.json";
@@ -55,7 +55,7 @@ export abstract class CalculatorService {
   }
 
   private static async GetBeatmapHash(beatmapId: number, beatmapHash?: string) {
-    const beatmapBuffer = await BeatmapsHelper.downloadOsuBeatmap({
+    const beatmapBuffer = await BeatmapsPublic.downloadOsuBeatmap({
       beatmapId,
     });
 

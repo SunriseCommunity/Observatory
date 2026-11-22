@@ -1,4 +1,4 @@
-import { BeatmapsHelper } from "@observatory/beatmaps";
+import { BeatmapsPublic } from "@observatory/beatmaps";
 import config, { observatoryConfigPublic } from "@observatory/common/config";
 import { formatNanoseconds, humanReadableMemory } from "@observatory/common/utilities/stats";
 
@@ -6,7 +6,7 @@ export abstract class StatsService {
   static async getStats() {
     const serverStats = StatsService.getServerStatistics();
     const managerStats
-      = await BeatmapsHelper.getManagerStats(config.ShowInternalValuesInPublicStatsEndpoint);
+      = await BeatmapsPublic.getManagerStats(config.ShowInternalValuesInPublicStatsEndpoint);
     const serverConfig = observatoryConfigPublic;
 
     return {

@@ -1,11 +1,9 @@
 /**
- * Architecture boundary rules for the Observatory server (docs/architecture.md).
- *
- * Module layout: entry points (`*.controller.ts`, `*.cron.controller.ts`) at the module root;
+ * Module layout: in-process contracts (`*.public.ts`) and host-only controllers at the module root;
  * `service/`, `helper/`, `repository/`, `model/`, `clients/`, `tests/` folders.
- * Patterns are anchored with `(?:^|/)modules/` so node_modules never matches.
- * Module tests/ folders are exempt from cross-module rules because they stub and seed foreign modules;
- * server/tests/ is exempt from the host rule.
+ * Cross-module rules check resolved paths, including workspace symlinks, against the published contracts.
+ * Module tests/ and server/tests/ are exempt from the host rule.
+ * TODO: Clean up these comments and structure.
  *
  * @type {import("dependency-cruiser").IConfiguration}
  */
@@ -14,8 +12,7 @@ const path = require("node:path");
 
 const MODULE_TESTS = "(?:^|/)modules/[^/]+/tests/";
 
-// Only files a module publishes through package.json "exports" (other than its controllers) may be called
-// across modules.
+// Only a module-root .public.ts published as the package root may be called across modules.
 const MODULE_ROOTS = ["server/src/modules"];
 
 function escapeRegExp(value) {
@@ -27,9 +24,10 @@ const PUBLIC_RUNTIME = MODULE_ROOTS.flatMap(root =>
     .filter(entry => entry.isDirectory() && fs.existsSync(path.join(__dirname, root, entry.name, "package.json")))
     .flatMap((entry) => {
       const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, root, entry.name, "package.json"), "utf8"));
-      return Object.values(manifest.exports ?? {})
-        .filter(target => !target.endsWith(".controller.ts"))
-        .map(target => `(?:^|/)modules/${escapeRegExp(entry.name)}/${escapeRegExp(target.replace(/^\.\//, ""))}$`);
+      const target = manifest.exports?.["."];
+      return typeof target === "string" && /^\.\/[^/\\]+\.public\.ts$/.test(target)
+        ? [`(?:^|/)modules/${escapeRegExp(entry.name)}/${escapeRegExp(target.slice(2))}$`]
+        : [];
     }),
 );
 
@@ -38,8 +36,8 @@ module.exports = {
     {
       name: "modules-only-import-public-entry-points",
       severity: "error",
-      comment: "Another module may only be reached through the helper files its package.json publishes.",
-      from: { path: "(?:^|/)modules/([^/]+)/", pathNot: MODULE_TESTS },
+      comment: "Another module may only be reached through the .public.ts contract its package.json publishes.",
+      from: { path: "(?:^|/)modules/([^/]+)/" },
       to: {
         path: "(?:^|/)modules/([^/]+)/",
         pathNot: ["(?:^|/)modules/$1/", ...PUBLIC_RUNTIME],
@@ -49,13 +47,20 @@ module.exports = {
     {
       name: "modules-type-imports-only-from-models",
       severity: "error",
-      comment: "Type-only imports from another module are limited to its model/ files and published helpers.",
-      from: { path: "(?:^|/)modules/([^/]+)/", pathNot: MODULE_TESTS },
+      comment: "Type-only imports from another module are limited to its model/ files and published contract.",
+      from: { path: "(?:^|/)modules/([^/]+)/" },
       to: {
         path: "(?:^|/)modules/([^/]+)/",
         pathNot: ["(?:^|/)modules/$1/", "(?:^|/)modules/[^/]+/model/", ...PUBLIC_RUNTIME],
         dependencyTypes: ["type-only"],
       },
+    },
+    {
+      name: "public-contracts-delegate-locally",
+      severity: "error",
+      comment: "Contracts delegate only to their own services or helpers and may use their own models and common.",
+      from: { path: "(?:^|/)modules/([^/]+)/[^/]+\\.public\\.ts$" },
+      to: { pathNot: ["(?:^|/)modules/$1/(service|helper|model)/", "^server/src/common/"] },
     },
     {
       name: "controllers-call-own-services-only",

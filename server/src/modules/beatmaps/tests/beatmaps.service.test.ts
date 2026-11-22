@@ -1,5 +1,5 @@
-import { MirrorsHelper } from "@observatory/mirrors";
-import { StorageHelper } from "@observatory/storage";
+import { MirrorsPublic } from "@observatory/mirrors";
+import { StoragePublic } from "@observatory/storage";
 import { afterEach, beforeEach, describe, expect, it, jest, spyOn } from "bun:test";
 
 import { beatmapsController } from "../beatmaps.controller";
@@ -25,8 +25,8 @@ function failOnUnexpectedCalls(target: object) {
 
 describe("BeatmapsService", () => {
   beforeEach(() => {
-    failOnUnexpectedCalls(StorageHelper);
-    failOnUnexpectedCalls(MirrorsHelper);
+    failOnUnexpectedCalls(StoragePublic);
+    failOnUnexpectedCalls(MirrorsPublic);
   });
 
   afterEach(() => {
@@ -35,8 +35,8 @@ describe("BeatmapsService", () => {
 
   it("returns an independent error body per failed request", async () => {
     const statuses = [503, 502];
-    stub(StorageHelper, { getBeatmap: async () => {} });
-    stub(MirrorsHelper, { getBeatmap: async () => ({ result: null, status: statuses.shift()! }) });
+    stub(StoragePublic, { getBeatmap: async () => {} });
+    stub(MirrorsPublic, { getBeatmap: async () => ({ result: null, status: statuses.shift()! }) });
 
     const first = await BeatmapsService.getBeatmap({ beatmapId: 1 });
     const second = await BeatmapsService.getBeatmap({ beatmapId: 2 });
@@ -47,11 +47,11 @@ describe("BeatmapsService", () => {
   });
 
   it.each([true, false])("caches mirror beatmaps when allowMissingNonBeatmapValues=%p", async (allowMissingNonBeatmapValues) => {
-    const storage = stub(StorageHelper, {
+    const storage = stub(StoragePublic, {
       getBeatmap: async () => {},
       insertBeatmap: async () => {},
     });
-    stub(MirrorsHelper, { getBeatmap: async () => ({ result: { id: 1 }, status: 200 }) });
+    stub(MirrorsPublic, { getBeatmap: async () => ({ result: { id: 1 }, status: 200 }) });
 
     const ctx = { beatmapId: 1, allowMissingNonBeatmapValues };
     await BeatmapsService.getBeatmap(ctx);
@@ -60,11 +60,11 @@ describe("BeatmapsService", () => {
   });
 
   it("caches missing beatmaps when partial data is allowed", async () => {
-    const storage = stub(StorageHelper, {
+    const storage = stub(StoragePublic, {
       getBeatmap: async () => {},
       insertBeatmap: async () => {},
     });
-    stub(MirrorsHelper, { getBeatmap: async () => ({ result: null, status: 404 }) });
+    stub(MirrorsPublic, { getBeatmap: async () => ({ result: null, status: 404 }) });
     const ctx = { beatmapId: 1, allowMissingNonBeatmapValues: true };
 
     await BeatmapsService.getBeatmap(ctx);
@@ -75,12 +75,12 @@ describe("BeatmapsService", () => {
   it("caches an embedded mirror set without exposing it in the response", async () => {
     const beatmap = { id: 1, beatmapset_id: 10 };
     const beatmapset = { id: 10, beatmaps: [beatmap] };
-    const storage = stub(StorageHelper, {
+    const storage = stub(StoragePublic, {
       getBeatmap: async () => {},
       insertBeatmap: async () => {},
       insertBeatmapset: async () => {},
     });
-    stub(MirrorsHelper, { getBeatmap: async () => ({ result: beatmap, status: 200, beatmapset }) });
+    stub(MirrorsPublic, { getBeatmap: async () => ({ result: beatmap, status: 200, beatmapset }) });
 
     const response = await BeatmapsService.getBeatmap({ beatmapId: 1 });
 
@@ -92,12 +92,12 @@ describe("BeatmapsService", () => {
   });
 
   it("does not cache a set when the mirror returns no embedded set", async () => {
-    const storage = stub(StorageHelper, {
+    const storage = stub(StoragePublic, {
       getBeatmap: async () => {},
       insertBeatmap: async () => {},
       insertBeatmapset: async () => {},
     });
-    stub(MirrorsHelper, { getBeatmap: async () => ({ result: { id: 1 }, status: 200 }) });
+    stub(MirrorsPublic, { getBeatmap: async () => ({ result: { id: 1 }, status: 200 }) });
 
     await BeatmapsService.getBeatmap({ beatmapId: 1 });
 
@@ -105,12 +105,12 @@ describe("BeatmapsService", () => {
   });
 
   it("does not wait for an embedded mirror set to be cached", async () => {
-    stub(StorageHelper, {
+    stub(StoragePublic, {
       getBeatmap: async () => {},
       insertBeatmap: async () => {},
       insertBeatmapset: () => new Promise(() => {}),
     });
-    stub(MirrorsHelper, { getBeatmap: async () => ({ result: { id: 1 }, status: 200, beatmapset: { id: 10 } }) });
+    stub(MirrorsPublic, { getBeatmap: async () => ({ result: { id: 1 }, status: 200, beatmapset: { id: 10 } }) });
 
     const response = await BeatmapsService.getBeatmap({ beatmapId: 1 });
 
@@ -121,12 +121,12 @@ describe("BeatmapsService", () => {
   it("fetches each beatmapset missing from storage once in full", async () => {
     const storedSet = { id: 10, beatmaps: [{ id: 1 }] };
     const fullSet = { id: 20, beatmaps: [{ id: 2 }, { id: 3 }] };
-    stub(StorageHelper, {
+    stub(StoragePublic, {
       getBeatmapSetsByBeatmapIds: async () => [storedSet],
       getBeatmapSet: async () => {},
       insertBeatmapset: async () => {},
     });
-    const mirrors = stub(MirrorsHelper, {
+    const mirrors = stub(MirrorsPublic, {
       getBeatmapsetsByBeatmapIds: async () => ({ result: [{ id: 20 }, { id: 20 }], status: 200 }),
       getBeatmapSet: async () => ({ result: fullSet, status: 200 }),
     });
@@ -140,11 +140,11 @@ describe("BeatmapsService", () => {
 
   it("reports beatmaps and sets missing after a full-set lookup", async () => {
     const storedSet = { id: 10, beatmaps: [{ id: 1 }] };
-    stub(StorageHelper, {
+    stub(StoragePublic, {
       getBeatmapSetsByBeatmapIds: async () => [storedSet],
       getBeatmapSet: async () => null,
     });
-    stub(MirrorsHelper, { getBeatmapsetsByBeatmapIds: async () => ({ result: [{ id: 20 }], status: 200 }) });
+    stub(MirrorsPublic, { getBeatmapsetsByBeatmapIds: async () => ({ result: [{ id: 20 }], status: 200 }) });
 
     const response = await BeatmapsService.getBeatmapsetsByBeatmapIds({ beatmapIds: [1, 2] });
 
@@ -153,8 +153,8 @@ describe("BeatmapsService", () => {
   });
 
   it("reports beatmap IDs absent from a successful batch response", async () => {
-    stub(StorageHelper, { getBeatmapSetsByBeatmapIds: async () => [] });
-    stub(MirrorsHelper, { getBeatmapsetsByBeatmapIds: async () => ({ result: [], status: 200 }) });
+    stub(StoragePublic, { getBeatmapSetsByBeatmapIds: async () => [] });
+    stub(MirrorsPublic, { getBeatmapsetsByBeatmapIds: async () => ({ result: [], status: 200 }) });
 
     const response = await BeatmapsService.getBeatmapsetsByBeatmapIds({ beatmapIds: [2] });
 
@@ -163,11 +163,11 @@ describe("BeatmapsService", () => {
   });
 
   it("returns the failed full-set status instead of a successful partial result", async () => {
-    stub(StorageHelper, {
+    stub(StoragePublic, {
       getBeatmapSetsByBeatmapIds: async () => [],
       getBeatmapSet: async () => {},
     });
-    stub(MirrorsHelper, {
+    stub(MirrorsPublic, {
       getBeatmapsetsByBeatmapIds: async () => ({ result: [{ id: 20 }], status: 200 }),
       getBeatmapSet: async () => ({ result: null, status: 503 }),
     });
@@ -180,8 +180,8 @@ describe("BeatmapsService", () => {
 
   it("recognizes stored converts without contacting a mirror", async () => {
     const storedSet = { id: 10, beatmaps: [], converts: [{ id: 2 }] };
-    stub(StorageHelper, { getBeatmapSetsByBeatmapIds: async () => [storedSet] });
-    const mirrors = stub(MirrorsHelper, { getBeatmapsetsByBeatmapIds: async () => ({ result: null, status: 500 }) });
+    stub(StoragePublic, { getBeatmapSetsByBeatmapIds: async () => [storedSet] });
+    const mirrors = stub(MirrorsPublic, { getBeatmapsetsByBeatmapIds: async () => ({ result: null, status: 500 }) });
 
     const response = await BeatmapsService.getBeatmapsetsByBeatmapIds({ beatmapIds: [2] });
 

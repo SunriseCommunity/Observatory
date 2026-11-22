@@ -1,6 +1,6 @@
 import type { DownloadOsuBeatmap, ResultWithStatus } from "@observatory/common/types/beatmap-query";
-import { MirrorsHelper } from "@observatory/mirrors";
-import { StorageHelper } from "@observatory/storage";
+import { MirrorsPublic } from "@observatory/mirrors";
+import { StoragePublic } from "@observatory/storage";
 import { HttpStatusCode } from "axios";
 
 import type { ServerResponse } from "../model/beatmaps.model";
@@ -21,7 +21,7 @@ export abstract class BeatmapsHelper {
   static async downloadOsuBeatmap(
     ctx: DownloadOsuBeatmap,
   ): Promise<ServerResponse<null | ArrayBuffer>> {
-    const beatmapOsuFile = await StorageHelper.getOsuBeatmapFile(ctx);
+    const beatmapOsuFile = await StoragePublic.getOsuBeatmapFile(ctx);
 
     if (beatmapOsuFile) {
       return {
@@ -39,13 +39,13 @@ export abstract class BeatmapsHelper {
       };
     }
 
-    const result = await MirrorsHelper.downloadOsuBeatmap(ctx);
+    const result = await MirrorsPublic.downloadOsuBeatmap(ctx);
 
     if (result.status >= 500) {
       return formatResultAsServerError(result);
     }
 
-    StorageHelper.insertBeatmapOsuFile(result.result, ctx);
+    StoragePublic.insertBeatmapOsuFile(result.result, ctx);
 
     if (result.status >= 400 || !result.result) {
       return {
@@ -65,8 +65,8 @@ export abstract class BeatmapsHelper {
 
   public static async getManagerStats(shouldIncludeMirrorStats = true) {
     return {
-      storage: await StorageHelper.getStorageStatistics(),
-      mirrors: shouldIncludeMirrorStats ? await MirrorsHelper.getMirrorsStatistics() : undefined,
+      storage: await StoragePublic.getStorageStatistics(),
+      mirrors: shouldIncludeMirrorStats ? await MirrorsPublic.getMirrorsStatistics() : undefined,
     };
   }
 }

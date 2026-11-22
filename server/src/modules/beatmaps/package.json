@@ -3,7 +3,7 @@
   "type": "module",
   "private": true,
   "exports": {
-    ".": "./helper/beatmaps.helper.ts",
+    ".": "./beatmaps.public.ts",
     "./http": "./beatmaps.controller.ts"
   },
   "dependencies": {

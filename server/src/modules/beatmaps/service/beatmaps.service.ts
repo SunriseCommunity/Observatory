@@ -9,8 +9,8 @@ import type {
   GetBeatmapsOptions,
   SearchBeatmapsetsOptions,
 } from "@observatory/common/types/beatmap-query";
-import { MirrorsHelper } from "@observatory/mirrors";
-import { StorageHelper } from "@observatory/storage";
+import { MirrorsPublic } from "@observatory/mirrors";
+import { StoragePublic } from "@observatory/storage";
 import { HttpStatusCode } from "axios";
 
 import { BeatmapsHelper, formatResultAsServerError } from "../helper/beatmaps.helper";
@@ -18,7 +18,7 @@ import type { ServerResponse } from "../model/beatmaps.model";
 
 export abstract class BeatmapsService {
   static async getBeatmap(ctx: GetBeatmapOptions): Promise<ServerResponse<Beatmap>> {
-    const beatmap = await StorageHelper.getBeatmap(ctx);
+    const beatmap = await StoragePublic.getBeatmap(ctx);
     if (beatmap || beatmap === null) {
       return {
         data: beatmap,
@@ -28,16 +28,16 @@ export abstract class BeatmapsService {
       };
     }
 
-    const result = await MirrorsHelper.getBeatmap(ctx);
+    const result = await MirrorsPublic.getBeatmap(ctx);
 
     if (result.status >= 500) {
       return formatResultAsServerError(result);
     }
 
     // Allow caching partial mirror responses with placeholder fields for now.
-    StorageHelper.insertBeatmap(result.result, ctx);
+    StoragePublic.insertBeatmap(result.result, ctx);
     if (result.beatmapset) {
-      StorageHelper.insertBeatmapset(result.beatmapset, { beatmapSetId: result.beatmapset.id });
+      StoragePublic.insertBeatmapset(result.beatmapset, { beatmapSetId: result.beatmapset.id });
     }
 
     return {
@@ -51,7 +51,7 @@ export abstract class BeatmapsService {
   static async getBeatmapSet(
     ctx: GetBeatmapSetOptions,
   ): Promise<ServerResponse<Beatmapset>> {
-    const beatmapset = await StorageHelper.getBeatmapSet(ctx);
+    const beatmapset = await StoragePublic.getBeatmapSet(ctx);
     if (beatmapset || beatmapset === null) {
       return {
         data: beatmapset,
@@ -63,13 +63,13 @@ export abstract class BeatmapsService {
       };
     }
 
-    const result = await MirrorsHelper.getBeatmapSet(ctx);
+    const result = await MirrorsPublic.getBeatmapSet(ctx);
 
     if (result.status >= 500) {
       return formatResultAsServerError(result);
     }
 
-    StorageHelper.insertBeatmapset(result.result, ctx);
+    StoragePublic.insertBeatmapset(result.result, ctx);
 
     return {
       data: result.result,
@@ -82,7 +82,7 @@ export abstract class BeatmapsService {
   static async searchBeatmapsets(
     ctx: SearchBeatmapsetsOptions,
   ): Promise<ServerResponse<Beatmapset[]>> {
-    const searchResult = await StorageHelper.getSearchResult(ctx);
+    const searchResult = await StoragePublic.getSearchResult(ctx);
 
     if (searchResult) {
       return {
@@ -93,14 +93,14 @@ export abstract class BeatmapsService {
       };
     }
 
-    const result = await MirrorsHelper.searchBeatmapsets(ctx);
+    const result = await MirrorsPublic.searchBeatmapsets(ctx);
 
     if (result.status >= 500) {
       return formatResultAsServerError(result);
     }
 
     if (result.result && result.status === 200) {
-      StorageHelper.insertSearchResult(ctx, result.result);
+      StoragePublic.insertSearchResult(ctx, result.result);
     }
 
     return {
@@ -115,7 +115,7 @@ export abstract class BeatmapsService {
   static async getBeatmaps(
     ctx: GetBeatmapsOptions,
   ): Promise<ServerResponse<Beatmap[]>> {
-    const result = await MirrorsHelper.getBeatmaps(ctx);
+    const result = await MirrorsPublic.getBeatmaps(ctx);
 
     if (result.status >= 500) {
       return formatResultAsServerError(result);
@@ -123,7 +123,7 @@ export abstract class BeatmapsService {
 
     if (result.result && result.result.length > 0) {
       for (const beatmap of result.result) {
-        StorageHelper.insertBeatmap(beatmap, {
+        StoragePublic.insertBeatmap(beatmap, {
           beatmapId: beatmap.id,
         });
       }
@@ -141,7 +141,7 @@ export abstract class BeatmapsService {
     ctx: GetBeatmapsetsByBeatmapIdsOptions,
   ): Promise<ServerResponse<Beatmapset[]>> {
     const beatmapsets
-      = await StorageHelper.getBeatmapSetsByBeatmapIds(ctx);
+      = await StoragePublic.getBeatmapSetsByBeatmapIds(ctx);
 
     const storedIds = new Set(
       beatmapsets.flatMap(set => [
@@ -160,7 +160,7 @@ export abstract class BeatmapsService {
       };
     }
 
-    const result = await MirrorsHelper.getBeatmapsetsByBeatmapIds({
+    const result = await MirrorsPublic.getBeatmapsetsByBeatmapIds({
       beatmapIds: missingIds,
     });
 
@@ -209,7 +209,7 @@ export abstract class BeatmapsService {
   static async downloadBeatmapSet(
     ctx: DownloadBeatmapSetOptions,
   ): Promise<ServerResponse<null | ArrayBuffer>> {
-    const beatmapsetFile = await StorageHelper.getBeatmapsetFile(ctx);
+    const beatmapsetFile = await StoragePublic.getBeatmapsetFile(ctx);
 
     if (beatmapsetFile) {
       return {
@@ -227,13 +227,13 @@ export abstract class BeatmapsService {
       };
     }
 
-    const result = await MirrorsHelper.downloadBeatmapSet(ctx);
+    const result = await MirrorsPublic.downloadBeatmapSet(ctx);
 
     if (result.status >= 500) {
       return formatResultAsServerError(result);
     }
 
-    StorageHelper.insertBeatmapsetFile(result.result, ctx);
+    StoragePublic.insertBeatmapsetFile(result.result, ctx);
 
     if (result.status >= 400 || !result.result) {
       return {
