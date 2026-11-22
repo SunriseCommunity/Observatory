@@ -3,7 +3,7 @@
   "type": "module",
   "private": true,
   "exports": {
-    ".": "./index.ts",
+    ".": "./storage.public.ts",
     "./cron": "./storage.cron.controller.ts"
   },
   "dependencies": {

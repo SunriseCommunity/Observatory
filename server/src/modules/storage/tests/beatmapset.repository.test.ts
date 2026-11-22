@@ -6,12 +6,7 @@ import { RankStatus, RankStatusInt } from "@observatory/common/types/rankStatus"
 import { afterAll, beforeEach, describe, expect, it } from "bun:test";
 import { and, eq, inArray } from "drizzle-orm";
 
-import {
-  createBeatmapset,
-  deleteUnvalidBeatmapSets,
-  getBeatmapSetById,
-  getBeatmapSetsByBeatmapIds,
-} from "../repository/beatmapset.repository";
+import { BeatmapsetRepository } from "../repository/beatmapset.repository";
 
 const SET_ID = 2_100_000_000;
 const EXPIRED = new Date(Date.now() - 60_000).toISOString();
@@ -98,13 +93,13 @@ async function removeTestRows() {
 describe("beatmapset repository", () => {
   beforeEach(async () => {
     await removeTestRows();
-    await createBeatmapset(createTestBeatmapset());
+    await BeatmapsetRepository.create(createTestBeatmapset());
   });
 
   afterAll(removeTestRows);
 
   it("returns each whole set once for beatmap ids from the same set", async () => {
-    const result = await getBeatmapSetsByBeatmapIds([SET_ID + 1, SET_ID + 2]);
+    const result = await BeatmapsetRepository.getByBeatmapIds([SET_ID + 1, SET_ID + 2]);
 
     expect(result.map(set => set.id)).toEqual([SET_ID]);
     expect(result[0].beatmaps?.map(b => b.id).sort()).toEqual([SET_ID + 1, SET_ID + 2]);
@@ -112,7 +107,7 @@ describe("beatmapset repository", () => {
   });
 
   it("returns all beatmaps of the set when only one of them is requested", async () => {
-    const [set] = await getBeatmapSetsByBeatmapIds([SET_ID + 2]);
+    const [set] = await BeatmapsetRepository.getByBeatmapIds([SET_ID + 2]);
 
     expect(set.beatmaps).toHaveLength(2);
     expect(set.converts).toHaveLength(1);
@@ -121,8 +116,8 @@ describe("beatmapset repository", () => {
   it("skips sets that are no longer valid", async () => {
     await db.update(beatmapsets).set({ validUntil: EXPIRED }).where(eq(beatmapsets.id, SET_ID));
 
-    expect(await getBeatmapSetsByBeatmapIds([SET_ID + 1])).toEqual([]);
-    expect(await getBeatmapSetById(SET_ID)).toBeNull();
+    expect(await BeatmapsetRepository.getByBeatmapIds([SET_ID + 1])).toEqual([]);
+    expect(await BeatmapsetRepository.getById(SET_ID)).toBeNull();
   });
 
   it("skips sets with an expired beatmap", async () => {
@@ -131,14 +126,14 @@ describe("beatmapset repository", () => {
       .set({ validUntil: EXPIRED })
       .where(and(eq(beatmaps.id, SET_ID + 2), eq(beatmaps.mode, GameMode.OSU_STANDARD)));
 
-    expect(await getBeatmapSetsByBeatmapIds([SET_ID + 1])).toEqual([]);
-    expect(await getBeatmapSetById(SET_ID)).toBeNull();
+    expect(await BeatmapsetRepository.getByBeatmapIds([SET_ID + 1])).toEqual([]);
+    expect(await BeatmapsetRepository.getById(SET_ID)).toBeNull();
   });
 
   it("deletes expired sets together with their beatmaps", async () => {
     await db.update(beatmapsets).set({ validUntil: EXPIRED }).where(eq(beatmapsets.id, SET_ID));
 
-    expect(await deleteUnvalidBeatmapSets()).toBeGreaterThanOrEqual(1);
+    expect(await BeatmapsetRepository.deleteUnvalid()).toBeGreaterThanOrEqual(1);
 
     expect(await db.select().from(beatmapsets).where(eq(beatmapsets.id, SET_ID))).toEqual([]);
     expect(

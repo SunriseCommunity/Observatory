@@ -11,15 +11,36 @@ import type {
 } from "@observatory/common/types/beatmap-query";
 import { RankStatus } from "@observatory/common/types/rankStatus";
 import { RedisKeys } from "@observatory/common/types/redis";
-import type Redis from "ioredis";
 
 const ONE_DAY = 1000 * 60 * 60 * 24;
 const ONE_SECOND = 1000;
 
-export class StorageCacheService {
-  private readonly redis: Redis = RedisInstance;
+function getSearchResultKey(ctx: SearchBeatmapsetsOptions) {
+  const key = JSON.stringify([ctx.query, ctx.limit, ctx.offset, ctx.status, ctx.mode]);
+  return `${RedisKeys.BEATMAPS_SEARCH_RESULT}${Bun.hash(key)}`;
+}
 
-  async getBeatmap(
+function getRedisTTLBasedOnStatus(status?: RankStatus): number {
+  const ONE_MINUTE = 1000 * 60;
+
+  switch (status) {
+    case RankStatus.GRAVEYARD:
+      return ONE_MINUTE * 30;
+    case RankStatus.PENDING:
+    case RankStatus.QUALIFIED:
+    case RankStatus.WIP:
+      return ONE_MINUTE * 5;
+    case RankStatus.APPROVED:
+    case RankStatus.LOVED:
+    case RankStatus.RANKED:
+      return ONE_MINUTE * 15;
+    default:
+      return ONE_MINUTE * 5;
+  }
+}
+
+export abstract class StorageCacheRepository {
+  static async getBeatmap(
     ctx: GetBeatmapOptions,
   ): Promise<Beatmap | null | undefined> {
     if (!ctx.beatmapId && !ctx.beatmapHash && !ctx.beatmapFilename) {
@@ -29,7 +50,7 @@ export class StorageCacheService {
     let { beatmapId } = ctx;
 
     if (ctx.beatmapHash) {
-      const cachedId = await this.redis.get(
+      const cachedId = await RedisInstance.get(
         `${RedisKeys.BEATMAP_ID_BY_HASH}${ctx.beatmapHash}`,
       );
 
@@ -42,7 +63,7 @@ export class StorageCacheService {
     }
 
     if (ctx.beatmapFilename) {
-      const cachedId = await this.redis.get(
+      const cachedId = await RedisInstance.get(
         `${RedisKeys.BEATMAP_ID_BY_FILENAME}${ctx.beatmapFilename}`,
       );
 
@@ -54,14 +75,14 @@ export class StorageCacheService {
       beatmapId = Number(cachedId);
     }
 
-    const cache = await this.redis.get(
+    const cache = await RedisInstance.get(
             `${RedisKeys.BEATMAP_BY_ID}${beatmapId}`,
     );
 
     return cache ? JSON.parse(cache) : undefined;
   }
 
-  async insertEmptyBeatmap(ctx: GetBeatmapOptions) {
+  static async insertEmptyBeatmap(ctx: GetBeatmapOptions) {
     let key = "";
 
     if (ctx?.beatmapId) {
@@ -74,107 +95,107 @@ export class StorageCacheService {
       key = `${RedisKeys.BEATMAP_ID_BY_FILENAME}${ctx?.beatmapFilename}`;
     }
 
-    await this.redis.set(
+    await RedisInstance.set(
       key,
       "null",
       "PX",
-      this.getRedisTTLBasedOnStatus(),
+      getRedisTTLBasedOnStatus(),
     );
   }
 
-  async insertBeatmap(beatmap: Beatmap) {
-    await this.redis.set(
+  static async insertBeatmap(beatmap: Beatmap) {
+    await RedisInstance.set(
             `${RedisKeys.BEATMAP_BY_ID}${beatmap.id}`,
             JSON.stringify(beatmap),
             "PX",
-            this.getRedisTTLBasedOnStatus(beatmap.status),
+            getRedisTTLBasedOnStatus(beatmap.status),
     );
 
-    await this.redis.set(
+    await RedisInstance.set(
             `${RedisKeys.BEATMAP_ID_BY_HASH}${beatmap.checksum}`,
             beatmap.id,
             "PX",
-            this.getRedisTTLBasedOnStatus(beatmap.status),
+            getRedisTTLBasedOnStatus(beatmap.status),
     );
   }
 
-  async insertBeatmapByFilename(beatmap: Beatmap, filename: string) {
-    await this.redis.set(
+  static async insertBeatmapByFilename(beatmap: Beatmap, filename: string) {
+    await RedisInstance.set(
       `${RedisKeys.BEATMAP_ID_BY_FILENAME}${filename}`,
       beatmap.id,
       "PX",
-      this.getRedisTTLBasedOnStatus(beatmap.status),
+      getRedisTTLBasedOnStatus(beatmap.status),
     );
   }
 
-  async insertEmptyBeatmapset(ctx: GetBeatmapSetOptions) {
+  static async insertEmptyBeatmapset(ctx: GetBeatmapSetOptions) {
     const key = `${RedisKeys.BEATMAPSET_BY_ID}${ctx?.beatmapSetId}`;
-    await this.redis.set(
+    await RedisInstance.set(
       key,
       "null",
       "PX",
-      this.getRedisTTLBasedOnStatus(),
+      getRedisTTLBasedOnStatus(),
     );
   }
 
-  async insertBeatmapset(beatmapset: Beatmapset) {
-    await this.redis.set(
+  static async insertBeatmapset(beatmapset: Beatmapset) {
+    await RedisInstance.set(
             `${RedisKeys.BEATMAPSET_BY_ID}${beatmapset.id}`,
             JSON.stringify(beatmapset),
             "PX",
-            this.getRedisTTLBasedOnStatus(beatmapset.status),
+            getRedisTTLBasedOnStatus(beatmapset.status),
     );
 
-    await Promise.all(beatmapset.beatmaps?.map(b => this.insertBeatmap(b)) ?? []);
+    await Promise.all(beatmapset.beatmaps?.map(b => StorageCacheRepository.insertBeatmap(b)) ?? []);
   }
 
-  async getBeatmapSet(
+  static async getBeatmapSet(
     ctx: GetBeatmapSetOptions,
   ): Promise<Beatmapset | null | undefined> {
     const beatmapsetId = ctx.beatmapSetId;
 
-    const cache = await this.redis.get(
+    const cache = await RedisInstance.get(
             `${RedisKeys.BEATMAPSET_BY_ID}${beatmapsetId}`,
     );
 
     return cache ? JSON.parse(cache) : undefined;
   }
 
-  async insertSearchResult(
+  static async insertSearchResult(
     ctx: SearchBeatmapsetsOptions,
     result: Beatmapset[],
   ) {
-    await this.redis.set(
-      this.getSearchResultKey(ctx),
+    await RedisInstance.set(
+      getSearchResultKey(ctx),
       JSON.stringify(result),
       "PX",
       ONE_SECOND * 15,
     );
   }
 
-  async getSearchResult(
+  static async getSearchResult(
     ctx: SearchBeatmapsetsOptions,
   ): Promise<Beatmapset[] | undefined> {
-    const cache = await this.redis.get(this.getSearchResultKey(ctx));
+    const cache = await RedisInstance.get(getSearchResultKey(ctx));
 
     return cache ? JSON.parse(cache) : undefined;
   }
 
-  async insertEmptyBeatmapsetFile(ctx: DownloadBeatmapSetOptions) {
+  static async insertEmptyBeatmapsetFile(ctx: DownloadBeatmapSetOptions) {
     const key = `${RedisKeys.BEATMAPSET_FILE_BY_ID}${ctx.beatmapSetId}`;
-    await this.redis.set(
+    await RedisInstance.set(
       key,
       "null",
       "PX",
-      this.getRedisTTLBasedOnStatus(),
+      getRedisTTLBasedOnStatus(),
     );
   }
 
-  async insertBeatmapsetFile(
+  static async insertBeatmapsetFile(
     ctx: DownloadBeatmapSetOptions,
     beatmapsetFile: BeatmapsetFile,
   ) {
-    await this.redis.set(
+    await RedisInstance.set(
             `${RedisKeys.BEATMAPSET_FILE_BY_ID}${ctx.beatmapSetId}`,
             JSON.stringify(beatmapsetFile),
             "PX",
@@ -182,33 +203,33 @@ export class StorageCacheService {
     );
   }
 
-  async getBeatmapSetFile(
+  static async getBeatmapSetFile(
     ctx: DownloadBeatmapSetOptions,
   ): Promise<BeatmapsetFile | null | undefined> {
     const beatmapsetId = ctx.beatmapSetId;
 
-    const cache = await this.redis.get(
+    const cache = await RedisInstance.get(
             `${RedisKeys.BEATMAPSET_FILE_BY_ID}${beatmapsetId}`,
     );
 
     return cache ? JSON.parse(cache) : undefined;
   }
 
-  async insertEmptyBeatmapOsuFile(ctx: DownloadOsuBeatmap) {
+  static async insertEmptyBeatmapOsuFile(ctx: DownloadOsuBeatmap) {
     const key = `${RedisKeys.BEATMAP_OSU_FILE}${ctx.beatmapId}`;
-    await this.redis.set(
+    await RedisInstance.set(
       key,
       "null",
       "PX",
-      this.getRedisTTLBasedOnStatus(),
+      getRedisTTLBasedOnStatus(),
     );
   }
 
-  async insertBeatmapOsuFile(
+  static async insertBeatmapOsuFile(
     ctx: DownloadOsuBeatmap,
     beatmapOsuFile: BeatmapOsuFile,
   ) {
-    await this.redis.set(
+    await RedisInstance.set(
             `${RedisKeys.BEATMAP_OSU_FILE}${ctx.beatmapId}`,
             JSON.stringify(beatmapOsuFile),
             "PX",
@@ -216,33 +237,33 @@ export class StorageCacheService {
     );
   }
 
-  async getBeatmapOsuFile(
+  static async getBeatmapOsuFile(
     ctx: DownloadOsuBeatmap,
   ): Promise<BeatmapOsuFile | null | undefined> {
-    const cache = await this.redis.get(
+    const cache = await RedisInstance.get(
             `${RedisKeys.BEATMAP_OSU_FILE}${ctx.beatmapId}`,
     );
 
     return cache ? JSON.parse(cache) : undefined;
   }
 
-  async getRedisStats() {
-    const beatmapsByIdKeys = await this.redis.keys(
+  static async getRedisStats() {
+    const beatmapsByIdKeys = await RedisInstance.keys(
       `${RedisKeys.BEATMAP_BY_ID}*`,
     );
-    const beatmapsIdByHashKeys = await this.redis.keys(
+    const beatmapsIdByHashKeys = await RedisInstance.keys(
       `${RedisKeys.BEATMAP_ID_BY_HASH}*`,
     );
 
-    const beatmapsetsByIdKeys = await this.redis.keys(
+    const beatmapsetsByIdKeys = await RedisInstance.keys(
       `${RedisKeys.BEATMAPSET_BY_ID}*`,
     );
 
-    const beatmapsetFilesByIdKeys = await this.redis.keys(
+    const beatmapsetFilesByIdKeys = await RedisInstance.keys(
       `${RedisKeys.BEATMAPSET_FILE_BY_ID}*`,
     );
 
-    const beatmapOsuFilesByIdKeys = await this.redis.keys(
+    const beatmapOsuFilesByIdKeys = await RedisInstance.keys(
       `${RedisKeys.BEATMAP_OSU_FILE}*`,
     );
 
@@ -263,29 +284,5 @@ export class StorageCacheService {
         byId: beatmapOsuFilesByIdKeys.length,
       },
     };
-  }
-
-  private getSearchResultKey(ctx: SearchBeatmapsetsOptions) {
-    const key = JSON.stringify([ctx.query, ctx.limit, ctx.offset, ctx.status, ctx.mode]);
-    return `${RedisKeys.BEATMAPS_SEARCH_RESULT}${Bun.hash(key)}`;
-  }
-
-  private getRedisTTLBasedOnStatus(status?: RankStatus): number {
-    const ONE_MINUTE = 1000 * 60;
-
-    switch (status) {
-      case RankStatus.GRAVEYARD:
-        return ONE_MINUTE * 30;
-      case RankStatus.PENDING:
-      case RankStatus.QUALIFIED:
-      case RankStatus.WIP:
-        return ONE_MINUTE * 5;
-      case RankStatus.APPROVED:
-      case RankStatus.LOVED:
-      case RankStatus.RANKED:
-        return ONE_MINUTE * 15;
-      default:
-        return ONE_MINUTE * 5;
-    }
   }
 }

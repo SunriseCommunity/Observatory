@@ -5,13 +5,12 @@ import path from "node:path";
 import AdmZip from "adm-zip";
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 
-import type { StorageCacheService } from "../service/storage-cache.service";
-import { StorageFilesService } from "../service/storage-files.service";
+import { StorageFilesHelper } from "../helper/storage-files.helper";
 
-describe("StorageFilesService no-video variant", () => {
+describe("StorageFilesHelper no-video variant", () => {
   let dir: string;
   let oszPath: string;
-  const service = new StorageFilesService({} as StorageCacheService);
+  const service = StorageFilesHelper;
   const getZippedFile = (file: string, noVideo: boolean): Promise<ArrayBuffer> =>
     (service as unknown as { getZippedFile: (p: string, ctx: { noVideo: boolean }) => Promise<ArrayBuffer> })
       .getZippedFile(file, { noVideo });
